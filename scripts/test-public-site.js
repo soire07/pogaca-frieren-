@@ -328,7 +328,7 @@ test('linked site-account owner sees the Owner Panel navigation after Discord ac
   const response = res();
   await handlePublicSiteRequest(request('/kesfet', ownerAccount), response, { db });
   assert.equal(response.status, 200);
-  assert.match(response.body, /href="\\/owner"/);
+  assert.match(response.body, /href="\/owner"/);
   assert.match(response.body, /site-owner-badge/);
 });
 
