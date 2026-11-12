@@ -358,29 +358,35 @@ def _generate_gemini_completion(
         method="POST",
     )
     logger.info("Gemini provider request started: model=%s timeout_seconds=%s", GEMINI_MODEL_ID, timeout_seconds)
-    try:
-        with urllib.request.urlopen(request, timeout=max(5, min(int(timeout_seconds), 60))) as response:
-            raw = response.read(GEMINI_MAX_RESPONSE_BYTES + 1)
-            if len(raw) > GEMINI_MAX_RESPONSE_BYTES:
-                raise RuntimeError("The inference provider response exceeded the size limit.")
-    except urllib.error.HTTPError as error:
-        if error.code == 429:
-            retry_value = error.headers.get("Retry-After", "10") if error.headers else "10"
-            try:
-                retry_after = int(float(retry_value))
-            except (TypeError, ValueError):
-                retry_after = 10
-            raise GeminiRateLimitError(retry_after) from error
-        reason_by_status = {
-            400: "provider_bad_request",
-            401: "provider_auth_rejected",
-            403: "provider_access_denied",
-            404: "provider_model_not_found",
-        }
-        reason = reason_by_status.get(error.code, "provider_temporarily_unavailable" if error.code >= 500 else "provider_http_error")
-        raise GeminiProviderError(reason, error.code) from error
-    except (urllib.error.URLError, TimeoutError, OSError) as error:
-        raise GeminiProviderError("provider_network_error") from error
+    for attempt in range(2):
+        try:
+            with urllib.request.urlopen(request, timeout=max(5, min(int(timeout_seconds), 60))) as response:
+                raw = response.read(GEMINI_MAX_RESPONSE_BYTES + 1)
+                if len(raw) > GEMINI_MAX_RESPONSE_BYTES:
+                    raise RuntimeError("The inference provider response exceeded the size limit.")
+            break
+        except urllib.error.HTTPError as error:
+            if error.code == 429:
+                retry_value = error.headers.get("Retry-After", "10") if error.headers else "10"
+                try:
+                    retry_after = int(float(retry_value))
+                except (TypeError, ValueError):
+                    retry_after = 10
+                raise GeminiRateLimitError(retry_after) from error
+            if error.code >= 500 and attempt == 0:
+                logger.warning("Gemini provider transient response: http_status=%s retry=once", error.code)
+                time.sleep(1)
+                continue
+            reason_by_status = {
+                400: "provider_bad_request",
+                401: "provider_auth_rejected",
+                403: "provider_access_denied",
+                404: "provider_model_not_found",
+            }
+            reason = reason_by_status.get(error.code, "provider_temporarily_unavailable" if error.code >= 500 else "provider_http_error")
+            raise GeminiProviderError(reason, error.code) from error
+        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            raise GeminiProviderError("provider_network_error") from error
     try:
         result = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
