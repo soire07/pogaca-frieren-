@@ -36,7 +36,7 @@ def test_candidate_cannot_be_selected_as_a_serving_backend(monkeypatch):
     from frieren_neural.api import _model_backend
 
     monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "qwen3")
-    with pytest.raises(RuntimeError, match="must be 'scratch', 'ufakzeka', or 'groq'"):
+    with pytest.raises(RuntimeError, match="must be 'scratch', 'ufakzeka', 'groq', or 'gemini'"):
         _model_backend()
 
 
