@@ -269,15 +269,8 @@ client.once(Events.ClientReady, async readyClient => {
   setInterval(() => void processDueGuildEventReminders(readyClient), 60_000);
   setInterval(() => void processDuePlayerMarketPriceAlerts(readyClient), 5 * 60_000);
   setInterval(() => void processNewsBirdDigests(readyClient), 60 * 60_000);
-  let activityIndex = 0;
-  const updatePresence = () => {
-    const activities = buildPresenceActivities(readyClient.guilds.cache.size);
-    const activity = activities[activityIndex % activities.length];
-    readyClient.user.setActivity(activity.name, { type: activity.type });
-    activityIndex = (activityIndex + 1) % activities.length;
-  };
-  updatePresence();
-  setInterval(updatePresence, 60_000);
+  const [activity] = buildPresenceActivities();
+  readyClient.user.setActivity(activity.name, { type: activity.type });
 });
 
 client.on(Events.GuildMemberAdd, async member => {
