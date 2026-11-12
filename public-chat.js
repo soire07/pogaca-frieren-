@@ -85,7 +85,7 @@ export async function sendPublicChatMessage(db,{accountId,username,body,replyToM
 
 export async function togglePublicChatReaction(db,{accountId,messageId,emoji}){
  assertAccount(accountId);
- if(!/^[0-9a-f-]{36}$/i.test(String(messageId||''))||!['❤️','✨','😂'].includes(String(emoji||'')))throw new Error('PUBLIC_CHAT_REACTION_INVALID');
+ if(!/^[0-9a-f-]{36}$/i.test(String(messageId||''))||!['❤️','✨','😂','😍','🥰','😭','👀','🎉','🙌','💜','🍪','🌸'].includes(String(emoji||'')))throw new Error('PUBLIC_CHAT_REACTION_INVALID');
  await ensurePublicChatSchema(db);
  await ensureAccountProfileSchema(db);
  return transaction(db,async client=>{
