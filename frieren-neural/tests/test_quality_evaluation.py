@@ -306,7 +306,7 @@ def test_active_gguf_evaluation_uses_pinned_artifact_and_never_claims_readiness(
     assert report["model_backend"] == "ufakzeka"
     assert report["artifact_sha256"] == digest
     assert report["decision"] == "NOT READY"
-    assert "human_review_missing" in report["blocking_reasons"]
+    assert "automated_case_pass_rate_below_92_percent" in report["blocking_reasons"]
     assert "checkpoint_metadata_missing" not in report["blocking_reasons"]
     assert "training_provenance_missing" in report["blocking_reasons"]
     assert "held_out_metrics_missing_or_invalid" in report["blocking_reasons"]
@@ -499,7 +499,7 @@ def test_baseline_establishment_cannot_bypass_missing_comparison_for_candidates(
     )
 
     assert report["decision"] == "NOT READY"
-    assert "human_review_missing" in report["blocking_reasons"]
+    assert "automated_case_pass_rate_below_92_percent" in report["blocking_reasons"]
     assert "checkpoint_metadata_missing" in report["blocking_reasons"]
 
 
