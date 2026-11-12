@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createIsolatedTestRunContext } from './isolated-test-run-context.js';
+import { assertIsolatedAuditDatabase } from './isolated-audit-db-guard.js';
 
 test('each isolated command test run receives distinct guild and player identifiers', () => {
   const first = createIsolatedTestRunContext(3, 'run-a');
@@ -33,4 +34,19 @@ test('live command harness uses the generated run identity for guilds, users and
   assert.match(source, /const userId = runContext\.userId\(index\)/);
   assert.match(source, /buildCoopTestUserIds\(index, userId, runContext\.coopUserPrefix\)/);
   assert.doesNotMatch(source, /const TEST_USER_PREFIX/);
+});
+
+test('isolated audit database guard accepts only the disposable local frieren_audit database', () => {
+  assert.equal(assertIsolatedAuditDatabase('postgresql://postgres:postgres@localhost:5432/frieren_audit'), true);
+  assert.equal(assertIsolatedAuditDatabase('postgresql://postgres:postgres@127.0.0.1:5432/frieren_audit'), true);
+  for (const unsafeUrl of [
+    'postgresql://postgres:postgres@db.example.com:5432/frieren_audit',
+    'postgresql://postgres:postgres@localhost:5432/postgres',
+    'postgresql://postgres:wrong@localhost:5432/frieren_audit',
+    'postgresql://postgres:postgres@localhost:5433/frieren_audit',
+    'https://localhost:5432/frieren_audit',
+    ''
+  ]) {
+    assert.throws(() => assertIsolatedAuditDatabase(unsafeUrl), /ISOLATED_AUDIT_DATABASE_REQUIRED/);
+  }
 });
