@@ -62,3 +62,5 @@ jobs:
             frieren-neural/benchmark-results/gguf-q4/human-scores.template.json
           if-no-files-found: error
           retention-days: 30
+
+# Re-run the isolated benchmark after the review-binding and serving-isolation gates were added.
