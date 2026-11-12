@@ -24,9 +24,9 @@ concurrency:
 
 jobs:
   probe:
-    name: Probe public liveness and readiness endpoints
+    name: Probe public liveness, readiness and website login
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -97,3 +97,154 @@ jobs:
           fi
 
           echo "Both public endpoints are externally reachable and return the expected health payloads."
+
+      # These GET-only probes use the public Vercel alias. They do not follow
+      # the Discord redirect, exchange OAuth codes, or write to the database.
+      - name: Verify the public Vercel login page
+        shell: bash
+        env:
+          SITE_URL: https://frierenbot.vercel.app
+        run: |
+          set -u
+          response_file="$RUNNER_TEMP/frieren-site-login.html"
+          attempt=1
+          while [[ "$attempt" -le 3 ]]; do
+            meta="$(curl --silent --show-error --connect-timeout 8 --max-time 15 \
+              --output "$response_file" --write-out '%{http_code} %{time_total}' \
+              "${SITE_URL}/login" 2>&1)" || true
+            http_code="${meta%% *}"
+            elapsed="${meta#* }"
+            if [[ "$elapsed" == "$meta" ]]; then elapsed="unknown"; fi
+
+            if [[ "$http_code" == "200" ]] && node - "$response_file" <<'NODE'
+          const fs = require('node:fs');
+          const html = fs.readFileSync(process.argv[2], 'utf8');
+          const passed = html.includes('Frieren evrenine hoş geldin')
+            && html.includes('Discord ile giriş yap')
+            && html.includes('href="/site/discord/login"');
+          process.exit(passed ? 0 : 1);
+          NODE
+            then
+              echo "PASS ${SITE_URL}/login: HTTP 200 (${elapsed}s), Discord login page rendered."
+              exit 0
+            fi
+
+            echo "::warning::Vercel /login attempt ${attempt}/3 failed (HTTP ${http_code:-no-response}, time ${elapsed})."
+            if [[ "$attempt" -lt 3 ]]; then sleep 5; fi
+            attempt=$((attempt + 1))
+          done
+
+          echo "::error::Vercel public login page failed after 3 attempts."
+          if [[ -s "$response_file" ]]; then head -c 1000 "$response_file"; echo; fi
+          exit 1
+
+      - name: Verify Discord OAuth start redirect without following it
+        shell: bash
+        env:
+          SITE_URL: https://frierenbot.vercel.app
+        run: |
+          set -u
+          headers_file="$RUNNER_TEMP/frieren-oauth-start.headers"
+          body_file="$RUNNER_TEMP/frieren-oauth-start.body"
+          attempt=1
+          while [[ "$attempt" -le 3 ]]; do
+            meta="$(curl --silent --show-error --connect-timeout 8 --max-time 15 \
+              --dump-header "$headers_file" --output "$body_file" \
+              --write-out '%{http_code} %{time_total}' \
+              "${SITE_URL}/site/discord/login" 2>&1)" || true
+            http_code="${meta%% *}"
+            elapsed="${meta#* }"
+            if [[ "$elapsed" == "$meta" ]]; then elapsed="unknown"; fi
+
+            if [[ "$http_code" == "302" ]] && node - "$headers_file" "$SITE_URL" <<'NODE'
+          const fs = require('node:fs');
+          const lines = fs.readFileSync(process.argv[2], 'utf8').split(/\r?\n/);
+          const siteUrl = new URL(process.argv[3]);
+          const locationLine = lines.find(line => /^location:/i.test(line));
+          const cookieHeaders = lines.filter(line => /^set-cookie:/i.test(line)).join('\n');
+          let target;
+          try {
+            target = new URL(locationLine?.replace(/^location:\s*/i, '').trim() || '');
+          } catch {
+            process.exit(1);
+          }
+          const expectedRedirect = new URL('/site/discord/callback', siteUrl).toString();
+          const state = target.searchParams.get('state');
+          const cookieOk = /frieren_site_oauth_state=/.test(cookieHeaders)
+            && /HttpOnly/i.test(cookieHeaders)
+            && /Secure/i.test(cookieHeaders)
+            && /SameSite=Lax/i.test(cookieHeaders)
+            && /Max-Age=600/i.test(cookieHeaders);
+          const passed = target.origin === 'https://discord.com'
+            && target.pathname === '/oauth2/authorize'
+            && target.searchParams.get('response_type') === 'code'
+            && target.searchParams.get('scope') === 'identify'
+            && target.searchParams.get('redirect_uri') === expectedRedirect
+            && Boolean(state)
+            && cookieOk;
+          process.exit(passed ? 0 : 1);
+          NODE
+            then
+              echo "PASS Discord OAuth start: HTTP 302 (${elapsed}s), signed state cookie and exact Vercel callback."
+              exit 0
+            fi
+
+            echo "::warning::Discord OAuth start attempt ${attempt}/3 failed (HTTP ${http_code:-no-response}, time ${elapsed})."
+            if [[ "$attempt" -lt 3 ]]; then sleep 5; fi
+            attempt=$((attempt + 1))
+          done
+
+          echo "::error::Discord OAuth start redirect is not correctly configured."
+          if [[ -s "$headers_file" ]]; then head -c 2000 "$headers_file"; echo; fi
+          exit 1
+
+      - name: Verify an unbound OAuth callback is rejected without completing login
+        shell: bash
+        env:
+          SITE_URL: https://frierenbot.vercel.app
+        run: |
+          set -u
+          headers_file="$RUNNER_TEMP/frieren-oauth-invalid-callback.headers"
+          body_file="$RUNNER_TEMP/frieren-oauth-invalid-callback.body"
+          attempt=1
+          while [[ "$attempt" -le 3 ]]; do
+            meta="$(curl --silent --show-error --connect-timeout 8 --max-time 15 \
+              --dump-header "$headers_file" --output "$body_file" \
+              --write-out '%{http_code} %{time_total}' \
+              "${SITE_URL}/site/discord/callback?code=ci-invalid&state=ci-invalid" 2>&1)" || true
+            http_code="${meta%% *}"
+            elapsed="${meta#* }"
+            if [[ "$elapsed" == "$meta" ]]; then elapsed="unknown"; fi
+
+            if [[ "$http_code" == "303" ]] && node - "$headers_file" "$SITE_URL" <<'NODE'
+          const fs = require('node:fs');
+          const lines = fs.readFileSync(process.argv[2], 'utf8').split(/\r?\n/);
+          const siteUrl = new URL(process.argv[3]);
+          const locationLine = lines.find(line => /^location:/i.test(line));
+          const cookieHeaders = lines.filter(line => /^set-cookie:/i.test(line)).join('\n');
+          let target;
+          try {
+            target = new URL(locationLine?.replace(/^location:\s*/i, '').trim() || '', siteUrl);
+          } catch {
+            process.exit(1);
+          }
+          const clearedStateCookie = /frieren_site_oauth_state=;/.test(cookieHeaders)
+            && /Max-Age=0/i.test(cookieHeaders);
+          const passed = target.pathname === '/login'
+            && target.searchParams.get('status') === 'discord_error'
+            && clearedStateCookie;
+          process.exit(passed ? 0 : 1);
+          NODE
+            then
+              echo "PASS invalid OAuth callback: HTTP 303 (${elapsed}s), rejected and state cookie cleared."
+              exit 0
+            fi
+
+            echo "::warning::Invalid OAuth callback attempt ${attempt}/3 failed (HTTP ${http_code:-no-response}, time ${elapsed})."
+            if [[ "$attempt" -lt 3 ]]; then sleep 5; fi
+            attempt=$((attempt + 1))
+          done
+
+          echo "::error::Invalid OAuth callback was not rejected as expected."
+          if [[ -s "$headers_file" ]]; then head -c 2000 "$headers_file"; echo; fi
+          exit 1
