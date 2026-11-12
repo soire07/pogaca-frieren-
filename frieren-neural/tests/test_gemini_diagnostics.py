@@ -148,3 +148,30 @@ def test_gemini_health_smoke_uses_low_thinking_and_small_output_budget(monkeypat
     assert captured["payload"]["generationConfig"]["maxOutputTokens"] == 32
     assert captured["payload"]["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "low"
     assert captured["timeout"] == 60
+
+
+
+def test_gemini_provider_retries_one_transient_server_error(monkeypatch):
+    import io
+    import json
+
+    monkeypatch.setenv("GEMINI_API_KEY", "synthetic-secret-key-" + "x" * 32)
+    monkeypatch.setenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", "1")
+    calls = {"count": 0}
+
+    def transient_then_success(_request, timeout):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise urllib.error.HTTPError(api.GEMINI_API_URL, 503, "Unavailable", {}, None)
+        return io.BytesIO(json.dumps({
+            "candidates": [{"content": {"parts": [{"text": "READY"}]}}]
+        }).encode("utf-8"))
+
+    monkeypatch.setattr(api.urllib.request, "urlopen", transient_then_success)
+    monkeypatch.setattr(api.time, "sleep", lambda _seconds: None)
+    completion = api._generate_gemini_completion(
+        "health retry", max_new_tokens=8, temperature=0.2, top_k=1,
+        thinking_level="low", timeout_seconds=12,
+    )
+    assert completion == "READY"
+    assert calls["count"] == 2
