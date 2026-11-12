@@ -690,7 +690,7 @@ export function renderOwnerSecurityWorkspace({ incidents = [], evidenceEvents = 
   const senderEventTimestamp = latestExternalEvent?.received_at ? Date.parse(latestExternalEvent.received_at) : NaN;
   const senderEventLabel = Number.isFinite(senderEventTimestamp) ? new Date(senderEventTimestamp).toLocaleString('tr-TR') : 'yok';
   const secretModeLabel = githubActionsEventCount > 0 ? 'GitHub Actions OIDC doğrulandı (anahtarsız)'
-    : ingestSecretMode === 'dedicated' ? 'Ayrılmış HMAC Guard anahtarı'
+    : ingestSecretMode === 'dedicated' ? 'Ayrılmış Guard anahtarı (HMAC)'
       : ingestSecretMode === 'shared' ? 'Ortak AI bridge anahtarı (geçiş modu)'
         : ingestSecretMode === 'invalid' ? 'HMAC anahtarı geçersiz' : 'GitHub Actions OIDC olayı bekleniyor';
   const chainLabel = !chainStatus ? 'Kontrol edilemedi'
