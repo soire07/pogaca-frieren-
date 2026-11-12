@@ -1069,7 +1069,7 @@ def test_groq_health_fails_closed_when_provider_key_is_missing(api_client, monke
     assert response.json() == {"status": "model_unavailable"}
     assert "GROQ_API_KEY" not in response.text
 
- 
+
 def test_gemini_backend_requires_explicit_free_tier_data_acknowledgement(monkeypatch):
     import frieren_neural.api as api
     monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "gemini")

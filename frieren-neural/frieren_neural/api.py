@@ -318,7 +318,7 @@ def _generate_gemini_completion(
 ) -> str:
     del temperature, top_k  # Gemini 3.8 Flash does not accept legacy sampling controls.
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    model_name = _gemini_model_name()
+    _gemini_model_name()  # Validate the pinned model and required free-tier acknowledgement.
     thinking_level = os.environ.get("FRIEREN_GEMINI_THINKING_LEVEL", "high").strip().lower()
     if thinking_level not in {"low", "medium", "high"}:
         raise RuntimeError("FRIEREN_GEMINI_THINKING_LEVEL must be low, medium, or high.")
