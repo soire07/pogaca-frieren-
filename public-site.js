@@ -25,7 +25,7 @@ import { getGuildFeatureEnabled } from './guild-feature-settings.js';
 import { createSupportTicket, listSupportTickets, listSupportTicketMessages, replySupportTicket, exportSiteAccountData, deleteSiteAccount } from './account-center.js';
 import { getNotificationPreferences, setNotificationPreference } from './news-birds.js';
 import { levelForXp, xpForNextLevel } from './utils.js';
-import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks, deletePublicChatMessage, updatePublicChatMessage, togglePublicChatPin, touchPublicChatPresence, getPublicChatPresence, setPublicChatTyping, markPublicChatMessagesRead, reportPublicChatMessage, listPublicChatReports, resolvePublicChatReport, getPublicChatControl, setPublicChatPaused } from './public-chat.js';
+import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks, deletePublicChatMessage, deleteOwnPublicChatMessage, updatePublicChatMessage, togglePublicChatPin, touchPublicChatPresence, getPublicChatPresence, setPublicChatTyping, markPublicChatMessagesRead, reportPublicChatMessage, listPublicChatReports, resolvePublicChatReport, getPublicChatControl, setPublicChatPaused } from './public-chat.js';
 import { getAccountProfile, updateAccountProfile, followAccount, unfollowAccount, recordAccountProfileVisit, listAccountProfileActivity, sendAccountFriendRequest, respondAccountFriendRequest, listAccountFriends, getAccountIdByProfileSlug, listAccountNotifications, markAccountNotificationsRead } from './account-profile.js';
 import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, markDirectMessagesRead, sendDirectMessage, listGuestbookEntries, addGuestbookEntry, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers, setCloseFriend, removeCloseFriend, listCloseFriends, recordProfileVisit, listProfileVisits } from './personal-center.js';
 import { achievements as RPG_ACHIEVEMENTS } from './basarimlar.js';
@@ -781,14 +781,14 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
     if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
     const owner=await isLinkedOwnerSiteAccount(db,session);
-    if(['/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/control','/api/public-chat/reports/review'].includes(url.pathname)&&!owner){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
+    if(['/api/public-chat/pins','/api/public-chat/control','/api/public-chat/reports/review'].includes(url.pathname)&&!owner){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
     try{
       let result;
       if(url.pathname==='/api/public-chat/reactions')result=await togglePublicChatReaction(db,{accountId:session.id,messageId:form.get('messageId'),emoji:form.get('emoji')});
       else if(url.pathname==='/api/public-chat/blocks')result=await blockPublicChatUser(db,{accountId:session.id,messageId:form.get('messageId')});
       else if(url.pathname==='/api/public-chat/blocks/unblock')result=await unblockPublicChatUser(db,{accountId:session.id,targetAccountId:form.get('targetAccountId')});
       else if(url.pathname==='/api/public-chat/messages/edit')result=await updatePublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId'),body:form.get('body')});
-      else if(url.pathname==='/api/public-chat/messages/delete')result=await deletePublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId'),isOwner:owner});
+      else if(url.pathname==='/api/public-chat/messages/delete')result=owner?await deletePublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId'),isOwner:true}):await deleteOwnPublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId')});
       else if(url.pathname==='/api/public-chat/pins')result=await togglePublicChatPin(db,{accountId:session.id,messageId:form.get('messageId'),isOwner:owner});
       else if(url.pathname==='/api/public-chat/control')result=await setPublicChatPaused(db,{accountId:session.id,paused:form.get('paused')==='true',isOwner:owner});
       else if(url.pathname==='/api/public-chat/typing')result=await setPublicChatTyping(db,{accountId:session.id});
