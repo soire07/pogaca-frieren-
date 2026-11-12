@@ -79,3 +79,21 @@ test('trade offers reserve only unexpired copies using the database clock', asyn
   assert.match(trade, /reservedForOthers/);
   assert.ok(handler.includes('resolveTradeOffer(pool'));
 });
+
+
+test('character stat spending locks available points and atomically enforces permanent stat caps', async () => {
+  const source = await read('commands/rpg/gelisim.js');
+  const begin = source.indexOf("await client.query('BEGIN')");
+  const playerLock = source.indexOf('SELECT stat_points, hp, max_hp, mana, max_mana, attack, defense FROM users WHERE guild_id=$1 AND user_id=$2 FOR UPDATE', begin);
+  const balanceCheck = source.indexOf('player.stat_points < points', playerLock);
+  const capCheck = source.indexOf('current + increase > cap', balanceCheck);
+  const statUpdate = source.indexOf('UPDATE users SET', capCheck);
+  const reread = source.indexOf('SELECT stat_points, hp, max_hp, mana, max_mana, attack, defense FROM users', statUpdate);
+  const commit = source.indexOf("await client.query('COMMIT')", reread);
+
+  assert.ok(begin >= 0 && playerLock > begin && balanceCheck > playerLock && capCheck > balanceCheck &&
+    statUpdate > capCheck && reread > statUpdate && commit > reread,
+    'stat points must be locked, validated, spent, reread and committed in one transaction');
+  assert.match(source, /const cap = stat === 'hp' \|\| stat === 'mana' \? 2000 : stat === 'attack' \? 500 : 250/);
+  assert.match(source, /await client\.query\('ROLLBACK'\)/);
+});
