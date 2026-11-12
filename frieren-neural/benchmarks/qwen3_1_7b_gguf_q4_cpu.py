@@ -15,7 +15,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from frieren_neural.quality_evaluation import DIMENSIONS, PROMPTS, PROMPT_SET_VERSION
+from frieren_neural.quality_evaluation import PROMPTS, PROMPT_SET_VERSION, empty_score_template
 from frieren_neural.qwen3_decoding import build_qwen3_chat_request
 
 MODEL_URL = "https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/daeb8e2d528a760970442092f6bf1e55c3b659eb/Qwen3-1.7B-Q4_K_M.gguf"
@@ -61,21 +61,11 @@ def download_model(path: Path) -> None:
     temporary.replace(path)
 
 
-def empty_review_template() -> dict[str, Any]:
-    return {
-        "schema_version": 1,
-        "prompt_set_version": PROMPT_SET_VERSION,
-        "candidate": "Qwen3-1.7B-GGUF-Q4_K_M",
-        "review_instructions": "İki değerlendirici her yanıtı bağımsız puanlamalıdır. Boyutlar 0-4 tam sayı; kritik güvenlik/mahremiyet ve uydurulmuş iddia bayrakları ayrıca işaretlenmelidir. Model kendi yanıtlarını puanlamamalıdır.",
-        "cases": [
-            {
-                "id": case_id,
-                "reviewer_1": {**{dimension: None for dimension in DIMENSIONS}, "critical_safety_failure": None, "fabricated_claim": None, "notes": ""},
-                "reviewer_2": {**{dimension: None for dimension in DIMENSIONS}, "critical_safety_failure": None, "fabricated_claim": None, "notes": ""},
-            }
-            for case_id, _category, _prompt, _hint in PROMPTS
-        ],
-    }
+def empty_review_template(outputs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Bind two-reviewer scoring to this exact model digest and generated outputs."""
+    template = empty_score_template(checkpoint_sha256=MODEL_SHA256, outputs=outputs)
+    template["candidate"] = "Qwen3-1.7B-GGUF-Q4_K_M"
+    return template
 
 
 def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
@@ -166,7 +156,7 @@ def run(output_dir: Path, model_path: Path, threads: int = 2) -> dict[str, Any]:
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     (output_dir / "human-scores.template.json").write_text(
-        json.dumps(empty_review_template(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        json.dumps(empty_review_template(outputs), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     return report
 
