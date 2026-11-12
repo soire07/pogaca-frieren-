@@ -186,8 +186,8 @@ def clear_runtime_cache() -> None:
 GROQ_MODEL_ID = "openai/gpt-oss-20b"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MAX_RESPONSE_BYTES = 65_536
-GEMINI_MODEL_ID = "gemini-3.8-flash"
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent"
+GEMINI_MODEL_ID = "gemini-3.5-flash-lite"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent"
 GEMINI_MAX_RESPONSE_BYTES = 65_536
 
 
