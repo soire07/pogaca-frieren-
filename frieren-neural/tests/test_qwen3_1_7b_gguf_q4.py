@@ -1,4 +1,11 @@
-from frieren_neural.benchmarks import qwen3_1_7b_gguf_q4_cpu as candidate
+import importlib.util
+from pathlib import Path
+
+MODULE_PATH = Path(__file__).parents[1] / "benchmarks" / "qwen3_1_7b_gguf_q4_cpu.py"
+spec = importlib.util.spec_from_file_location("qwen3_1_7b_gguf_q4_cpu", MODULE_PATH)
+candidate = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+spec.loader.exec_module(candidate)
 
 
 def test_candidate_is_immutable_and_apache_licensed():
@@ -13,3 +20,11 @@ def test_candidate_is_review_only():
     template = candidate.empty_review_template()
     assert template["candidate"] == "Qwen3-1.7B-GGUF-Q4_K_M"
     assert len(template["cases"]) == 24
+
+
+def test_sha256_file_streams_and_matches_standard_digest(tmp_path):
+    payload = b"Qwen3 benchmark checksum test" * 100_000
+    path = tmp_path / "fixture.bin"
+    path.write_bytes(payload)
+    import hashlib
+    assert candidate.sha256_file(path) == hashlib.sha256(payload).hexdigest()
