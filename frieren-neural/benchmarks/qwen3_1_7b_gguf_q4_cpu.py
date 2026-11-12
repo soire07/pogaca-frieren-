@@ -28,10 +28,17 @@ def peak_rss_mib() -> float:
     return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 2)
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def download_model(path: Path) -> None:
     if path.exists() and 0 < path.stat().st_size <= MODEL_MAX_SIZE_BYTES:
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        if digest == MODEL_SHA256:
+        if sha256_file(path) == MODEL_SHA256:
             return
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".part")
