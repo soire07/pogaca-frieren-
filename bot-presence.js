@@ -1,14 +1,10 @@
 import { ActivityType } from 'discord.js';
 
-export function buildPresenceActivities(guildCount) {
-  const parsedCount = Number(guildCount);
-  const count = Number.isFinite(parsedCount) ? Math.max(0, Math.floor(parsedCount)) : 0;
-  const serverLabel = count === 1 ? 'Discord server' : 'Discord servers';
+const WATCHING_ACTIVITY = Object.freeze({
+  name: "Frieren: Beyond Journey's End Season 2",
+  type: ActivityType.Watching,
+});
 
-  return [
-    { name: `${count} ${serverLabel}`, type: ActivityType.Watching },
-    { name: 'Frieren RPG', type: ActivityType.Playing },
-    { name: "Himmel's memories", type: ActivityType.Listening },
-    { name: 'the Magic Arena', type: ActivityType.Competing },
-  ];
+export function buildPresenceActivities() {
+  return [WATCHING_ACTIVITY];
 }
