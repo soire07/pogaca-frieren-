@@ -342,6 +342,7 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
                 and len(baseline_auto["case_results"]) == len(expected_ids)
                 and baseline_report.get("decoding_settings") == DECODING_SETTINGS
                 and baseline_report.get("prompt_set_version") == PROMPT_SET_VERSION
+                and baseline_report.get("baseline_role") == "baseline_candidate"
             )
             if not baseline_valid:
                 reasons.append("automated_baseline_missing_or_incompatible")
