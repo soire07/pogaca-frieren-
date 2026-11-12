@@ -85,3 +85,29 @@ jobs:
           echo "KNOWLEDGE_CANDIDATE_AUTH=PASS"
           echo "KNOWLEDGE_REVIEW_AUTH=PASS"
           echo "KNOWLEDGE_SEARCH_AUTH=PASS"
+
+
+      - name: Run bounded authenticated generate smoke when a test token is available
+        env:
+          NEURAL_TEST_URL: https://frieren-neural-test-1unz.onrender.com
+          FRIEREN_TEST_API_TOKEN: ${{ secrets.FRIEREN_TEST_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$FRIEREN_TEST_API_TOKEN" ]; then
+            echo "AUTHENTICATED_GENERATE=SKIPPED (FRIEREN_TEST_API_TOKEN secret is unavailable)"
+            exit 0
+          fi
+          prompts=(
+            "Merhaba. Kısa bir selamlama yaz."
+            "240 TL'nin yüzde 15 indirimli fiyatı kaç TL?"
+            "Python'da listenin boş olup olmadığını nasıl kontrol ederim?"
+          )
+          index=0
+          for prompt in "${prompts[@]}"; do
+            index=$((index + 1))
+            payload="$(python -c 'import json,sys; print(json.dumps({"prompt":sys.argv[1],"max_new_tokens":8,"temperature":0.2,"top_k":20}, ensure_ascii=False))' "$prompt")"
+            status="$(curl --silent --show-error --output "/tmp/generate-$index.json" --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -X POST "$NEURAL_TEST_URL/generate" -H "Authorization: Bearer $FRIEREN_TEST_API_TOKEN" -H 'Content-Type: application/json' --data "$payload")"
+            test "$status" = "200"
+            python -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); assert isinstance(d.get("completion"), str) and d["completion"].strip()' "/tmp/generate-$index.json"
+          done
+          echo "AUTHENTICATED_GENERATE=PASS (3 sequential synthetic requests; no concurrency)"
