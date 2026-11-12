@@ -115,3 +115,19 @@ A deterministic diagnostic sample of 500 training conversations (644 user/assist
 | 1,024 tokens | 99.4% |
 
 The 128-token context is therefore a measured training/inference limitation, not a speculative explanation. A new isolated candidate keeps the same scratch model family, 128-dimensional width, 4 heads, 4 layers, BPE vocabulary, assistant-only objective, pinned corpus, seed, held-out split and 24,000-step continuous checkpoint chain, but increases context to 512 tokens and reduces batch size from 4 to 1 to bound activation memory. Held-out evaluation also uses batch size 1. This is a controlled context-window experiment; it does not guarantee improved answer quality. Its 24-prompt outputs, held-out metrics, runtime and peak memory must be inspected before any release decision.
+
+
+## Qwen3-1.7B Q4_K_M — binding decision (2026-11-12)
+
+**Decision: isolated benchmark candidate only; NOT approved as the active/default serving model, training source, or production candidate.**
+
+- The Qwen3-1.7B benchmark has not yet produced a verified 24/24 output artifact in this branch. No RAM, latency, or Turkish-quality result is claimed.
+- A valid comparison must run Qwen3-1.7B and the pinned Qwen3-0.6B baseline on the same 24 prompts, compatible Qwen3 chat formatting, non-thinking mode, decoding settings, CPU/thread budget, and measurement procedure. Compare correctness, instruction adherence, Turkish quality, grounding, safety/privacy, conversation consistency, peak RSS, median/p95 latency, and total generation time. Model size alone is not evidence of improvement.
+- The Qwen human-review template is now bound to the exact pinned model SHA-256, generated-output SHA-256, and prompt-set version. Both reviewer score sets must be complete and independently supplied; the existing identity-hash limitation remains documented (different hashes do not prove different real people).
+- The Qwen Actions workflow now runs focused regression tests for the review binding and serving-backend isolation before downloading/running the model. The workflow is serialized per ref to avoid duplicate expensive CPU runs.
+- The serving backend selector accepts only the existing `scratch` and `ufakzeka` backends; `qwen3` is explicitly rejected. No Qwen model weights, dependencies, or runtime routing are added to the serving path.
+- The Qwen candidate cannot enter training data. The two-human-review knowledge admission gate remains separate and does not convert benchmark outputs into training examples.
+- Promotion remains blocked until a verified comparable benchmark shows a meaningful quality improvement over 0.6B without unacceptable memory/latency regression, the release quality thresholds are met, and two independent human reviews are completed.
+- PR #319 remains open and draft. No merge, Render/Vercel deployment, production database change, or live Discord operation is authorized by this decision.
+
+This decision is fail-closed: missing artifacts, missing measurements, mismatched score bindings, incomplete reviews, or an incomparable baseline mean **NOT READY**.
