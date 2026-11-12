@@ -1261,7 +1261,7 @@ test('Owner Security labels the external GitHub Actions OIDC sender separately f
     evidenceEvents: [{
       sequence_no: 6, event_id: 'github-actions-123456789', severity: 'low',
       received_at: '2026-11-12T20:00:00Z', source: 'frieren_guard',
-      sender: 'github_actions', client_ip: null, ip_source: 'unverified_peer',
+      sender: 'github_actions', event_type: 'heartbeat', client_ip: null, ip_source: 'unverified_peer',
       event_hash: 'd'.repeat(64)
     }],
     chainStatus: { valid: true, checked: 6, truncated: false, firstInvalidSequence: null }
@@ -1269,4 +1269,6 @@ test('Owner Security labels the external GitHub Actions OIDC sender separately f
   assert.match(html, /GitHub Actions OIDC doğrulandı/);
   assert.match(html, /Frieren Guard \(GitHub Actions OIDC\)/);
   assert.match(html, /Son 30 delil içindeki harici imzalı olay sayısı: 1/);
+  assert.match(html, /Ağ IP bilgisi uygulanamaz/);
+  assert.match(html, /Heartbeat/);
 });
