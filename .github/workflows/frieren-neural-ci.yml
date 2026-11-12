@@ -6,6 +6,7 @@ on:
       - frieren-neural-foundation
       - validation/ufakzeka-real-gguf
       - test/frieren-neural-render-free
+      - feat/neural-single-core-integration-20261107
     paths:
       - ".github/workflows/frieren-neural-ci.yml"
       - ".github/workflows/frieren-neural-evolution-search.yml"
