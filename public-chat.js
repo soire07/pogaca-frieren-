@@ -27,7 +27,7 @@ async function createPublicChatSchema(db){
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_presence(account_id TEXT PRIMARY KEY,last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),typing_until TIMESTAMPTZ)');
  await db.query('ALTER TABLE frieren_public_chat_presence ADD COLUMN IF NOT EXISTS typing_until TIMESTAMPTZ');
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_reactions(message_id UUID NOT NULL REFERENCES frieren_public_chat_messages(message_id) ON DELETE CASCADE,account_id TEXT NOT NULL,emoji VARCHAR(16) NOT NULL CHECK(emoji IN (\'❤️\',\'✨\',\'😂\')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(message_id,account_id,emoji))');
- await db.query(`DO $ BEGIN
+ await db.query(`DO $$ BEGIN
   PERFORM pg_advisory_xact_lock(hashtext('frieren_public_chat_schema'));
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='frieren_public_chat_reactions'::regclass AND conname='frieren_public_chat_reactions_emoji_check' AND pg_get_constraintdef(oid) LIKE '%😍%') THEN
    ALTER TABLE frieren_public_chat_reactions DROP CONSTRAINT IF EXISTS frieren_public_chat_reactions_emoji_check;
