@@ -327,12 +327,13 @@ def _generate_groq_completion(
 
 
 def _generate_gemini_completion(
-    prompt: str, *, max_new_tokens: int, temperature: float, top_k: int
+    prompt: str, *, max_new_tokens: int, temperature: float, top_k: int,
+    thinking_level: str | None = None,
 ) -> str:
     del temperature, top_k  # Gemini 3.8 Flash does not accept legacy sampling controls.
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     _gemini_model_name()  # Validate the pinned model and required free-tier acknowledgement.
-    thinking_level = os.environ.get("FRIEREN_GEMINI_THINKING_LEVEL", "high").strip().lower()
+    thinking_level = (thinking_level or os.environ.get("FRIEREN_GEMINI_THINKING_LEVEL", "high")).strip().lower()
     if thinking_level not in {"low", "medium", "high"}:
         raise RuntimeError("FRIEREN_GEMINI_THINKING_LEVEL must be low, medium, or high.")
     payload = {
@@ -345,7 +346,7 @@ def _generate_gemini_completion(
         )}]} ,
         "contents": [{"role": "user", "parts": [{"text": prompt.strip()}]}],
         "generationConfig": {
-            "maxOutputTokens": max(768, min(int(max_new_tokens) * 2, 1536)),
+            "maxOutputTokens": max(32, min(int(max_new_tokens) * 2, 1536)),
             "thinkingConfig": {"thinkingLevel": thinking_level},
         },
     }
@@ -396,11 +397,15 @@ def _generate_gemini_completion(
     return completion
 
 
-def _generate_reply(prompt: str, *, max_new_tokens: int, temperature: float, top_k: int):
+def _generate_reply(
+    prompt: str, *, max_new_tokens: int, temperature: float, top_k: int,
+    thinking_level: str | None = None,
+):
     backend = _model_backend()
     if backend == "gemini":
         completion = _generate_gemini_completion(
             prompt, max_new_tokens=max_new_tokens, temperature=temperature, top_k=top_k,
+            thinking_level=thinking_level,
         )
         return completion, 0, GEMINI_MODEL_ID
     if backend == "groq":
@@ -435,6 +440,7 @@ def _run_generation_smoke() -> str:
         max_new_tokens=8,
         temperature=0.2,
         top_k=20,
+        thinking_level="low",
     )
     if not isinstance(completion, str) or not completion.strip():
         raise RuntimeError("The model returned an empty health-check completion.")
