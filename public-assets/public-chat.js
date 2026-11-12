@@ -15,6 +15,8 @@
  let replyTarget=null;
  const say=message=>{if(feedback)feedback.textContent=message;};
  let refreshing=false;
+ let readObserver=null;
+ const observedReadIds=new Set();
  const renderBlocked=items=>{
   if(!blockedRoot||!form)return;
   blockedRoot.replaceChildren();
@@ -27,14 +29,15 @@
    row.append(name,button);blockedRoot.append(row);
   }
  };
- const render=messages=>{
+ const render=(messages,{preserveScroll=false}={})=>{
+  const previousHeight=list.scrollHeight,previousTop=list.scrollTop;
   const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<72;
   const query=String(search?.value||'').trim().toLocaleLowerCase('tr-TR');
   const visible=query?messages.filter(item=>(String(item.username||'')+' '+String(item.body||'')).toLocaleLowerCase('tr-TR').includes(query)):messages;
   if(count)count.textContent=query?visible.length+' / '+messages.length+' eşleşme':messages.length+' mesaj gösteriliyor';
   const fragment=document.createDocumentFragment();
   for(const item of visible){
-   const li=document.createElement('li');li.className='public-chat-message';
+   const li=document.createElement('li');li.className='public-chat-message';li.dataset.chatMessageId=String(item.message_id||'');
    const avatar=document.createElement(item.avatar_url&&String(item.avatar_url).startsWith('/profil/media/public?accountId=')?'img':'span');avatar.className='public-chat-avatar';if(avatar.tagName==='IMG'){avatar.src=item.avatar_url;avatar.alt='';avatar.loading='lazy';}else avatar.textContent=Array.from(String(item.username||'G').trim())[0]?.toLocaleUpperCase('tr-TR')||'G';if(item.is_online){avatar.dataset.online='true';avatar.title='Çevrimiçi';}else{avatar.dataset.online='false';avatar.title='Çevrimdışı';}
    const body=document.createElement('div');body.className='public-chat-message-body';
    const meta=document.createElement('div');meta.className='public-chat-message-meta';
@@ -46,7 +49,7 @@
    const actions=document.createElement('div');actions.className='public-chat-actions';
    if(form&&!item.is_own){const reply=document.createElement('button');reply.type='button';reply.className='public-chat-action';reply.textContent='Yanıtla';reply.dataset.chatReply=item.message_id;actions.append(reply);}
    if(form&&item.is_own){const edit=document.createElement('button');edit.type='button';edit.className='public-chat-action';edit.textContent='Düzenle';edit.dataset.chatEdit=item.message_id;actions.append(edit);}if(isOwner){const remove=document.createElement('button');remove.type='button';remove.className='public-chat-action';remove.textContent='Sil';remove.dataset.chatDelete=item.message_id;actions.append(remove);const pin=document.createElement('button');pin.type='button';pin.className='public-chat-action';pin.textContent=item.pinned_at?'Sabitlemeyi kaldır':'Sabitle';pin.dataset.chatPin=item.message_id;actions.append(pin);}
-   for(const emoji of ['❤️','✨','😂']){
+   for(const emoji of ["❤️","✨","😂","😍","🥰","😭","👀","🎉","🙌","💜","🍪","🌸"]){
     const reaction=(Array.isArray(item.reactions)?item.reactions:[]).find(x=>x.emoji===emoji);
     const button=document.createElement('button');button.type='button';button.className='public-chat-reaction';button.textContent=emoji+' '+(reaction?.count||0);button.setAttribute('aria-pressed',String(Boolean(reaction?.reacted)));button.dataset.chatReact=item.message_id;button.dataset.emoji=emoji;
     if(form)actions.append(button);
@@ -58,6 +61,8 @@
   list.replaceChildren(fragment);
   if(!visible.length){const empty=document.createElement('li');empty.className='public-chat-empty';empty.textContent=query?'Bu aramayla eşleşen mesaj bulunamadı.':'Henüz mesaj yok. İlk selamı sen verebilirsin.';list.append(empty);}
   else if(nearBottom)list.scrollTop=list.scrollHeight;
+  else if(preserveScroll)list.scrollTop=previousTop+(list.scrollHeight-previousHeight);
+  if(readObserver){readObserver.disconnect();list.querySelectorAll('li[data-chat-message-id]').forEach(node=>readObserver.observe(node));}
  };
  const postAction=async(path,values)=>{
   if(!form)return false;
@@ -66,6 +71,12 @@
   if(!response.ok)throw new Error(data.error==='owner_only'?'Bu işlem yalnızca Owner tarafından yapılabilir.':data.error==='chat_paused'?'Sohbet şu anda Owner tarafından durduruldu.':data.error==='invalid_chat_action'?'Bu işlem şu anda yapılamıyor.':'İşlem tamamlanamadı.');
   return data;
  };
+ readObserver=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{
+  const visible=entries.filter(entry=>entry.isIntersecting&&entry.intersectionRatio>=0.6).map(entry=>entry.target.dataset.chatMessageId).filter(id=>id&&!observedReadIds.has(id));
+  if(!visible.length||!form)return;
+  visible.forEach(id=>observedReadIds.add(id));
+  postAction('/api/public-chat/read',{messageIds:JSON.stringify(visible.slice(0,100))}).catch(()=>visible.forEach(id=>observedReadIds.delete(id)));
+ },{root:list,threshold:0.6}):null;
  const renderReports=items=>{
   if(!reportsRoot)return;reportsRoot.replaceChildren();reportsRoot.hidden=false;
   const heading=document.createElement('strong');heading.textContent='Sohbet bildirimleri · '+items.length;reportsRoot.append(heading);
@@ -93,7 +104,7 @@
   try{
    const params=new URLSearchParams();if(before)params.set('before',before);const query=searchTerm===null?String(search?.value||'').trim():String(searchTerm||'').trim();if(query)params.set('q',query);const endpoint='/api/public-chat/messages'+(params.size?'?'+params.toString():'');const response=await fetch(endpoint,{headers:{accept:'application/json'},cache:'no-store'});
    if(!response.ok)throw new Error('Sohbet şu anda yüklenemiyor.');
-   const data=await response.json();chatPaused=Boolean(data.control?.paused);if(controlStatus)controlStatus.textContent=chatPaused?'Sohbet durduruldu':'Sohbet açık';if(pauseButton){pauseButton.disabled=false;pauseButton.textContent=chatPaused?'Sohbeti yeniden aç':'Sohbeti durdur';}if(form){form.elements.message.disabled=chatPaused;const submit=form.querySelector('button[type=submit]');if(submit)submit.disabled=chatPaused;form.elements.message.placeholder=chatPaused?'Sohbet Owner tarafından durduruldu.':'Bir büyücü selamı bırak… (en fazla 500 karakter)';}const incoming=Array.isArray(data.messages)?data.messages:[];latestMessages=append?[...incoming,...latestMessages.filter(old=>!incoming.some(item=>item.message_id===old.message_id))]:incoming;render(latestMessages);if(older)older.hidden=incoming.length<100;renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);if(form&&latestMessages.length)postAction('/api/public-chat/read',{messageIds:JSON.stringify(latestMessages.map(item=>item.message_id).filter(Boolean).slice(-100))}).catch(()=>{});const presenceLabel=root.querySelector('[data-chat-presence]');if(presenceLabel){const names=Array.isArray(data.presence?.typing)?data.presence.typing:[];presenceLabel.textContent=(data.presence?.online||0)+' çevrimiçi'+(names.length?' · '+names.join(', ')+' yazıyor':'');}
+   const data=await response.json();chatPaused=Boolean(data.control?.paused);if(controlStatus)controlStatus.textContent=chatPaused?'Sohbet durduruldu':'Sohbet açık';if(pauseButton){pauseButton.disabled=false;pauseButton.textContent=chatPaused?'Sohbeti yeniden aç':'Sohbeti durdur';}if(form){form.elements.message.disabled=chatPaused;const submit=form.querySelector('button[type=submit]');if(submit)submit.disabled=chatPaused;form.elements.message.placeholder=chatPaused?'Sohbet Owner tarafından durduruldu.':'Bir büyücü selamı bırak… (en fazla 500 karakter)';}const incoming=Array.isArray(data.messages)?data.messages:[];if(searchTerm!==null){latestMessages=incoming;}else if(latestMessages.length||append){const merged=new Map(latestMessages.map(item=>[item.message_id,item]));for(const item of incoming)merged.set(item.message_id,item);latestMessages=Array.from(merged.values()).sort((a,b)=>Number(Boolean(b.pinned_at))-Number(Boolean(a.pinned_at))||new Date(a.created_at).getTime()-new Date(b.created_at).getTime());}else{latestMessages=incoming;}render(latestMessages,{preserveScroll:append});if(older)older.hidden=incoming.length<100;renderBlocked(Array.isArray(data.blocked)?data.blocked:[]);const presenceLabel=root.querySelector('[data-chat-presence]');if(presenceLabel){const names=Array.isArray(data.presence?.typing)?data.presence.typing:[];presenceLabel.textContent=(data.presence?.online||0)+' çevrimiçi'+(names.length?' · '+names.join(', ')+' yazıyor':'');}
   }catch(error){if(!list.children.length)say(error.message||'Sohbet yüklenemedi.');}
   finally{refreshing=false;}
  };
@@ -120,7 +131,7 @@
    }catch(error){say(error.message||'Mesaj gönderilemedi.');}
    finally{button.disabled=false;input.focus();}
   });
-  form.addEventListener('click',event=>{if(!event.target.closest('[data-chat-reply-clear]'))return;replyTarget=null;form.elements.replyToMessageId.value='';if(replyPreview)replyPreview.hidden=true;if(replyLabel)replyLabel.textContent='';form.elements.message.focus();});
+  form.addEventListener('click',event=>{const toggle=event.target.closest('[data-chat-emoji-toggle]');if(toggle){const picker=form.querySelector('[data-chat-emoji-picker]');if(picker)picker.hidden=!picker.hidden;return;}const emojiButton=event.target.closest('[data-chat-emoji]');if(emojiButton){const input=form.elements.message,emoji=emojiButton.dataset.chatEmoji,start=input.selectionStart??input.value.length,end=input.selectionEnd??start;input.setRangeText(emoji,start,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();return;}if(!event.target.closest('[data-chat-reply-clear]'))return;replyTarget=null;form.elements.replyToMessageId.value='';if(replyPreview)replyPreview.hidden=true;if(replyLabel)replyLabel.textContent='';form.elements.message.focus();});
   list.addEventListener('click',async event=>{
    const button=event.target.closest('button');if(!button)return;
    try{
@@ -141,6 +152,8 @@
  }
  refresh();if(isOwner)loadReports();
  const heartbeat=()=>{if(form&&document.visibilityState==='visible')postAction('/api/public-chat/presence',{}).catch(()=>{});};heartbeat();window.setInterval(heartbeat,30000);
- document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){refresh();heartbeat();}});
- window.setInterval(refresh,30000);
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){refresh();heartbeat();scheduleRefresh();}else if(refreshTimer){window.clearInterval(refreshTimer);refreshTimer=null;}});
+ let refreshTimer=null;
+ const scheduleRefresh=()=>{if(refreshTimer)window.clearInterval(refreshTimer);refreshTimer=window.setInterval(()=>{if(document.visibilityState==='visible')refresh();},10000);};
+ scheduleRefresh();
 })();
