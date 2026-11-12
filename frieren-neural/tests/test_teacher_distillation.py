@@ -25,7 +25,7 @@ def test_valid_teacher_output_is_review_only_not_training_eligible():
 def test_wrong_math_is_rejected_even_when_response_is_long_enough():
     draft = validate_teacher_draft("TR-010", "İndirim hesapla.", "240 TL ürünün indirimli fiyatı 168 TL'dir.")
     assert draft["status"] == "rejected"
-    assert draft["reason"] == "math_expected_204_tl_missing"
+    assert draft["reason"] == "math_contains_known_wrong_price"
 
 
 def test_correct_answer_with_wrong_intermediate_price_is_rejected():
