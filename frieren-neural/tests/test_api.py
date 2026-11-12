@@ -1068,3 +1068,86 @@ def test_groq_health_fails_closed_when_provider_key_is_missing(api_client, monke
     assert response.status_code == 503
     assert response.json() == {"status": "model_unavailable"}
     assert "GROQ_API_KEY" not in response.text
+
+ 
+def test_gemini_backend_requires_explicit_free_tier_data_acknowledgement(monkeypatch):
+    import frieren_neural.api as api
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "k" * 40)
+    monkeypatch.delenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", raising=False)
+    with pytest.raises(RuntimeError, match="data-use acknowledgement"):
+        api._load_active_runtime()
+
+
+def test_gemini_backend_is_explicit_and_does_not_load_local_checkpoint(monkeypatch, tmp_path):
+    import frieren_neural.api as api
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "k" * 40)
+    monkeypatch.setenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", "1")
+    monkeypatch.setenv("FRIEREN_CHECKPOINT", str(tmp_path / "missing.pt"))
+    assert api._model_backend() == "gemini"
+    assert api._load_active_runtime() == "gemini-3.8-flash"
+
+
+def test_gemini_generation_uses_pinned_model_and_hides_thought_parts(monkeypatch):
+    import frieren_neural.api as api
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "k" * 40)
+    monkeypatch.setenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", "1")
+    captured = {}
+    class FakeResponse:
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+        def read(self, limit):
+            captured["read_limit"] = limit
+            return json.dumps({"candidates": [{"content": {"parts": [
+                {"text": "Bu düşünce özeti gizli kalmalı.", "thought": True},
+                {"text": "204 TL doğru sonuçtur."}
+            ]}}]}).encode("utf-8")
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["headers"] = dict(request.header_items())
+        captured["timeout"] = timeout
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return FakeResponse()
+    monkeypatch.setattr(api.urllib.request, "urlopen", fake_urlopen)
+    completion, step, model_name = api._generate_reply(
+        "240 TL'ye yüzde 15 indirim kaç TL?", max_new_tokens=520, temperature=0.3, top_k=20
+    )
+    assert completion == "204 TL doğru sonuçtur."
+    assert step == 0
+    assert model_name == "gemini-3.8-flash"
+    assert captured["url"] == api.GEMINI_API_URL
+    assert captured["timeout"] == 60
+    assert captured["body"]["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "high"
+    assert captured["body"]["generationConfig"]["maxOutputTokens"] == 1040
+    assert "temperature" not in captured["body"]["generationConfig"]
+    assert "topP" not in captured["body"]["generationConfig"]
+    assert "k" * 40 in captured["headers"].get("X-goog-api-key", "")
+    assert captured["read_limit"] <= 65_537
+    assert "düşünce özeti" not in completion
+
+
+def test_gemini_rate_limit_is_returned_as_retryable_429(api_client, monkeypatch):
+    import frieren_neural.api as api
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "k" * 40)
+    monkeypatch.setenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", "1")
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "a" * 48)
+    monkeypatch.setattr(api, "_generate_gemini_completion",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(api.GeminiRateLimitError(13)))
+    response = api_client.post("/generate", json={"prompt": "Merhaba"},
+        headers={"Authorization": "Bearer " + "a" * 48})
+    assert response.status_code == 429
+    assert response.headers["retry-after"] == "13"
+    assert "token" not in response.text.lower()
+
+
+def test_gemini_health_fails_closed_when_key_or_data_ack_is_missing(api_client, monkeypatch):
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "gemini")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", raising=False)
+    response = api_client.get("/health")
+    assert response.status_code == 503
+    assert response.json() == {"status": "model_unavailable"}
+    assert "GEMINI_API_KEY" not in response.text
