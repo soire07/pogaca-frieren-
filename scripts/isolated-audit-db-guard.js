@@ -8,7 +8,7 @@ export function assertIsolatedAuditDatabase(databaseUrl = process.env.DATABASE_U
     throw new Error('ISOLATED_AUDIT_DATABASE_REQUIRED');
   }
 
-  const database = decodeURIComponent(url.pathname.replace(/^\\/+/, ''));
+  const database = decodeURIComponent(url.pathname.slice(1));
   const username = decodeURIComponent(url.username);
   const password = decodeURIComponent(url.password);
   const valid = ['postgres:', 'postgresql:'].includes(url.protocol)
