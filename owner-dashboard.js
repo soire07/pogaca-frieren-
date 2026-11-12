@@ -686,23 +686,25 @@ export function renderOwnerSecurityWorkspace({ incidents = [], evidenceEvents = 
   const recentExternalEvents = evidenceEvents.filter(item => item.source === 'frieren_guard');
   const latestExternalEvent = recentExternalEvents[0] || null;
   const senderEventCount = recentExternalEvents.length;
+  const githubActionsEventCount = recentExternalEvents.filter(item => item.sender === 'github_actions').length;
   const senderEventTimestamp = latestExternalEvent?.received_at ? Date.parse(latestExternalEvent.received_at) : NaN;
   const senderEventLabel = Number.isFinite(senderEventTimestamp) ? new Date(senderEventTimestamp).toLocaleString('tr-TR') : 'yok';
-  const secretModeLabel = ingestSecretMode === 'dedicated' ? 'Ayrılmış Guard anahtarı'
-    : ingestSecretMode === 'shared' ? 'Ortak AI bridge anahtarı (geçiş modu)'
-      : ingestSecretMode === 'invalid' ? 'Anahtar geçersiz' : 'Anahtar eksik';
+  const secretModeLabel = githubActionsEventCount > 0 ? 'GitHub Actions OIDC doğrulandı (anahtarsız)'
+    : ingestSecretMode === 'dedicated' ? 'Ayrılmış Guard anahtarı (HMAC)'
+      : ingestSecretMode === 'shared' ? 'Ortak AI bridge anahtarı (geçiş modu)'
+        : ingestSecretMode === 'invalid' ? 'HMAC anahtarı geçersiz' : 'GitHub Actions OIDC olayı bekleniyor · Anahtar eksik (HMAC)';
   const chainLabel = !chainStatus ? 'Kontrol edilemedi'
     : !chainStatus.valid ? 'Bütünlük hatası'
       : chainStatus.checked === 0 ? 'Henüz delil yok'
         : chainStatus.truncated ? 'Kısmi doğrulandı' : 'Bütünlük doğrulandı';
-  const sourceLabel = source => source === 'frieren_guard' ? 'Frieren Guard (imzalı gönderici)'
+  const sourceLabel = (source, sender) => source === 'frieren_guard' ? (sender === 'github_actions' ? 'Frieren Guard (GitHub Actions OIDC)' : 'Frieren Guard (HMAC imzalı gönderici)')
     : source === 'frieren_guard_monitor' ? 'Frieren Guard izleyicisi'
       : source === 'frieren_site_auth' ? 'Frieren web hesabı' : 'Bilinmeyen kaynak';
   const incidentHtml = incidents.length ? incidents.map(item =>
     '<article class="security-event"><div><strong>#' + Number(item.id) + ' · ' + escapeHtml(item.title) + '</strong><span class="tag">' + escapeHtml(item.severity) + '</span></div><p>' + escapeHtml(item.summary) + '</p><small>Kaynak: ' + escapeHtml(item.system === 'site_auth' ? 'Frieren web hesabı' : 'Frieren Guard') + ' · ' + escapeHtml(item.code) + ' · ' + escapeHtml(item.status) + ' · ' + Number(item.occurrence_count || 1) + ' tekrar · ' + escapeHtml(new Date(item.last_seen).toLocaleString('tr-TR')) + '</small></article>'
   ).join('') : '<p class="muted">Henüz güvenlik olayı alınmadı. Guard ve web hesabı olayları ayrı kaynaklarla gösterilir.</p>';
   const evidenceHtml = evidenceEvents.length ? evidenceEvents.map(item =>
-    '<article class="security-event"><div><strong>Delil #' + Number(item.sequence_no) + ' · ' + escapeHtml(item.event_id) + '</strong><span class="tag">' + escapeHtml(item.severity) + '</span></div><p>' + (item.client_ip ? '<strong>Ağ eş adresi:</strong> ' + escapeHtml(item.client_ip) + ' · ' + escapeHtml(item.ip_source) : 'Kaynak IP doğrulanamadı; yönlendirme başlığına güvenilmedi.') + '</p><small>Kaynak: ' + escapeHtml(sourceLabel(item.source)) + ' · ' + escapeHtml(new Date(item.received_at).toLocaleString('tr-TR')) + ' · SHA-256 ' + escapeHtml(String(item.event_hash || '').slice(0, 24)) + '…</small></article>'
+    '<article class="security-event"><div><strong>Delil #' + Number(item.sequence_no) + ' · ' + escapeHtml(item.event_id) + '</strong><span class="tag">' + escapeHtml(item.severity) + '</span></div><p>' + (item.sender === 'github_actions' ? 'Ağ IP bilgisi uygulanamaz; gönderici GitHub Actions OIDC ile doğrulandı.' : item.client_ip ? '<strong>Ağ eş adresi:</strong> ' + escapeHtml(item.client_ip) + ' · ' + escapeHtml(item.ip_source) : 'Kaynak IP doğrulanamadı; yönlendirme başlığına güvenilmedi.') + '</p><small>Kaynak: ' + escapeHtml(sourceLabel(item.source, item.sender)) + ' · ' + escapeHtml(new Date(item.received_at).toLocaleString('tr-TR')) + (item.event_type === 'heartbeat' ? ' · Heartbeat' : '') + ' · SHA-256 ' + escapeHtml(String(item.event_hash || '').slice(0, 24)) + '…</small></article>'
   ).join('') : '<p class="muted">Delil zincirinde henüz kayıt yok.</p>';
   return '<style>'
     + '.security-nav-slot{padding:10px 8px 13px;border-bottom:1px solid rgba(190,150,255,.22);margin-bottom:4px}'
@@ -720,11 +722,11 @@ export function renderOwnerSecurityWorkspace({ incidents = [], evidenceEvents = 
     + '<section class="security-hero"><span class="security-kicker">✦ FRIEREN SECURITY CENTER</span><h1>Güvenlik merkezi</h1><p>Poğaça Frieren altyapısı ve Frieren web platformu için güvenlik görünümü. Bu alan yalnızca doğrulanmış Owner oturumuna açıktır; Frieren AI kendi mühendislik görevini sürdürür, Frieren Guard ise güvenlik olaylarını izlemek üzere ayrı rolde kalır.</p></section>'
     + '<div class="security-grid">'
     + '<article class="security-card"><small>Vercel platform koruması</small><strong>Otomatik DDoS azaltma</strong><p>Vercel platform katmanındaki DDoS koruması tüm planlarda otomatik uygulanır.</p></article>'
-    + '<article class="security-card"><small>Frieren Guard olay alımı</small><strong>' + (senderEventCount > 0 ? 'İmzalı olay kaydı var' : 'Son 30 delilde imzalı olay yok') + '</strong><p>Alıcı anahtarı: ' + escapeHtml(secretModeLabel) + ' · Son 30 delil içindeki harici imzalı olay sayısı: ' + senderEventCount + '. ' + (senderEventCount > 0 ? 'Son kayıt: ' + escapeHtml(senderEventLabel) + '.' : 'Harici Frieren Guard olayı bulunamadı.') + ' Bu kayıt göndericinin şu anda çevrimiçi olduğunu kanıtlamaz.</p></article>'
+    + '<article class="security-card"><small>Frieren Guard olay alımı</small><strong>' + (senderEventCount > 0 ? 'İmzalı olay kaydı var' : 'Son 30 delilde imzalı olay yok') + '</strong><p>Alıcı doğrulaması: ' + escapeHtml(secretModeLabel) + ' · Son 30 delil içindeki harici imzalı olay sayısı: ' + senderEventCount + '. ' + (senderEventCount > 0 ? 'Son kayıt: ' + escapeHtml(senderEventLabel) + '.' : 'Harici Frieren Guard olayı bulunamadı. GitHub Actions güvenlik taraması henüz doğrulanmış bir olay göndermedi.') + ' Bu kayıt göndericinin şu anda çevrimiçi olduğunu kanıtlamaz.</p></article>'
     + '<article class="security-card"><small>Delil zinciri</small><strong>' + chainLabel + '</strong><p>' + Number(chainStatus?.checked || 0) + ' kayıt denetlendi' + (chainStatus?.firstInvalidSequence ? ' · bozuk sıra #' + Number(chainStatus.firstInvalidSequence) : '') + '.</p></article>'
     + '</div>'
-    + '<section class="panel"><h2>Gerçek güvenlik olayları</h2><p class="muted">Harici Frieren Guard göndericisi olayları HMAC imzasıyla doğrulanır. Yerel Guard izleyici kayıtları ve web hesabı olayları ayrı kaynaklarla zincire eklenir; bunlar harici gönderici bağlantısının kanıtı sayılmaz.</p>' + incidentHtml + '</section>'
-    + '<section class="panel"><h2>IP ve delil bütünlüğü</h2><p class="muted">Ağ adresi yalnızca doğrudan soket eş adresinden veya açıkça güvenilen proxy listesinden türetilir. X-Forwarded-For tek başına kabul edilmez.</p>' + evidenceHtml + '<div class="security-note"><strong>Delil doğruluğu:</strong> Harici gönderici olayları HMAC ile doğrulanır; tüm kaynakların kayıtları zaman damgası ve önceki SHA-256 özetiyle zincirlenir ve veritabanı tetikleyicileri UPDATE/DELETE/TRUNCATE işlemlerini reddeder. Bu mekanizma sonradan değişikliği tespit etmeye yardımcı olur; tek başına olayın kaynağını veya hukuki geçerliliğini kanıtlamaz.</div></section>';
+    + '<section class="panel"><h2>Gerçek güvenlik olayları</h2><p class="muted">Harici Frieren Guard göndericisi olayları HMAC veya sabitlenmiş GitHub Actions OIDC kimliğiyle doğrulanır. Yerel Guard izleyici kayıtları ve web hesabı olayları ayrı kaynaklarla zincire eklenir; bunlar harici gönderici bağlantısının kanıtı sayılmaz.</p>' + incidentHtml + '</section>'
+    + '<section class="panel"><h2>IP ve delil bütünlüğü</h2><p class="muted">Ağ adresi yalnızca doğrudan soket eş adresinden veya açıkça güvenilen proxy listesinden türetilir. X-Forwarded-For tek başına kabul edilmez.</p>' + evidenceHtml + '<div class="security-note"><strong>Delil doğruluğu:</strong> Harici gönderici olayları HMAC veya sabitlenmiş GitHub Actions OIDC kimliğiyle doğrulanır; tüm kaynakların kayıtları zaman damgası ve önceki SHA-256 özetiyle zincirlenir ve veritabanı tetikleyicileri UPDATE/DELETE/TRUNCATE işlemlerini reddeder. Bu mekanizma sonradan değişikliği tespit etmeye yardımcı olur; tek başına olayın kaynağını veya hukuki geçerliliğini kanıtlamaz.</div></section>';
 }
 
 export async function handleOwnerDashboardRequest(req, res, { client, db }) {

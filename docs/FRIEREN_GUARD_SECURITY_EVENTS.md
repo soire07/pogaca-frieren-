@@ -1,6 +1,14 @@
 # Frieren Guard security event delivery
 
-> **Entegrasyon durumu:** Bu belge alıcı endpoint sözleşmesini ve örnek istemci kodunu tanımlar. İçindeki JavaScript snippet çalışan Frieren Guard servisine kurulmuş bir gönderici değildir. Canlı bağlantı, Guard'ın kendi deposunda istemci entegrasyonu yapılıp imzalı olayın bu endpoint'e ulaştığı doğrulanınca tamamlanmış sayılır.
+> **Entegrasyon durumu:** Bu depoda GitHub Actions üzerinde çalışan harici gönderici iş akışı bulunur. Bu iş akışı ayrı bir Render servisi veya bağımsız WAF değildir; günlük üretim bağımlılık taraması yapar ve OIDC ile doğrulanmış olayları Poğaça'ya gönderir. Bağlantı yalnızca ilk gerçek OIDC olayının delil zincirine kaydedilmesiyle doğrulanmış sayılır.
+
+## Yerleşik harici gönderici (GitHub Actions)
+
+`.github/workflows/frieren-guard-external.yml` her gün ve manuel tetiklemede `npm audit --omit=dev` ile üretim bağımlılıklarını tarar. Temiz tarama, güvenlik olayı/incident oluşturmayan bir `heartbeat` delili gönderir. Bulgu varsa gerçek bulgu sayıları ve sınırlı paket kanıtlarıyla `incident` gönderilir; yüksek ve kritik bulgular Guardian inceleme hattına girer.
+
+Gönderici GitHub Actions'ın kısa ömürlü OIDC kimliğini kullanır; Render ve GitHub arasında kalıcı HMAC sırrı kopyalamak gerekmez. Alıcı; issuer, audience, repo, `main` dalı, tam workflow yolu ve imza anahtarını doğrular. Sadece bu sabitlenmiş iş akışı `frieren_guard` harici kaynak olarak kabul edilir. Tek başına workflow dosyasının varlığı veya çalışması bağlantı kanıtı değildir; Owner Panel yalnızca OIDC ile doğrulanmış ve veritabanına yazılmış gerçek olayı bağlantı kanıtı sayar.
+
+Bu gönderici bağımlılık güvenlik taramasını kapsar. Harici WAF, ağ saldırısı algılama veya Render host telemetrisi sağladığı iddia edilmez. Bunlar için ayrı bir gerçek sağlayıcı/olay kaynağı gerekir.
 
 ## Endpoint
 

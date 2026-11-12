@@ -1,0 +1,80 @@
+name: Frieren Guard External Security Scan
+run-name: "Frieren Guard · Dependency audit #${{ github.run_id }}"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/frieren-guard-external.yml'
+      - 'guardian/github-guard-sender.js'
+      - 'guardian/github-guard-events.js'
+      - 'guardian/security-events.js'
+      - 'guardian/github-oidc.js'
+      - 'index.js'
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: frieren-guard-external-security
+  cancel-in-progress: false
+
+jobs:
+  production-dependency-audit:
+    name: Audit production dependencies and report to Guardian
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the exact audited commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run npm production dependency audit
+        run: |
+          set +e
+          npm audit --omit=dev --json > "$RUNNER_TEMP/npm-audit.json"
+          audit_exit=$?
+          set -e
+          echo "npm audit exit code: $audit_exit"
+          test -s "$RUNNER_TEMP/npm-audit.json"
+
+      - name: Build a bounded Guardian event
+        id: audit
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: node guardian/github-guard-sender.js audit "$RUNNER_TEMP/npm-audit.json" "$RUNNER_TEMP/guardian-event.json"
+
+      - name: Wait for the deployed receiver to expose the OIDC endpoint
+        run: |
+          for attempt in $(seq 1 24); do
+            status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 https://pogaca-frieren.onrender.com/internal/guardian/github-actions-event || true)
+            if [ "$status" = "405" ]; then
+              echo "The deployed OIDC receiver is ready."
+              exit 0
+            fi
+            echo "Waiting for the deployed OIDC receiver (HTTP $status), attempt $attempt/24..."
+            sleep 10
+          done
+          echo "The deployed OIDC receiver did not become ready in time."
+          exit 1
+
+      - name: Send the event using the pinned GitHub Actions OIDC identity
+        run: node guardian/github-guard-sender.js send "$RUNNER_TEMP/guardian-event.json"
+
+      - name: Fail the audit after Guardian receives the finding
+        if: steps.audit.outputs.has_findings == 'true'
+        run: |
+          echo "::error title=Production dependency vulnerabilities::Guardian received the signed finding; review it in the Owner Panel."
+          exit 1
