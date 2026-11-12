@@ -5,7 +5,7 @@ import { buildPresenceActivities } from '../bot-presence.js';
 
 test('bot presence stays on the requested Frieren anime Watching activity', () => {
   assert.deepEqual(buildPresenceActivities(), [{
-    name: "Frieren: Beyond Journey's End Season 2",
+    name: "Frieren: Beyond Journey's End Season 6",
     type: ActivityType.Watching,
   }]);
 });
