@@ -138,7 +138,7 @@ function page(title, content, user, seo = {}) {
     '<small>' + (owner ? 'Owner hesabı' : accountProfile ? esc(accountProfile.character_name || 'Maceracı') + ' · Seviye ' + levelForXp(accountProfile.xp) : 'Frieren hesabı') + '</small>' +
     (accountProfile ? playerXpProgress(accountProfile, vip, owner) : '') + '</div></section>';
   const mainContent = String(content).replace('<main', '<main id="main-content"');
-  const ownerLink = user.id === OWNER_ID ? '<a href="/owner">Owner Panel</a>' : '';
+  const ownerLink = owner || user.id === OWNER_ID ? '<a href="/owner">Owner Panel</a>' : '';
   const guildLink = '<a href="/lonca">Maceracı Loncası</a>';
   const navLink = (path, icon, label, hint) => '<a class="site-nav-link" data-nav-path="' + path + '" href="' + path + '"><span class="site-nav-icon" aria-hidden="true">' + icon + '</span><span class="site-nav-copy"><strong>' + esc(label) + '</strong><small>' + esc(hint) + '</small></span><span class="site-nav-arrow" aria-hidden="true">↗</span></a>';
   const navGroup = (id, title, links) => '<section class="site-nav-group" data-nav-group="' + id + '"><h2>' + title + '</h2>' + links.join('') + '</section>';
