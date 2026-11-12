@@ -1,6 +1,11 @@
 name: Poğaça external HTTP health checks
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/pogaca-external-health.yml'
+      - 'scripts/test-command-registration-workflows.js'
   push:
     branches: [main]
     paths:
