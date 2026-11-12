@@ -218,7 +218,7 @@ def _gemini_model_name() -> str:
 class GeminiRateLimitError(RuntimeError):
     def __init__(self, retry_after: int = 10):
         self.retry_after = max(1, min(int(retry_after), 120))
-        super().__init__(\"The inference provider rate limit was reached.\")
+        super().__init__("The inference provider rate limit was reached.")
 
 
 def _model_backend() -> str:
@@ -372,7 +372,7 @@ def _generate_gemini_completion(
         part.get("text", "") for part in (parts if isinstance(parts, list) else [])
         if isinstance(part, dict) and not part.get("thought", False)
     ]
-    completion = "\\n".join(part for part in answer_parts if isinstance(part, str)).strip()
+    completion = "\n".join(part for part in answer_parts if isinstance(part, str)).strip()
     if not completion:
         raise RuntimeError("The inference provider returned an empty completion.")
     return completion
