@@ -319,6 +319,9 @@ test('linked site-account owner sees the Owner Panel navigation after Discord ac
       if (sql.includes('SELECT user_id FROM site_discord_links')) {
         return { rows: [{ user_id: '1553794496234262641' }], rowCount: 1 };
       }
+      if (sql.includes('SELECT 1 FROM site_discord_links')) {
+        return { rows: [{ linked: 1 }], rowCount: 1 };
+      }
       if (sql.includes('SELECT 1 FROM frieren_profile_media')) {
         return { rows: [], rowCount: 0 };
       }
@@ -336,6 +339,9 @@ test('linked site-account owner sees the Owner Panel navigation after Discord ac
     async query(sql) {
       if (sql.includes('SELECT user_id FROM site_discord_links')) {
         return { rows: [{ user_id: '123456789012345678' }], rowCount: 1 };
+      }
+      if (sql.includes('SELECT 1 FROM site_discord_links')) {
+        return { rows: [], rowCount: 0 };
       }
       if (sql.includes('SELECT 1 FROM frieren_profile_media')) {
         return { rows: [], rowCount: 0 };
