@@ -1,5 +1,8 @@
 import test from 'node:test';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
 import assert from 'node:assert/strict';
 import {
   isAllowedRepairPath,
@@ -8,7 +11,6 @@ import {
   validatePatchPaths,
   generateRepairPatch,
   generateRepairPatchWithRetry,
-  verifyGroqConnection,
   applyRepairPatch,
   checkRepairPatch,
   formatRepairFilesOutput,
@@ -30,6 +32,16 @@ const approvedIndexTask = [
   'İlgili dosyalar: index.js',
 ].join('\n');
 
+const validPythonPatch = [
+  'diff --git a/frieren-neural/frieren_neural/training.py b/frieren-neural/frieren_neural/training.py',
+  'index 1111111..2222222 100644',
+  '--- a/frieren-neural/frieren_neural/training.py',
+  '+++ b/frieren-neural/frieren_neural/training.py',
+  '@@ -1 +1 @@',
+  '-def safe_resume(): return False',
+  '+def safe_resume(): return True',
+].join('\n');
+
 const validIndexPatch = [
   'diff --git a/index.js b/index.js',
   'index 1111111..2222222 100644',
@@ -48,6 +60,15 @@ test('repair path allowlist accepts approved source, AI review, Guardian and tes
   assert.equal(isAllowedRepairPath('guardian/automation.test.js'), true);
   assert.equal(isAllowedRepairPath('guardian/core.js'), true);
   assert.equal(isAllowedRepairPath('scripts/test-owner-dashboard.js'), true);
+  assert.equal(isAllowedRepairPath('frieren-neural/frieren_neural/training.py'), true);
+  assert.equal(isAllowedRepairPath('frieren-neural/frieren_neural/model.py'), true);
+  assert.equal(isAllowedRepairPath('frieren-neural/tests/test_training.py'), true);
+  assert.equal(isAllowedRepairPath('frieren-neural/frieren_neural/api.py'), false);
+  assert.equal(isAllowedRepairPath('frieren-neural/frieren_neural/datasets.py'), false);
+  assert.equal(isAllowedRepairPath('frieren-neural/frieren_neural/quality_evaluation.py'), false);
+  assert.equal(isAllowedRepairPath('frieren-neural/frieren_neural/evolution.py'), false);
+  assert.equal(isAllowedRepairPath('frieren-neural/frieren_neural/gguf_runtime.py'), false);
+  assert.equal(isAllowedRepairPath('frieren-neural/pyproject.toml'), false);
   assert.equal(isAllowedRepairPath('scripts/ai-self-repair.js'), false);
   assert.equal(isAllowedRepairPath('owner-dashboard.js'), false);
   assert.equal(isAllowedRepairPath('ai-agent/index.js'), false);
@@ -60,6 +81,15 @@ test('repair path allowlist accepts approved source, AI review, Guardian and tes
   assert.equal(isAllowedRepairPath('database/migrations/001.js'), false);
   assert.equal(isAllowedRepairPath('../index.js'), false);
   assert.equal(isAllowedRepairPath('index.js'), false);
+});
+
+test('Python repair patch is limited to Neural source and regression tests', () => {
+  const task = 'Guardian incident #73\nİlgili dosyalar: frieren-neural/frieren_neural/training.py';
+  assert.deepEqual(validatePatchPaths(validPythonPatch, { task }), ['frieren-neural/frieren_neural/training.py']);
+  const protectedPatch = validPythonPatch.replaceAll('training.py', 'quality_evaluation.py');
+  assert.throws(() => validatePatchPaths(protectedPatch, {
+    task: 'Guardian incident #73\nİlgili dosyalar: frieren-neural/frieren_neural/quality_evaluation.py',
+  }), { message: 'REPAIR_PATH_NOT_ALLOWED' });
 });
 
 test('repair patch files must remain inside the affected-file list supplied by Guardian', () => {
@@ -199,7 +229,7 @@ test('Groq repair retries once when a structurally valid diff fails git apply --
       if (applyChecks === 1) throw new Error('patch does not apply: source context mismatch');
       return '';
     }
-    if (args[0] === 'status') return ' M rpg-mechanics.js\\n';
+    if (args[0] === 'status') return ' M rpg-mechanics.js\n';
     return '';
   };
   const proposal = await generateRepairPatchWithRetry({
@@ -324,15 +354,102 @@ test('repair patch accepts only the exact validated file set', () => {
   assert.deepEqual(calls.map(args => args[0]), ['status', 'apply', 'apply', 'diff', 'status']);
 });
 
-test('repair patch rejects additional allowed files changed outside the proposal', () => {
+test('repair patch does not erase concurrent changes while rolling back its own patch', () => {
+  const calls = [];
+  let patchApplied = false;
+  let unrelatedChange = false;
   const execFile = (args) => {
-    if (args[0] === 'status' && args[1] === '--porcelain') return '';
-    if (args[0] === 'status') return ' M rpg-mechanics.js\n M unrelated.js\n';
+    calls.push(args);
+    if (args[0] === 'status' && args[1] === '--porcelain') {
+      if (patchApplied) return ' M rpg-mechanics.js\n M unrelated.js\n';
+      return unrelatedChange ? ' M unrelated.js\\n' : '';
+    }
+    if (args[0] === 'apply' && args[1] === '--check') return '';
+    if (args[0] === 'apply' && args[1] === '--') { patchApplied = true; return ''; }
+    if (args[0] === 'status' && args[1] === '--short') { unrelatedChange = true; return ' M rpg-mechanics.js\n M unrelated.js\n'; }
+    if (args[0] === 'apply' && args[1] === '--reverse') { patchApplied = false; return ''; }
     return '';
   };
   assert.throws(() => applyRepairPatch(validPatch, { execFile }), {
-    message: 'REPAIR_CHANGED_FILE_SET_MISMATCH',
+    message: 'REPAIR_ROLLBACK_FAILED',
   });
+  assert.equal(patchApplied, false);
+  assert.ok(calls.some(args => args[0] === 'apply' && args[1] === '--reverse'));
+  assert.equal(calls.at(-1)[0], 'status');
+});
+
+test('repair patch rolls back applied changes when post-apply validation fails', () => {
+  const calls = [];
+  let applied = false;
+  const execFile = (args) => {
+    calls.push(args);
+    if (args[0] === 'status' && args[1] === '--porcelain') return applied ? ' M rpg-mechanics.js\n' : '';
+    if (args[0] === 'apply' && args[1] === '--check') return '';
+    if (args[0] === 'apply' && args[1] === '--') { applied = true; return ''; }
+    if (args[0] === 'diff' && args[1] === '--check') throw new Error('WHITESPACE_VALIDATION_FAILED');
+    if (args[0] === 'apply' && args[1] === '--reverse') { applied = false; return ''; }
+    if (args[0] === 'status' && args[1] === '--short') return applied ? ' M rpg-mechanics.js\n' : '';
+    throw new Error('UNEXPECTED_COMMAND: ' + args.join(' '));
+  };
+  assert.throws(() => applyRepairPatch(validPatch, { execFile }), {
+    message: 'WHITESPACE_VALIDATION_FAILED',
+  });
+  assert.equal(applied, false);
+  assert.ok(calls.some(args => args[0] === 'apply' && args[1] === '--reverse'));
+  assert.equal(calls.at(-1)[0], 'status');
+});
+
+test('real git apply rolls back a patch when post-apply whitespace validation fails', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'frieren-neural-repair-rollback-'));
+  try {
+    const git = (args, options = {}) => execFileSync('git', args, {
+      cwd: root,
+      encoding: options.encoding || 'utf8',
+      input: options.input,
+      stdio: options.stdio || 'pipe',
+      env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1' },
+    });
+    await writeFile(path.join(root, 'rpg-mechanics.js'), 'const ready = false;\n');
+    git(['init', '-q']);
+    git(['config', 'user.email', 'neural-tests@example.invalid']);
+    git(['config', 'user.name', 'Frieren Neural Tests']);
+    git(['add', 'rpg-mechanics.js']);
+    git(['commit', '-qm', 'baseline']);
+    const badWhitespacePatch = validPatch
+      .replace('@@ -1 +1 @@', '@@ -1 +1,2 @@')
+      .replace('+const ready = true;', '+const ready = true; \n+const extra = 1;');
+    assert.throws(() => applyRepairPatch(badWhitespacePatch, { execFile: git }));
+    assert.equal(
+      await readFile(path.join(root, 'rpg-mechanics.js'), 'utf8'),
+      'const ready = false;\n',
+    );
+    assert.equal(git(['status', '--porcelain', '--untracked-files=all']).trim(), '');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('real git status parsing returns the exact changed file after an accepted patch', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'frieren-neural-repair-status-'));
+  try {
+    const git = (args, options = {}) => execFileSync('git', args, {
+      cwd: root,
+      encoding: options.encoding || 'utf8',
+      input: options.input,
+      stdio: options.stdio || 'pipe',
+      env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1' },
+    });
+    await writeFile(path.join(root, 'rpg-mechanics.js'), 'const ready = false;\n');
+    git(['init', '-q']);
+    git(['config', 'user.email', 'neural-tests@example.invalid']);
+    git(['config', 'user.name', 'Frieren Neural Tests']);
+    git(['add', 'rpg-mechanics.js']);
+    git(['commit', '-qm', 'baseline']);
+    assert.deepEqual(applyRepairPatch(validPatch, { execFile: git }), ['rpg-mechanics.js']);
+    assert.match(await readFile(path.join(root, 'rpg-mechanics.js'), 'utf8'), /const ready = true;/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('repair workflow output contains only the exact validated file paths', () => {
@@ -350,28 +467,6 @@ test('repair workflow output contains only the exact validated file paths', () =
     message: 'REPAIR_OUTPUT_FILE_SET_INVALID',
   });
 });
-
-
-test('Groq validation accepts a valid assistant completion without requiring an exact sentinel', async () => {
-  let request;
-  const client = { chat: { completions: { async create(options) { request = options; return { choices: [{ message: { role: 'assistant', content: 'The connection is working.' }, finish_reason: 'stop' }] }; } } } };
-  assert.equal(await verifyGroqConnection({ client }), true);
-  assert.equal(request.max_completion_tokens, 128);
-  assert.equal(request.messages[0].role, 'user');
-});
-
-test('Groq validation accepts reasoning-only responses from reasoning models', async () => {
-  const client = { chat: { completions: { async create() { return { choices: [{ message: { role: 'assistant', content: null, reasoning: 'Connection check completed.' }, finish_reason: 'stop' }] }; } } } };
-  assert.equal(await verifyGroqConnection({ client }), true);
-});
-
-test('Groq validation rejects malformed or empty completion responses', async () => {
-  for (const response of [null, {}, { choices: [] }, { choices: [{ message: { role: 'user', content: 'no' }, finish_reason: 'stop' }] }, { choices: [{ message: { role: 'assistant', content: '' }, finish_reason: 'stop' }] }]) {
-    const client = { chat: { completions: { async create() { return response; } } } };
-    await assert.rejects(verifyGroqConnection({ client }), { message: 'GROQ_VALIDATION_RESPONSE_INVALID' });
-  }
-});
-
 
 
 test('repair context prioritizes exact allowlisted affected files from Guardian review tasks', async () => {

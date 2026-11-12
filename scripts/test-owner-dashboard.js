@@ -4,12 +4,12 @@ import { GUARDIAN_REPAIR_BRANCH, buildGuardianRepairTrackingUrls } from '../guar
 import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert/strict';
-import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getFrierenAiScenarioEndpoint, getFrierenAiGuardianEndpoint, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenAIReadiness, handleOwnerDashboardRequest, getOwnerActionErrorDestination } from '../owner-dashboard.js';
+import { buildOwnerSessionCookie, clearOwnerCookie, createOwnerSession, verifyOwnerSession, OWNER_PANEL_SECTIONS, renderOwnerNavigation, renderOwnerActivityWorkspace, renderRenderMetrics, getPoğacaScenarioEndpoint, getFrierenNeuralGuardianEndpoint, getFrierenNeuralKnowledgeEndpoint, getFrierenNeuralKnowledgeReviewEndpoint, getNeuralKnowledgeCandidates, renderOwnerGuardianWorkspace, renderOwnerSecurityWorkspace, assertGuardianAutomationEnabled, getDiscordOAuthFailureDiagnostic, createOwnerOAuthState, renderOwnerBotCards, renderOwnerControlCenter, getFrierenNeuralReadiness, handleOwnerDashboardRequest, getOwnerActionErrorDestination } from '../owner-dashboard.js';
 
 
 
 test('Guardian repair status polling tracks the same isolated branch used for workflow dispatch', () => {
-  assert.equal(GUARDIAN_REPAIR_BRANCH, 'guardian-isolated-repair-test-v2');
+  assert.equal(GUARDIAN_REPAIR_BRANCH, 'neural-guardian-migration-stage');
   const urls = buildGuardianRepairTrackingUrls('https://api.github.com/', 990053);
   const runs = new URL(urls.runsUrl);
   const pulls = new URL(urls.pullRequestsUrl);
@@ -47,9 +47,50 @@ test('Frieren Security workspace clearly distinguishes active platform protectio
   assert.doesNotMatch(html, /gerçek zamanlı saldırı algılandı/i);
 });
 
-test('Guardian AI bridge endpoint requires HTTPS and targets the private review route', () => {
-  assert.equal(getFrierenAiGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.example/' }), 'https://frieren-ai.example/internal/guardian-review');
-  assert.throws(() => getFrierenAiGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'http://frieren-ai.example' }), { message: 'INVALID_FRIEREN_AI_PUBLIC_URL' });
+test('Guardian Neural endpoint requires HTTPS and targets the private review route', () => {
+  assert.equal(getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'https://frieren-neural.example/' }), 'https://frieren-neural.example/internal/guardian-review');
+  assert.throws(() => getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'http://frieren-neural.example' }), { message: 'INVALID_FRIEREN_NEURAL_API_URL' });
+  assert.throws(() => getFrierenNeuralGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://legacy.example' }), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
+});
+
+
+test('Neural knowledge endpoints require the central HTTPS API and server-side token', async () => {
+  assert.equal(
+    getFrierenNeuralKnowledgeEndpoint({ FRIEREN_NEURAL_API_URL: 'https://neural.example/generate' }),
+    'https://neural.example/learning/knowledge/candidates'
+  );
+  assert.equal(
+    getFrierenNeuralKnowledgeReviewEndpoint('123e4567-e89b-12d3-a456-426614174000', { FRIEREN_NEURAL_API_URL: 'https://neural.example' }),
+    'https://neural.example/learning/knowledge/candidates/123e4567-e89b-12d3-a456-426614174000/reviews'
+  );
+  assert.throws(() => getFrierenNeuralKnowledgeReviewEndpoint('../bad', { FRIEREN_NEURAL_API_URL: 'https://neural.example' }), /INVALID_NEURAL_KNOWLEDGE_CANDIDATE_ID/);
+  assert.throws(() => getFrierenNeuralKnowledgeEndpoint({ FRIEREN_NEURAL_API_URL: 'http://neural.example' }), /INVALID_FRIEREN_NEURAL_API_URL/);
+  const notConfigured = await getNeuralKnowledgeCandidates({ env: {} });
+  assert.deepEqual(notConfigured, { status: 'not_configured', candidates: [] });
+});
+
+test('Owner Panel fetches curated knowledge candidates with a server-only Neural token', async () => {
+  const oldUrl = process.env.FRIEREN_NEURAL_API_URL;
+  const oldToken = process.env.FRIEREN_NEURAL_API_TOKEN;
+  const oldFetch = globalThis.fetch;
+  process.env.FRIEREN_NEURAL_API_URL = 'https://neural.example/generate';
+  process.env.FRIEREN_NEURAL_API_TOKEN = 'central-neural-api-token-with-more-than-32-characters';
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url: String(url), options };
+    return { ok: true, status: 200, json: async () => ({ candidates: [{ candidate_id: 'abc', title: 'Test', status: 'pending_review' }] }) };
+  };
+  try {
+    const result = await getNeuralKnowledgeCandidates();
+    assert.equal(result.status, 'ready');
+    assert.equal(result.candidates.length, 1);
+    assert.equal(request.url, 'https://neural.example/learning/knowledge/candidates?limit=30');
+    assert.equal(request.options.headers.Authorization, 'Bearer central-neural-api-token-with-more-than-32-characters');
+  } finally {
+    if (oldUrl === undefined) delete process.env.FRIEREN_NEURAL_API_URL; else process.env.FRIEREN_NEURAL_API_URL = oldUrl;
+    if (oldToken === undefined) delete process.env.FRIEREN_NEURAL_API_TOKEN; else process.env.FRIEREN_NEURAL_API_TOKEN = oldToken;
+    globalThis.fetch = oldFetch;
+  }
 });
 
 test('Guardian emergency stop is enforced server-side', async () => {
@@ -112,7 +153,7 @@ test('Guardian workspace renders incidents and review proposals as unapplied', (
     incidents: [{ id: 7, title: 'RPG timeout', severity: 'high', system: 'pogaca_frieren', code: 'TIMEOUT', status: 'open', occurrence_count: 2, last_seen: '2026-11-02T10:00:00Z', summary: 'Boss test timeout', evidence: [] }],
     jobs: [{ id: 9, incident_title: 'RPG timeout', agent: 'frieren_ai', system: 'pogaca_frieren', status: 'completed', created_at: '2026-11-02T10:01:00Z', result: { rootCause: 'A missing timeout guard.', confidence: 'medium', suggestedFix: 'Add a bounded timeout.', proposedPatch: 'diff --git a/file b/file', applied: false, tests: ['Add regression test.'], risks: [] } }],
   });
-  assert.match(html, /Neural Guardian/);
+  assert.match(html, /Neural Operations/);
   assert.match(html, /A missing timeout guard/);
   assert.match(html, /Önerilen yama taslağı \(uygulanmadı\)/);
   assert.match(html, /İnsan incelemesi gerekli/);
@@ -299,47 +340,46 @@ test('Render metrics only compare usage with limits from the same instance', asy
 
 test('owner dashboard displays both Frieren bots with independently grounded status', () => {
   const html = renderOwnerBotCards({ ready: true }, {
-    status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true
-  });
-  assert.match(html, /Frieren AI/);
+    status: 'ready', model: 'ufakai/ufakzeka-1', generation_smoke: 'pass'
+  }, { services: { neural: { status: 'running' } } });
+  assert.match(html, /Frieren Neural/);
   assert.match(html, /Frieren Poğaça/);
-  assert.equal((html.match(/Çevrimiçi/g) || []).length, 2);
+  assert.match(html, /Hazır/);
+  assert.match(html, /Çevrimiçi/);
 });
 
 test('owner dashboard does not label the AI bot online when readiness is incomplete', () => {
   const html = renderOwnerBotCards({ ready: true }, {
-    status: 'ok', discordReady: true, memoryDatabaseReady: false, modelConfigured: true
-  });
-  assert.match(html, /Frieren AI/);
+    status: 'unavailable', reason: 'neural_service_unreachable'
+  }, { services: { neural: { status: 'unknown' } } });
+  assert.match(html, /Frieren Neural/);
   assert.match(html, /Kontrol gerekli/);
   assert.match(html, /Frieren Poğaça/);
 });
 
 
-test('Frieren AI readiness uses public liveness endpoint and extracts dependency readiness', async () => {
+test('Frieren Neural readiness uses its central health endpoint', async () => {
   let requestedUrl = '';
-  const expected = { status: 'ok', discordReady: true, memoryDatabaseReady: true, modelConfigured: true, bridgeConfigured: true };
-  const livePayload = { status: 'alive', ready: true, readiness: expected };
-  const result = await getFrierenAIReadiness({
-    serviceUrl: 'https://frieren-ai.example',
-    healthPath: '/live',
+  const payload = { status: 'ready', model: 'ufakai/ufakzeka-1', generation_smoke: 'pass' };
+  const result = await getFrierenNeuralReadiness({
+    env: { FRIEREN_NEURAL_API_URL: 'https://frieren-neural.example/generate' },
     fetchImpl: async url => {
-      requestedUrl = url;
-      return { ok: true, json: async () => livePayload };
+      requestedUrl = String(url);
+      return { ok: true, status: 200, text: async () => JSON.stringify(payload) };
     }
   });
-  assert.equal(requestedUrl, 'https://frieren-ai.example/live');
-  assert.deepEqual(result, expected);
-});
-test('Frieren AI readiness fails closed when its separate Render health endpoint is unavailable', async () => {
-  const result = await getFrierenAIReadiness({
-    serviceUrl: 'https://frieren-ai.example',
-    healthPath: '/health',
-    fetchImpl: async () => { throw new Error('AI service unavailable'); }
-  });
-  assert.equal(result, null);
+  assert.equal(requestedUrl, 'https://frieren-neural.example/health');
+  assert.deepEqual(result, { ...payload, service: 'frieren-neural' });
 });
 
+test('Frieren Neural readiness fails closed when its health endpoint is unavailable', async () => {
+  const result = await getFrierenNeuralReadiness({
+    env: { FRIEREN_NEURAL_API_URL: 'https://frieren-neural.example' },
+    fetchImpl: async () => { throw new Error('Neural service unavailable'); }
+  });
+  assert.equal(result.status, 'unavailable');
+  assert.equal(result.reason, 'neural_service_unreachable');
+});
 
 function makeOwnerRequest({ action, csrf, id, confirm, cookie = true }) {
   const token = createOwnerSession(secret, Math.floor(Date.now() / 1000) + 3600);
@@ -452,6 +492,112 @@ test('owner action endpoint rejects invalid CSRF tokens without changing state',
   assert.equal(calls, 0);
 });
 
+
+test('Owner targeted test scenarios use the Poğaça internal bridge, never the Neural API token or old AI service', async () => {
+  const oldBridge = process.env.FRIEREN_BRIDGE_SECRET;
+  const oldLegacy = process.env.FRIEREN_AI_BRIDGE_SECRET;
+  const oldNeural = process.env.FRIEREN_NEURAL_API_TOKEN;
+  const oldBase = process.env.OWNER_DASHBOARD_BASE_URL;
+  const oldFetch = globalThis.fetch;
+  process.env.FRIEREN_BRIDGE_SECRET = 'owner-bridge-secret-at-least-thirty-two-characters';
+  process.env.FRIEREN_AI_BRIDGE_SECRET = 'legacy-ai-bridge-secret-at-least-thirty-two-characters';
+  process.env.FRIEREN_NEURAL_API_TOKEN = 'neural-api-token-at-least-thirty-two-characters';
+  process.env.OWNER_DASHBOARD_BASE_URL = 'https://pogaca.example.test';
+  let request = null;
+  globalThis.fetch = async (url, options) => {
+    request = { url: String(url), options };
+    return { ok: true, status: 200, json: async () => ({
+      applicable: true, code: 0, timedOut: false, stdout: 'PASS', stderr: '', note: ''
+    }) };
+  };
+  try {
+    const db = { query: async () => ({ rows: [{ id: 7 }], rowCount: 1 }) };
+    const { response } = await runOwnerPost({
+      action: 'neural-test-run', target: 'boss damage regression', confirm: 'yes', csrf: 'session'
+    }, db);
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.Location, '/owner/neural?notice=test_saved');
+    assert.equal(request.url, 'https://pogaca.example.test/internal/test-scenario');
+    assert.equal(request.options.headers.Authorization, 'Bearer owner-bridge-secret-at-least-thirty-two-characters');
+    assert.equal(request.options.headers.Authorization.includes('neural-api-token'), false);
+    assert.deepEqual(JSON.parse(request.options.body), { target: 'boss damage regression' });
+  } finally {
+    if (oldBridge === undefined) delete process.env.FRIEREN_BRIDGE_SECRET; else process.env.FRIEREN_BRIDGE_SECRET = oldBridge;
+    if (oldLegacy === undefined) delete process.env.FRIEREN_AI_BRIDGE_SECRET; else process.env.FRIEREN_AI_BRIDGE_SECRET = oldLegacy;
+    if (oldNeural === undefined) delete process.env.FRIEREN_NEURAL_API_TOKEN; else process.env.FRIEREN_NEURAL_API_TOKEN = oldNeural;
+    if (oldBase === undefined) delete process.env.OWNER_DASHBOARD_BASE_URL; else process.env.OWNER_DASHBOARD_BASE_URL = oldBase;
+    globalThis.fetch = oldFetch;
+  }
+});
+
+test('Owner Panel submits curated knowledge with the Neural API token only', async () => {
+  const oldUrl = process.env.FRIEREN_NEURAL_API_URL;
+  const oldToken = process.env.FRIEREN_NEURAL_API_TOKEN;
+  const oldFetch = globalThis.fetch;
+  process.env.FRIEREN_NEURAL_API_URL = 'https://neural.example/generate';
+  process.env.FRIEREN_NEURAL_API_TOKEN = 'central-neural-api-token-with-more-than-32-characters';
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url: String(url), options };
+    return { ok: true, status: 200, json: async () => ({ status: 'pending_review' }) };
+  };
+  try {
+    const { response } = await runOwnerPost({
+      action: 'neural-knowledge-submit', csrf: 'session',
+      title: 'Python tuple semantics',
+      content: 'A tuple is an immutable sequence in Python and preserves insertion order.',
+      sourceTitle: 'Python language reference',
+      sourceExcerpt: 'The tuple type is an immutable sequence type that stores an ordered collection of objects.',
+      sourceUrl: 'https://docs.python.org/3/library/stdtypes.html#tuples',
+      sourceRevision: 'v3.14',
+      license: 'CC BY 4.0',
+      confirm: 'yes'
+    }, { query: async () => ({ rows: [{ id: 1 }], rowCount: 1 }) });
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.Location, '/owner/neural?notice=knowledge_candidate_submitted');
+    assert.equal(request.url, 'https://neural.example/learning/knowledge/candidates');
+    assert.equal(request.options.headers.Authorization, 'Bearer central-neural-api-token-with-more-than-32-characters');
+    assert.equal(JSON.parse(request.options.body).license, 'CC BY 4.0');
+  } finally {
+    if (oldUrl === undefined) delete process.env.FRIEREN_NEURAL_API_URL; else process.env.FRIEREN_NEURAL_API_URL = oldUrl;
+    if (oldToken === undefined) delete process.env.FRIEREN_NEURAL_API_TOKEN; else process.env.FRIEREN_NEURAL_API_TOKEN = oldToken;
+    globalThis.fetch = oldFetch;
+  }
+});
+
+test('Owner Panel reviews a candidate without storing or reusing the reviewer token', async () => {
+  const oldUrl = process.env.FRIEREN_NEURAL_API_URL;
+  const oldToken = process.env.FRIEREN_NEURAL_API_TOKEN;
+  const oldFetch = globalThis.fetch;
+  process.env.FRIEREN_NEURAL_API_URL = 'https://neural.example';
+  process.env.FRIEREN_NEURAL_API_TOKEN = 'central-neural-api-token-with-more-than-32-characters';
+  const reviewerToken = 'reviewer-private-token-12345678901234567890';
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url: String(url), options };
+    return { ok: true, status: 200, json: async () => ({ status: 'promoted', approval_count: 2 }) };
+  };
+  try {
+    const { response } = await runOwnerPost({
+      action: 'neural-knowledge-review', csrf: 'session',
+      candidateId: '123e4567-e89b-12d3-a456-426614174000',
+      decision: 'approve',
+      reviewerToken,
+      confirm: 'yes'
+    }, { query: async () => ({ rows: [], rowCount: 0 }) });
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.Location, '/owner/neural?notice=knowledge_candidate_promoted');
+    assert.equal(request.url, 'https://neural.example/learning/knowledge/candidates/123e4567-e89b-12d3-a456-426614174000/reviews');
+    assert.equal(request.options.headers.Authorization, 'Bearer central-neural-api-token-with-more-than-32-characters');
+    assert.equal(JSON.parse(request.options.body).reviewer_token, reviewerToken);
+  } finally {
+    if (oldUrl === undefined) delete process.env.FRIEREN_NEURAL_API_URL; else process.env.FRIEREN_NEURAL_API_URL = oldUrl;
+    if (oldToken === undefined) delete process.env.FRIEREN_NEURAL_API_TOKEN; else process.env.FRIEREN_NEURAL_API_TOKEN = oldToken;
+    globalThis.fetch = oldFetch;
+  }
+});
+
+
 test('owner maintenance action uses the atomic database operation and redirects on success', async () => {
   let query = '';
   const db = { query: async sql => { query = sql; return { rows: [], rowCount: 1 }; } };
@@ -468,7 +614,7 @@ test('owner navigation groups bot workspaces and preserves the no-log policy', (
   const navigation = renderOwnerNavigation();
   assert.match(navigation, /nav-group/);
   assert.match(navigation, /Frieren Poğaça/);
-  assert.match(navigation, /Frieren AI/);
+  assert.match(navigation, /Frieren Neural/);
   assert.match(navigation, /Komut ve davranışlar/);
   assert.ok(navigation.includes('href="/owner#behavior"'));
   assert.ok(navigation.includes('href="/owner#rpg"'));
@@ -481,7 +627,7 @@ test('bot cards expose direct paths into their own management areas', () => {
   });
   assert.match(html, /href="#rpg"/);
   assert.match(html, /href="#behavior"/);
-  assert.match(html, /href="#memories"/);
+  assert.match(html, /href="\/owner\/neural"/);
   assert.match(html, /href="#approvals"/);
 });
 
@@ -533,7 +679,7 @@ test('Owner can save validated Frieren chat preferences with CSRF protection and
     enabled: 'yes', style: 'warm', responseLength: 'balanced', loreFocus: 'no'
   }, db);
   assert.equal(response.status, 303);
-  assert.equal(response.headers.Location, '/owner/frieren-ai?notice=chat_settings_saved');
+  assert.equal(response.headers.Location, '/owner/neural?notice=chat_settings_saved');
   assert.match(query, /owner_settings/);
   assert.match(query, /owner_audit_logs/);
 });
@@ -624,26 +770,25 @@ test('owner dungeon and boss content disable is reversible and keeps at least on
 });
 
 
-test('bot control center separates the main bot from the suspended AI service', () => {
+test('bot control center exposes only the main bot and central Neural service', () => {
   const html = renderOwnerControlCenter({
     apiConfigured: true,
     services: {
       pogaca: { key: 'pogaca', apiConfigured: true, name: 'Poğaça Frieren', id: 'srv-main', url: 'https://pogaca-frieren.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-main', plan: 'free', status: 'running', health: 'healthy', suspended: false, suspenders: [], allowedActions: ['restart'] },
-      frieren_ai: { key: 'frieren_ai', apiConfigured: true, name: 'Frieren AI', id: 'srv-ai', url: 'https://frieren-ai-agent.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-ai', plan: 'free', status: 'suspended', health: 'suspended', suspended: true, suspenders: ['user'], allowedActions: ['restart','suspend','resume'] }
+      neural: { key: 'neural', apiConfigured: true, name: 'Frieren Neural', id: 'srv-neural', url: 'https://frieren-neural.onrender.com', dashboardUrl: 'https://dashboard.render.com/web/srv-neural', plan: 'free', status: 'running', health: 'healthy', suspended: false, suspenders: [], allowedActions: ['restart'] }
     }
   }, { maintenance: false }, 'csrf-token',
   { status: 'available', cpuPercent: 12.3, memoryPercent: 45.6 },
   { status: 'available', cpuPercent: 5.5, memoryPercent: 30.1 });
-  assert.match(html, /Bot Kontrol Merkezi/);
+  assert.match(html, /Bot ve Neural Kontrol Merkezi/);
   assert.match(html, /CPU 12\.3% · RAM 45\.6%/);
   assert.match(html, /CPU 5\.5% · RAM 30\.1%/);
   assert.match(html, /Poğaça Frieren/);
-  assert.match(html, /Frieren AI/);
-  assert.match(html, /Askıya alınmış/);
-  assert.match(html, /Askıya alma kaynağı: user/);
-  assert.match(html, /value="resume"/);
-  assert.match(html, /value="restart"/);
-  assert.doesNotMatch(html.slice(html.indexOf('<h3>Poğaça Frieren</h3>'), html.indexOf('<h3>Frieren AI</h3>')), /value="suspend"/);
+  assert.match(html, /Frieren Neural/);
+  assert.doesNotMatch(html, /value="suspend"|value="resume"/);
+  
+  assert.equal((html.match(/value="restart"/g) || []).length, 2);
+  assert.doesNotMatch(html, /value="suspend"|value="resume"/);
   assert.match(html, /Owner Panel bu servis üzerinde çalışıyor/);
   assert.match(html, /csrf-token/);
 });
@@ -653,25 +798,25 @@ test('bot control center hides lifecycle controls until a server-side Render API
     apiConfigured: false,
     services: {
       pogaca: { key: 'pogaca', status: 'running', health: 'healthy', suspended: null },
-      frieren_ai: { key: 'frieren_ai', status: 'unknown', health: 'unavailable', suspended: null }
+      neural: { key: 'neural', status: 'unknown', health: 'unavailable', suspended: null }
     }
   }, {}, 'csrf-token');
   assert.match(html, /RENDER_POGACA_API_KEY/);
-  assert.match(html, /RENDER_FRIEREN_AI_API_KEY/);
-  assert.match(html, /RENDER_POGACA_SERVICE_ID/);
-  assert.match(html, /RENDER_FRIEREN_AI_SERVICE_ID/);
+  assert.match(html, /RENDER_FRIEREN_NEURAL_API_KEY/);
+  assert.match(html, /RENDER_POGACA_API_KEY/);
+  assert.match(html, /RENDER_FRIEREN_NEURAL_SERVICE_ID/);
   assert.doesNotMatch(html, /name="action" value="render-service-action"/);
   assert.doesNotMatch(html, /test-token|server-only-token/);
 });
 
-test('owner Render action route resumes Frieren AI through the server-side API and audits it', async () => {
-  const previousKey = process.env.RENDER_FRIEREN_AI_API_KEY;
-  const previousServiceId = process.env.RENDER_FRIEREN_AI_SERVICE_ID;
-  const previousServiceUrl = process.env.RENDER_FRIEREN_AI_URL;
+test('owner Render action route restarts central Neural through the server-side API and audits it', async () => {
+  const previousKey = process.env.RENDER_FRIEREN_NEURAL_API_KEY;
+  const previousServiceId = process.env.RENDER_FRIEREN_NEURAL_SERVICE_ID;
+  const previousServiceUrl = process.env.RENDER_FRIEREN_NEURAL_URL;
   const previousFetch = globalThis.fetch;
-  process.env.RENDER_FRIEREN_AI_API_KEY = 'server-only-test-token';
-  process.env.RENDER_FRIEREN_AI_SERVICE_ID = 'srv-ai-route-test';
-  process.env.RENDER_FRIEREN_AI_URL = 'https://frieren-ai-route.test';
+  process.env.RENDER_FRIEREN_NEURAL_API_KEY = 'server-only-test-token';
+  process.env.RENDER_FRIEREN_NEURAL_SERVICE_ID = 'srv-ai-route-test';
+  process.env.RENDER_FRIEREN_NEURAL_URL = 'https://frieren-ai-route.test';
   let request = null;
   const calls = [];
   const client = {
@@ -686,27 +831,27 @@ test('owner Render action route resumes Frieren AI through the server-side API a
   const db = { connect: async () => client };
   globalThis.fetch = async (url, options) => {
     request = { url: String(url), options };
-    return { ok: true, status: 202, json: async () => ({ message: 'Service resumed' }) };
+    return { ok: true, status: 202, json: async () => ({ message: 'Service restarted' }) };
   };
   try {
     const { response } = await runOwnerPost({
-      action: 'render-service-action', serviceKey: 'frieren_ai', serviceAction: 'resume',
-      csrf: 'session', confirm: 'yes', reason: 'AI testlerini çalıştıracağım'
+      action: 'render-service-action', serviceKey: 'neural', serviceAction: 'restart',
+      csrf: 'session', confirm: 'yes', reason: 'Neural servisi yeniden başlatılacak'
     }, db);
     assert.equal(response.status, 303);
-    assert.equal(response.headers.Location, '/owner?notice=service_action_accepted&serviceAction=resume');
-    assert.ok(request.url.endsWith('/resume'));
+    assert.equal(response.headers.Location, '/owner?notice=service_action_accepted&serviceAction=restart');
+    assert.ok(request.url.endsWith('/restart'));
     assert.equal(request.options.headers.Authorization, 'Bearer server-only-test-token');
     assert.ok(calls.some(call => call.sql.includes('INSERT INTO owner_audit_logs')));
     assert.ok(calls.some(call => call.sql.includes('UPDATE owner_audit_logs')));
     assert.ok(calls.some(call => call.sql === 'COMMIT'));
   } finally {
-    if (previousKey === undefined) delete process.env.RENDER_FRIEREN_AI_API_KEY;
-    else process.env.RENDER_FRIEREN_AI_API_KEY = previousKey;
-    if (previousServiceId === undefined) delete process.env.RENDER_FRIEREN_AI_SERVICE_ID;
-    else process.env.RENDER_FRIEREN_AI_SERVICE_ID = previousServiceId;
-    if (previousServiceUrl === undefined) delete process.env.RENDER_FRIEREN_AI_URL;
-    else process.env.RENDER_FRIEREN_AI_URL = previousServiceUrl;
+    if (previousKey === undefined) delete process.env.RENDER_FRIEREN_NEURAL_API_KEY;
+    else process.env.RENDER_FRIEREN_NEURAL_API_KEY = previousKey;
+    if (previousServiceId === undefined) delete process.env.RENDER_FRIEREN_NEURAL_SERVICE_ID;
+    else process.env.RENDER_FRIEREN_NEURAL_SERVICE_ID = previousServiceId;
+    if (previousServiceUrl === undefined) delete process.env.RENDER_FRIEREN_NEURAL_URL;
+    else process.env.RENDER_FRIEREN_NEURAL_URL = previousServiceUrl;
     globalThis.fetch = previousFetch;
   }
 });
@@ -800,14 +945,18 @@ test('owner activity workspace renders paginated audit and test history safely',
   assert.match(html, /&lt;script&gt;/);
 });
 
-test('owner scenario and Guardian review endpoints require an explicitly configured Frieren AI service URL', () => {
-  assert.throws(() => getFrierenAiScenarioEndpoint({}), { message: 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' });
-  assert.throws(() => getFrierenAiGuardianEndpoint({}), { message: 'FRIEREN_AI_SERVICE_NOT_CONFIGURED' });
+test('Owner targeted scenarios run on the Poğaça service while Guardian review uses the Neural API', () => {
   assert.equal(
-    getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://ai.example.test/base/' }),
-    'https://ai.example.test/internal/test-scenario'
+    getPoğacaScenarioEndpoint({ OWNER_DASHBOARD_BASE_URL: 'https://pogaca.example.test/base/' }),
+    'https://pogaca.example.test/internal/test-scenario'
   );
-  assert.throws(() => getFrierenAiScenarioEndpoint({ FRIEREN_AI_PUBLIC_URL: 'http://127.0.0.1:10001' }), /INVALID_FRIEREN_AI_PUBLIC_URL/);
+  assert.throws(() => getPoğacaScenarioEndpoint({ OWNER_DASHBOARD_BASE_URL: 'http://pogaca.example.test' }), /INVALID_POGACA_TEST_SERVICE_URL/);
+  assert.throws(() => getFrierenNeuralGuardianEndpoint({}), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
+  assert.equal(
+    getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'https://neural.example.test/base/' }),
+    'https://neural.example.test/internal/guardian-review'
+  );
+  assert.throws(() => getFrierenNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'http://127.0.0.1:10001' }), /INVALID_FRIEREN_NEURAL_API_URL/);
 });
 
 test('owner navigation provides a safe public-site preview shortcut', () => {
@@ -956,7 +1105,7 @@ test('Owner analytics exposes bounded time filters and labels the selected windo
 });
 
 
-test('synthetic Frieren AI → authenticated Owner Panel review → explicit owner approval → isolated workflow dispatch', async () => {
+test('synthetic Neural → authenticated Owner Panel review → explicit owner approval → isolated workflow dispatch', async () => {
   const incident = {
     id: 990052,
     system: 'pogaca_frieren',
@@ -1057,19 +1206,23 @@ test('synthetic Frieren AI → authenticated Owner Panel review → explicit own
 
   const previous = {
     fetch: globalThis.fetch,
-    FRIEREN_AI_PUBLIC_URL: process.env.FRIEREN_AI_PUBLIC_URL,
-    FRIEREN_AI_BRIDGE_SECRET: process.env.FRIEREN_AI_BRIDGE_SECRET,
+    FRIEREN_NEURAL_API_URL: process.env.FRIEREN_NEURAL_API_URL,
+    FRIEREN_NEURAL_API_TOKEN: process.env.FRIEREN_NEURAL_API_TOKEN,
+    FRIEREN_NEURAL_QUALITY_APPROVED: process.env.FRIEREN_NEURAL_QUALITY_APPROVED,
+    FRIEREN_NEURAL_GUARDIAN_ENABLED: process.env.FRIEREN_NEURAL_GUARDIAN_ENABLED,
     FRIEREN_GITHUB_TOKEN: process.env.FRIEREN_GITHUB_TOKEN,
   };
-  process.env.FRIEREN_AI_PUBLIC_URL = 'https://frieren-ai.synthetic.invalid';
-  process.env.FRIEREN_AI_BRIDGE_SECRET = 'synthetic-bridge-secret-that-is-long-enough';
+  process.env.FRIEREN_NEURAL_API_URL = 'https://frieren-neural.synthetic.invalid';
+  process.env.FRIEREN_NEURAL_API_TOKEN = 'synthetic-neural-api-token-that-is-long-enough';
+  process.env.FRIEREN_NEURAL_QUALITY_APPROVED = '1';
+  process.env.FRIEREN_NEURAL_GUARDIAN_ENABLED = '1';
   process.env.FRIEREN_GITHUB_TOKEN = 'synthetic-github-token-that-is-long-enough';
   globalThis.fetch = async (url, options = {}) => {
     const target = String(url);
     state.githubRequests.push({ url: target, method: options.method || 'GET', body: options.body || null });
-    if (target === 'https://frieren-ai.synthetic.invalid/internal/guardian-review') {
+    if (target === 'https://frieren-neural.synthetic.invalid/internal/guardian-review') {
       assert.equal(options.method, 'POST');
-      assert.equal(options.headers.Authorization, 'Bearer ' + process.env.FRIEREN_AI_BRIDGE_SECRET);
+      assert.equal(options.headers.Authorization, 'Bearer ' + process.env.FRIEREN_NEURAL_API_TOKEN);
       return { ok: true, status: 200, json: async () => proposal };
     }
     if (target.includes('/actions/workflows/frieren-ai-self-repair.yml/runs?')) {
@@ -1094,7 +1247,11 @@ test('synthetic Frieren AI → authenticated Owner Panel review → explicit own
     assert.equal(state.job.result.status, 'proposal_only');
     assert.equal(state.job.repair_approved_by, null);
     assert.equal(state.githubRequests.length, 1);
-    assert.match(state.githubRequests[0].url, /frieren-ai\.synthetic\.invalid\/internal\/guardian-review$/);
+    assert.match(state.githubRequests[0].url, /frieren-neural\.synthetic\.invalid\/internal\/guardian-review$/);
+    const neuralReviewRequest = JSON.parse(state.githubRequests[0].body);
+    assert.ok(neuralReviewRequest.source_context.length > 0);
+    assert.match(neuralReviewRequest.source_context_hash, /^[a-f0-9]{64}$/);
+    assert.ok(neuralReviewRequest.source_context_files.includes('frieren-neural/frieren_neural/api.py'));
 
     const approval = await runOwnerPost({
       action: 'guardian-create-pr', csrf: 'session', confirm: 'yes', incidentId: incident.id,
@@ -1106,8 +1263,8 @@ test('synthetic Frieren AI → authenticated Owner Panel review → explicit own
     assert.equal(state.job.repair_dispatch_status, 'dispatched');
     assert.equal(state.githubRequests.length, 3);
     const dispatch = JSON.parse(state.githubRequests[2].body);
-    assert.equal(dispatch.ref, 'guardian-isolated-repair-test-v2');
-    assert.equal(dispatch.inputs.base_branch, 'guardian-isolated-repair-test-v2');
+    assert.equal(dispatch.ref, 'neural-guardian-migration-stage');
+    assert.equal(dispatch.inputs.base_branch, 'neural-guardian-migration-stage');
     assert.equal(dispatch.inputs.incident_id, String(incident.id));
     assert.equal(dispatch.inputs.mode, 'repair');
     assert.doesNotMatch(state.githubRequests[2].url, /merge|deploy/i);
@@ -1156,7 +1313,7 @@ test('site-auth evidence never verifies the external Frieren Guard sender', () =
   assert.match(html, /Gönderici doğrulanmadı/);
   assert.doesNotMatch(html, /Canlı olay alındı/);
   assert.match(html, /Frieren web hesabı/);
-  assert.match(html, /Frieren Guard izleyicisi/);
+  assert.match(html, /Neural güvenlik modülü izleyicisi/);
 });
 
 test('Guardian workspace hides generic workflow history from the single-run evidence slot', () => {
@@ -1226,26 +1383,26 @@ test('Guardian 403 notice explains the exact fine-grained GitHub token permissio
 });
 
 
-test('Frieren AI readiness does not probe an unconfigured production service URL', async () => {
+test('Frieren Neural readiness does not probe an unconfigured API URL', async () => {
   let fetched = false;
-  const result = await getFrierenAIReadiness({
-    serviceUrl: '',
+  const result = await getFrierenNeuralReadiness({
+    env: { FRIEREN_NEURAL_API_URL: '' },
     fetchImpl: async () => { fetched = true; throw new Error('must not fetch'); }
   });
-  assert.deepEqual(result, { status: 'not_configured', reason: 'service_url_missing' });
+  assert.deepEqual(result, { status: 'not_configured', reason: 'neural_service_not_configured' });
   assert.equal(fetched, false);
 });
 
 
-test('Owner control center clearly blocks actions when production Frieren AI service is not configured', () => {
+test('Owner control center clearly blocks actions when production Frieren Neural service is not configured', () => {
   const html = renderOwnerControlCenter({
     apiConfigured: false,
     services: {
-      frieren_ai: { status: 'not_configured', health: 'not_configured', id: null, url: '', apiConfigured: false, allowedActions: [] },
+      neural: { status: 'not_configured', health: 'not_configured', id: null, url: '', apiConfigured: false, allowedActions: [] },
       pogaca: { status: 'running', health: 'healthy', apiConfigured: false, allowedActions: [] }
     }
   }, { ready: true }, 'csrf-test');
-  assert.match(html, /Üretim servisi yapılandırılmamış/);
-  assert.match(html, /Frieren AI üretim servisi Render hesabında bulunamadı/);
+  assert.match(html, /Servis yapılandırılmamış/);
+  assert.match(html, /Merkezi Neural Render servisi henüz bağlanmadı/);
   assert.doesNotMatch(html, /AI servisini başlat/);
 });

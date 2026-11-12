@@ -26,9 +26,10 @@ test('Poğaça test-guild registration is isolated and limited to five approved 
   assert.ok(!source.includes('1539562273197260860'));
 });
 
-test('Frieren AI health checks use a six-hour cadence and bounded retries', async () => {
+test('legacy standalone bot health diagnostics are manual-only with bounded retries', async () => {
   const source = await workflow('frieren-ai-health.yml');
-  assert.ok(source.includes('cron: "0 */6 * * *"'));
+  assert.ok(!source.includes('schedule:'), 'legacy health checks must not consume scheduled Actions quota');
+  assert.ok(source.includes('workflow_dispatch:'), 'legacy health diagnostics remain available manually');
   assert.ok(source.includes('timeout-minutes: 2'));
   assert.ok(source.includes('for attempt in {1..3}'));
   assert.ok(source.includes('vars.FRIEREN_AI_HEALTH_URL'));
@@ -38,6 +39,24 @@ test('Frieren AI health checks use a six-hour cadence and bounded retries', asyn
   assert.ok(source.includes("j.status==='ok' && j.reachable===true"));
   assert.ok(!source.includes('not configured; skipping the production AI health probe'));
   assert.ok(!source.includes('https://pogaca-frieren-kltd.onrender.com/live'));
+});
+
+test('isolated Neural evaluation stores its report only as a GitHub artifact and never writes production', async () => {
+  const source = await workflow('frieren-neural-active-gguf-eval.yml');
+  assert.ok(source.includes('contents: read'));
+  assert.ok(!source.includes('id-token: write'));
+  assert.ok(!source.includes('GUARDIAN_URL'));
+  assert.ok(!source.includes('/internal/neural-quality-report'));
+  assert.ok(!source.includes('FRIEREN_NEURAL_REPORT_UPLOAD_ENABLED'));
+  assert.ok(source.includes('Upload real-model evaluation report'));
+});
+
+test('Neural training workflows install only declared extras and use the CPU wheel', async () => {
+  for (const name of ['frieren-neural-train.yml', 'frieren-neural-active-gguf-eval.yml']) {
+    const source = await workflow(name);
+    assert.ok(!source.includes('[dev,serve,discord]'), name + ' must not install a removed extra');
+    assert.ok(source.includes('--only-binary=llama-cpp-python'), name + ' must use the prebuilt CPU wheel');
+  }
 });
 
 test('Discord command sync skips unchanged definitions and unnecessary global writes', async () => {

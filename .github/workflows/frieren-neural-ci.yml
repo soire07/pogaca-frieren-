@@ -1,0 +1,87 @@
+name: Frieren Neural CI
+
+on:
+  push:
+    branches:
+      - frieren-neural-foundation
+      - validation/ufakzeka-real-gguf
+      - test/frieren-neural-render-free
+    paths:
+      - ".github/workflows/frieren-neural-ci.yml"
+      - ".github/workflows/frieren-neural-evolution-search.yml"
+      - ".github/workflows/frieren-neural-active-gguf-eval.yml"
+      - "frieren-neural/trigger-active-gguf-eval.txt"
+      - "frieren-neural/frieren_neural/**"
+      - "frieren-neural/tests/test_teacher_distillation.py"
+      - ".github/workflows/frieren-neural-teacher-drafts.yml"
+      - "frieren-neural/migrations/**"
+      - "frieren-neural/benchmarks/**"
+      - "frieren-neural/tests/**"
+      - "frieren-neural/pyproject.toml"
+      - "frieren-neural/QUALITY_GATE.md"
+      - "frieren-neural/corpus_manifest.example.json"
+  pull_request:
+    paths:
+      - "frieren-neural/frieren_neural/**"
+      - "frieren-neural/migrations/**"
+      - "frieren-neural/benchmarks/**"
+      - "frieren-neural/tests/**"
+      - "frieren-neural/pyproject.toml"
+      - "frieren-neural/QUALITY_GATE.md"
+      - "frieren-neural/corpus_manifest.example.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: neural_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d neural_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: frieren-neural
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Install CPU-only PyTorch
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+      - name: Install package and test dependencies
+        run: python -m pip install --only-binary=llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu -e ".[dev,serve]"
+      - name: Run tests
+        run: pytest
+      - name: Validate candidate evolution workflow syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          workflow = Path("../.github/workflows/frieren-neural-evolution-search.yml")
+          parsed = yaml.safe_load(workflow.read_text(encoding="utf-8"))
+          assert isinstance(parsed, dict) and isinstance(parsed.get("jobs"), dict)
+          assert "candidate-search" in parsed["jobs"]
+          print("CANDIDATE_WORKFLOW_YAML=PASS")
+          PY
+      - name: Compile isolated benchmark tools
+        run: python -m compileall -q benchmarks
+      - name: Measure batch-sampler optimization against the previous implementation
+        run: python benchmarks/benchmark_batch_sampling.py --iterations 100
+      - name: Measure vectorized BPE training against the previous implementation
+        run: python benchmarks/benchmark_bpe_training.py --vocab-size 340

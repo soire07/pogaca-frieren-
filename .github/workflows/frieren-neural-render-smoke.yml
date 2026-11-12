@@ -1,0 +1,59 @@
+name: Frieren Neural Render Free Smoke
+
+on:
+  pull_request:
+    branches:
+      - validation/ufakzeka-real-gguf
+    paths:
+      - "frieren-neural/Dockerfile"
+      - "frieren-neural/frieren_neural/__init__.py"
+      - "frieren-neural/frieren_neural/api.py"
+      - "frieren-neural/frieren_neural/gguf_runtime.py"
+      - ".github/workflows/frieren-neural-render-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-render-smoke:
+    if: github.event.pull_request.head.ref == 'test/frieren-neural-render-free'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Wait for the isolated Render service and load the real GGUF model
+        env:
+          NEURAL_TEST_URL: https://frieren-neural-test-1unz.onrender.com
+        run: |
+          set -euo pipefail
+          response=""
+          for attempt in $(seq 1 18); do
+            if response="$(curl --silent --show-error --fail --connect-timeout 15 --max-time 300 "$NEURAL_TEST_URL/health")"; then
+              echo "$response"
+              if python -c 'import json,sys; data=json.loads(sys.argv[1]); sys.exit(0 if data.get("status") == "ready" and data.get("model") == "ufakai/ufakzeka-1" and data.get("generation_smoke") == "pass" else 1)' "$response"; then
+                echo "REAL_GGUF_LOAD_AND_GENERATION=PASS"
+                if second_response="$(curl --silent --show-error --fail --connect-timeout 15 --max-time 60 "$NEURAL_TEST_URL/health")" && python -c 'import json,sys; data=json.loads(sys.argv[1]); sys.exit(0 if data.get("status") == "ready" and data.get("model") == "ufakai/ufakzeka-1" and data.get("generation_smoke") == "pass" else 1)' "$second_response"; then
+                  echo "$second_response"
+                  echo "CACHED_HEALTH_SMOKE=PASS"
+                  exit 0
+                fi
+                echo "::warning::Cached model health is not ready yet."
+              fi
+            fi
+            echo "::notice::Render health attempt $attempt/18 has not passed the real GGUF generation gate yet."
+            if [[ "$attempt" -lt 18 ]]; then sleep 10; fi
+          done
+          echo "Render service did not become ready with the pinned GGUF model."
+          exit 1
+
+      - name: Verify the public inference endpoint rejects unauthenticated requests
+        env:
+          NEURAL_TEST_URL: https://frieren-neural-test-1unz.onrender.com
+        run: |
+          set -euo pipefail
+          status="$(curl --silent --output /tmp/neural-auth-response --write-out '%{http_code}' \
+            --connect-timeout 15 --max-time 30 \
+            -X POST "$NEURAL_TEST_URL/generate" \
+            -H 'Content-Type: application/json' \
+            --data '{"prompt":"Auth smoke test"}')"
+          test "$status" = "401"
+          echo "UNAUTHENTICATED_GENERATION_REJECTED=PASS"

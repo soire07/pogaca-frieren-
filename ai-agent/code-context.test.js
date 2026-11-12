@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { findRelevantExcerpt, scoreCodeCandidate } from './code-context.js';
+import { findRelevantExcerpt, scoreCodeCandidate, collectCodeContext } from './code-context.js';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 test('relevant excerpt includes a matching function away from the file beginning', () => {
   const source = 'header\n'.repeat(500) + 'function dungeonEnemyStats() { return true; }' + '\nfooter'.repeat(500);
@@ -29,4 +32,51 @@ test('excerpt prefers a dense relevant match over an earlier generic keyword', (
   const excerpt = findRelevantExcerpt(source, ['boss', 'damage', 'formula'], 500);
   assert.ok(excerpt.length <= 500);
   assert.match(excerpt, /calculateBossDamageFormula/);
+});
+
+
+test('Guardian source context includes Neural Python API and regression tests', async () => {
+  const rootDir = await mkdtemp(path.join(tmpdir(), 'frieren-neural-context-'));
+  try {
+    await mkdir(path.join(rootDir, 'guardian'), { recursive: true });
+    await mkdir(path.join(rootDir, 'ai-agent'), { recursive: true });
+    await mkdir(path.join(rootDir, 'frieren-neural', 'frieren_neural'), { recursive: true });
+    await mkdir(path.join(rootDir, 'frieren-neural', 'tests'), { recursive: true });
+    const files = [
+      'guardian/automation.js',
+      'guardian/automation.test.js',
+      'ai-agent/guardian-review.js',
+      'ai-agent/guardian-review.test.js',
+      'ai-agent/code-context.js',
+      'frieren-neural/frieren_neural/api.py',
+      'frieren-neural/frieren_neural/training.py',
+      'frieren-neural/frieren_neural/evolution.py',
+      'frieren-neural/frieren_neural/quality_evaluation.py',
+      'frieren-neural/frieren_neural/datasets.py',
+      'frieren-neural/frieren_neural/gguf_runtime.py',
+      'frieren-neural/tests/test_api.py',
+      'frieren-neural/tests/test_training.py',
+      'frieren-neural/tests/test_evolution.py',
+      'frieren-neural/tests/test_quality_evaluation.py',
+      'frieren-neural/tests/test_datasets.py',
+      'frieren-neural/tests/test_gguf_runtime.py',
+    ];
+    for (const file of files) {
+      await writeFile(path.join(rootDir, file), 'def or function guardian review source context test() {}\\n');
+    }
+    const result = await collectCodeContext({
+      rootDir,
+      question: 'Frieren Neural Guardian incident source review',
+      sourceCommitSha: 'a'.repeat(40),
+      budget: 5_000,
+    });
+    assert.ok(result.files.includes('frieren-neural/frieren_neural/api.py'));
+    assert.ok(result.files.includes('frieren-neural/frieren_neural/training.py'));
+    assert.ok(result.files.includes('frieren-neural/frieren_neural/quality_evaluation.py'));
+    assert.ok(result.files.includes('frieren-neural/tests/test_training.py'));
+    assert.ok(result.files.includes('frieren-neural/tests/test_api.py'));
+    assert.equal(result.sourceCommitSha, 'a'.repeat(40));
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
 });

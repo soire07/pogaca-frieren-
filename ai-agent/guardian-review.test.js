@@ -191,10 +191,11 @@ test('code context normalization accepts legacy strings and evidence-aware objec
 });
 
 
-test('Guardian review uses configured Frieren Neural when Groq is absent', async () => {
+test('Guardian review uses the hash-verified Neural review endpoint instead of raw generation', async () => {
   let requestUrl;
+  let requestBody;
   const neuralEnv = {
-    FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
+    FRIEREN_NEURAL_API_URL: 'https://neural.example.test/generate',
     FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(40),
     FRIEREN_NEURAL_QUALITY_APPROVED: '1',
   };
@@ -203,26 +204,22 @@ test('Guardian review uses configured Frieren Neural when Groq is absent', async
     neuralEnv,
     neuralFetchImpl: async (url, options) => {
       requestUrl = url;
+      requestBody = JSON.parse(options.body);
       assert.equal(options.headers.authorization, 'Bearer ' + neuralEnv.FRIEREN_NEURAL_API_TOKEN);
-      const prompt = JSON.parse(options.body).prompt;
-      assert.match(prompt, /Guardian Neural provider regression/);
-      assert.match(prompt, /\"rootCause\"/);
-      assert.match(prompt, /\"proposedPatch\"/);
-      assert.match(prompt, /JSON only/);
       return {
         ok: true,
         status: 200,
         text: async () => JSON.stringify({
-          completion: JSON.stringify({
-            rootCause: 'Neural provider is configured and returned a review.',
-            confidence: 'high',
-            affectedFiles: ['ai-agent/guardian-review.js'],
-            suggestedFix: 'No change required.',
-            proposedPatch: '',
-            tests: [],
-            risks: [],
-          }),
-          model: 'ufakai/ufakzeka-1',
+          status: 'proposal_only',
+          rootCause: 'Neural review endpoint validated the exact source context.',
+          confidence: 'high',
+          affectedFiles: ['ai-agent/guardian-review.js'],
+          suggestedFix: 'No change required.',
+          proposedPatch: '',
+          tests: [],
+          risks: [],
+          requiresHumanReview: true,
+          applied: false,
         }),
       };
     },
@@ -230,7 +227,7 @@ test('Guardian review uses configured Frieren Neural when Groq is absent', async
       system: 'guardian',
       code: 'NEURAL_REVIEW_TEST',
       title: 'Guardian Neural provider regression',
-      summary: 'Verify Guardian can use Neural without a Groq key.',
+      summary: 'Verify Guardian uses the guarded review endpoint.',
     },
     collectCodeContext: async () => ({
       text: 'FILE: ai-agent/guardian-review.js\\nexport async function reviewGuardianIncident() {}',
@@ -239,12 +236,113 @@ test('Guardian review uses configured Frieren Neural when Groq is absent', async
       sourceCommitSha: 'b'.repeat(40),
     }),
   });
-  assert.equal(requestUrl, 'https://neural.example.test/generate');
+  assert.equal(requestUrl, 'https://neural.example.test/internal/guardian-review');
+  assert.equal(requestBody.incident.code, 'NEURAL_REVIEW_TEST');
+  assert.match(requestBody.source_context, /reviewGuardianIncident/);
+  assert.deepEqual(requestBody.source_context_files, ['ai-agent/guardian-review.js']);
+  assert.equal(requestBody.source_context_hash, 'a'.repeat(64));
+  assert.equal(requestBody.source_commit_sha, 'b'.repeat(40));
   assert.equal(result.status, 'proposal_only');
   assert.equal(result.applied, false);
   assert.equal(result.sourceCommitSha, 'b'.repeat(40));
 });
 
+test('Neural Guardian review fails closed when the source context hash is missing', async () => {
+  let calls = 0;
+  const result = await reviewGuardianIncident({
+    groq: null,
+    neuralEnv: {
+      FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
+      FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(40),
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1',
+    },
+    neuralFetchImpl: async () => { calls += 1; throw new Error('MUST_NOT_CALL_MODEL'); },
+    incident: {
+      system: 'guardian',
+      code: 'CONTEXT_HASH_MISSING',
+      title: 'Missing source hash',
+      summary: 'The source context hash is absent.',
+    },
+    collectCodeContext: async () => ({
+      text: 'FILE: ai-agent/guardian-review.js\\nsource',
+      files: ['ai-agent/guardian-review.js'],
+      contextHash: null,
+      sourceCommitSha: 'b'.repeat(40),
+    }),
+  });
+  assert.equal(result.status, 'insufficient_context');
+  assert.equal(result.applied, false);
+  assert.equal(calls, 0);
+});
+
+test('Neural Guardian review never falls back to Groq when the server quality gate blocks it', async () => {
+  let groqCalls = 0;
+  await assert.rejects(reviewGuardianIncident({
+    groq: { chat: { completions: { create: async () => { groqCalls += 1; return { choices: [] }; } } } },
+    neuralEnv: {
+      FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
+      FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(40),
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1',
+    },
+    neuralFetchImpl: async () => ({
+      ok: false,
+      status: 503,
+      text: async () => JSON.stringify({ detail: 'Guardian review is disabled until Neural passes its quality gate.' }),
+    }),
+    incident: {
+      system: 'guardian',
+      code: 'QUALITY_GATE_BLOCKED',
+      title: 'Neural quality gate',
+      summary: 'The server has not approved the model for code review.',
+    },
+    collectCodeContext: async () => ({
+      text: 'FILE: ai-agent/guardian-review.js\\nsource',
+      files: ['ai-agent/guardian-review.js'],
+      contextHash: 'a'.repeat(64),
+      sourceCommitSha: 'b'.repeat(40),
+    }),
+  }), { message: 'FRIEREN_NEURAL_GUARDIAN_HTTP_503' });
+  assert.equal(groqCalls, 0);
+});
+
+test('Neural Guardian rejects a response that claims a patch was already applied', async () => {
+  await assert.rejects(reviewGuardianIncident({
+    groq: null,
+    neuralEnv: {
+      FRIEREN_NEURAL_API_URL: 'https://neural.example.test',
+      FRIEREN_NEURAL_API_TOKEN: 'n'.repeat(40),
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1',
+    },
+    neuralFetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({
+        status: 'proposal_only',
+        rootCause: 'invalid contract',
+        confidence: 'high',
+        affectedFiles: [],
+        suggestedFix: '',
+        proposedPatch: '',
+        tests: [],
+        risks: [],
+        requiresHumanReview: true,
+        applied: true,
+      }),
+    }),
+    incident: {
+      system: 'guardian',
+      code: 'APPLIED_CLAIM',
+      title: 'Invalid proposal contract',
+      summary: 'The server response must never claim the patch was applied.',
+    },
+    collectCodeContext: async () => ({
+      text: 'FILE: ai-agent/guardian-review.js\\nsource',
+      files: ['ai-agent/guardian-review.js'],
+      contextHash: 'a'.repeat(64),
+      sourceCommitSha: 'b'.repeat(40),
+    }),
+  }), { message: 'FRIEREN_NEURAL_GUARDIAN_CONTRACT_INVALID' });
+});
 
 test('Guardian does not fall back to Groq when a Neural URL is selected but its token is invalid', async () => {
   let groqCalls = 0;
@@ -252,7 +350,12 @@ test('Guardian does not fall back to Groq when a Neural URL is selected but its 
     groq: { chat: { completions: { create: async () => { groqCalls += 1; return { choices: [] }; } } } },
     neuralEnv: { FRIEREN_NEURAL_API_URL: 'https://neural.example.test', FRIEREN_NEURAL_QUALITY_APPROVED: '1' },
     incident: { system: 'guardian', code: 'FAIL_CLOSED', title: 'Provider selection', summary: 'Neural URL exists but token is missing.' },
-    collectCodeContext: async () => 'FILE: ai-agent/guardian-review.js\\nsource',
+    collectCodeContext: async () => ({
+      text: 'FILE: ai-agent/guardian-review.js\\nsource',
+      files: ['ai-agent/guardian-review.js'],
+      contextHash: 'a'.repeat(64),
+      sourceCommitSha: 'b'.repeat(40),
+    }),
   }), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
   assert.equal(groqCalls, 0);
 });

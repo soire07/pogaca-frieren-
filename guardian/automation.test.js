@@ -1,6 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubDispatchError, classifyGuardianGithubReadError, getGuardianProposalFingerprint } from './automation.js';
+import { buildGuardianRepairTask, buildGuardianRepairPatch, processGuardianIncident as processGuardianIncidentRaw, getNeuralGuardianEndpoint, requestNeuralGuardianReview, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking, classifyGuardianWorkflowConclusion, classifyGuardianPullRequestChecks, classifyGuardianGithubDispatchError, classifyGuardianGithubReadError, getGuardianProposalFingerprint } from './automation.js';
+
+const processGuardianIncident = options => {
+  const legacyUrl = options?.env?.FRIEREN_AI_PUBLIC_URL;
+  if (!legacyUrl || options?.env?.FRIEREN_NEURAL_API_URL) return processGuardianIncidentRaw(options);
+  return processGuardianIncidentRaw({
+    ...options,
+    env: {
+      ...options.env,
+      FRIEREN_NEURAL_API_URL: legacyUrl,
+      FRIEREN_NEURAL_API_TOKEN: 'x'.repeat(48),
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1',
+      FRIEREN_NEURAL_GUARDIAN_ENABLED: '1',
+    },
+    collectContext: options.collectContext || (async () => ({
+      text: 'FILE: guardian/automation.js\nexport function fixture() {}',
+      files: ['guardian/automation.js'],
+      contextHash: 'a'.repeat(64),
+      sourceCommitSha: 'b'.repeat(40),
+    })),
+  });
+};
 
 const incident = {
   id: 42,
@@ -38,7 +59,7 @@ test('Guardian automatically reconciles a dispatched workflow, repair PR and che
       calls.push(String(url));
       if (String(url).includes('/actions/workflows/')) return { ok: true, json: async () => ({
         total_count: 1,
-        workflow_runs: [{ id: 9876, display_title: 'Frieren AI Repair · Guardian #42', status: 'completed', conclusion: 'success', html_url: 'https://github.com/soire07/pogaca-frieren-/actions/runs/9876' }],
+        workflow_runs: [{ id: 9876, display_title: 'Frieren Neural Repair · Guardian #42', status: 'completed', conclusion: 'success', html_url: 'https://github.com/soire07/pogaca-frieren-/actions/runs/9876' }],
       }) };
       if (String(url).includes('/pulls?')) return { ok: true, json: async () => [{
         number: 321, html_url: 'https://github.com/soire07/pogaca-frieren-/pull/321', state: 'open',
@@ -106,9 +127,12 @@ test('repair task is bounded and excludes raw incident summaries and credentials
   assert.match(task, /Guardian incident #42/);
   assert.ok(task.includes('İlgili dosyalar: commands/example.js'));
   assert.match(task, /A bounded timeout is missing/);
-  assert.match(task, /Frieren AI tarafından sağlanan unified diff yamayı yeniden model çağrısı yapmadan doğrula/);
+  assert.match(task, /Frieren Neural tarafından sağlanan unified diff yamayı model çağrısı yapmadan doğrula/);
+  assert.match(task, /JavaScript\/Python/);
+  assert.match(task, /pytest/);
   assert.match(task, /Git apply --check/);
-  assert.match(task, /npm run check başarılı olmadan PR açma/);
+  assert.match(task, /npm run check çalıştır/);
+  assert.match(task, /Başarısızsa PR açma/);
   assert.ok(task.endsWith('merge/deploy yapma.'));
   assert.equal(task.includes('Frieren AI yama önerisi'), false);
   assert.equal(task.includes('diff --git a/commands/example.js'), false);
@@ -142,7 +166,13 @@ test('autonomous incident handling respects the emergency stop before contacting
   assert.equal(jobs, 0);
 });
 
-test('high-severity incidents are reviewed but repair dispatch waits for explicit owner approval', async () => {
+test('Neural Guardian endpoint requires HTTPS and rejects legacy Frieren AI URLs', () => {
+  assert.equal(getNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'https://neural.example.test/generate' }), 'https://neural.example.test/internal/guardian-review');
+  assert.throws(() => getNeuralGuardianEndpoint({ FRIEREN_NEURAL_API_URL: 'http://neural.example.test' }), { message: 'INVALID_FRIEREN_NEURAL_API_URL' });
+  assert.throws(() => getNeuralGuardianEndpoint({ FRIEREN_AI_PUBLIC_URL: 'https://legacy.example.test' }), { message: 'FRIEREN_NEURAL_NOT_CONFIGURED' });
+});
+
+test('high-severity incidents are reviewed by Neural but repair dispatch waits for explicit owner approval', async () => {
   const calls = [];
   const store = {
     createGuardianReviewJob: async (_db, args) => { calls.push(['create', args]); return { id: 9, status: 'queued' }; },
@@ -155,10 +185,17 @@ test('high-severity incidents are reviewed but repair dispatch waits for explici
     db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
     incident,
     env: {
-      FRIEREN_AI_PUBLIC_URL: 'https://frieren-ai.test',
-      FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48),
-      FRIEREN_GITHUB_TOKEN: 'y'.repeat(48),
+      FRIEREN_NEURAL_API_URL: 'https://frieren-neural.test',
+      FRIEREN_NEURAL_API_TOKEN: 'x'.repeat(48),
+      FRIEREN_NEURAL_QUALITY_APPROVED: '1',
+      FRIEREN_NEURAL_GUARDIAN_ENABLED: '1',
     },
+    collectContext: async () => ({
+      text: 'FILE: guardian/automation.js\\nexport function test() {}',
+      files: ['guardian/automation.js'],
+      contextHash: 'a'.repeat(64),
+      sourceCommitSha: 'b'.repeat(40),
+    }),
     fetchImpl: async (url, options) => {
       requests.push({ url: String(url), options });
       return { ok: true, status: 200, json: async () => review };
@@ -168,7 +205,11 @@ test('high-severity incidents are reviewed but repair dispatch waits for explici
   assert.equal(result.status, 'proposal_ready');
   assert.equal(result.approvalRequired, true);
   assert.equal(requests.length, 1);
-  assert.equal(requests[0].url, 'https://frieren-ai.test/internal/guardian-review');
+  assert.equal(requests[0].url, 'https://frieren-neural.test/internal/guardian-review');
+  assert.equal(requests[0].options.headers.Authorization, 'Bearer ' + 'x'.repeat(48));
+  const requestBody = JSON.parse(requests[0].options.body);
+  assert.equal(requestBody.source_context_hash, 'a'.repeat(64));
+  assert.deepEqual(requestBody.source_context_files, ['guardian/automation.js']);
   assert.ok(calls.some(([name]) => name === 'finishReview'));
   assert.equal(calls.some(([name]) => name === 'reserve'), false);
 });
@@ -249,10 +290,10 @@ test('failed Guardian AI review preserves the sanitized upstream error without d
     },
   });
   assert.equal(result.status, 'review_failed');
-  assert.equal(result.reason, 'GUARDIAN_AI_HTTP_400_GROQ_INVALID_REQUEST');
+  assert.equal(result.reason, 'GUARDIAN_NEURAL_HTTP_400_GROQ_INVALID_REQUEST');
   assert.equal(finished.length, 1);
   assert.equal(finished[0].status, 'failed');
-  assert.equal(finished[0].error, 'GUARDIAN_AI_HTTP_400_GROQ_INVALID_REQUEST');
+  assert.equal(finished[0].error, 'GUARDIAN_NEURAL_HTTP_400_GROQ_INVALID_REQUEST');
 });
 
 test('Guardian AI proposal does not contact GitHub before Owner approval', async () => {
@@ -333,9 +374,9 @@ test('failed repair dispatch retries from the saved AI proposal without repeatin
   assert.equal(requests[1].options.method, 'POST');
   assert.equal(requests[1].url.endsWith('/dispatches'), true);
   const payload = JSON.parse(requests[1].options.body);
-  assert.equal(payload.ref, 'guardian-isolated-repair-test-v2');
+  assert.equal(payload.ref, 'neural-guardian-migration-stage');
   assert.equal(payload.inputs.mode, 'repair');
-  assert.equal(payload.inputs.base_branch, 'guardian-isolated-repair-test-v2');
+  assert.equal(payload.inputs.base_branch, 'neural-guardian-migration-stage');
   assert.equal(payload.inputs.incident_id, '42');
   assert.equal(payload.inputs.proposed_patch, review.proposedPatch);
   assert.equal(calls[0][0], 'reserve');
@@ -356,7 +397,7 @@ test('failed repair dispatch detects an already-started workflow and does not di
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (_url, options) => {
       if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({
-        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/123' }],
+        workflow_runs: [{ display_title: 'Frieren Neural Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/123' }],
       }) };
       posts += 1;
       return { ok: true, status: 204, json: async () => ({}) };
@@ -380,7 +421,7 @@ test('repair retry replaces a terminal failed workflow when no PR was created', 
     fetchImpl: async (url, options) => {
       requests.push({ url, method: options.method });
       if (options.method === 'GET' && url.includes('/actions/workflows/')) return { ok: true, status: 200, json: async () => ({
-        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #43', status: 'completed', conclusion: 'failure', html_url: 'https://github.com/example/actions/runs/143' }],
+        workflow_runs: [{ display_title: 'Frieren Neural Repair · Guardian #43', status: 'completed', conclusion: 'failure', html_url: 'https://github.com/example/actions/runs/143' }],
       }) };
       if (options.method === 'GET' && url.includes('/pulls?')) return { ok: true, status: 200, json: async () => [] };
       return { ok: true, status: 204, json: async () => ({}) };
@@ -405,7 +446,7 @@ test('repair retry does not duplicate a terminal failed workflow that already cr
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (url, options) => {
       if (options.method === 'GET' && url.includes('/actions/workflows/')) return { ok: true, status: 200, json: async () => ({
-        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #44', status: 'completed', conclusion: 'cancelled', html_url: 'https://github.com/example/actions/runs/144' }],
+        workflow_runs: [{ display_title: 'Frieren Neural Repair · Guardian #44', status: 'completed', conclusion: 'cancelled', html_url: 'https://github.com/example/actions/runs/144' }],
       }) };
       if (options.method === 'GET' && url.includes('/pulls?')) return { ok: true, status: 200, json: async () => [{ head: { ref: 'ai-repair/guardian-44' } }] };
       posts += 1;
@@ -431,7 +472,7 @@ test('repair retry does not confuse incident 4 with a workflow for incident 42',
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (_url, options) => {
       if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({
-        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/142' }],
+        workflow_runs: [{ display_title: 'Frieren Neural Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/142' }],
       }) };
       posts += 1;
       return { ok: true, status: 204, json: async () => ({}) };
@@ -569,7 +610,7 @@ test('retry reports an existing workflow without claiming persistence when state
     env: { FRIEREN_GITHUB_TOKEN: 'y'.repeat(48) },
     fetchImpl: async (_url, options) => {
       if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({
-        workflow_runs: [{ display_title: 'Frieren AI Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/420' }],
+        workflow_runs: [{ display_title: 'Frieren Neural Repair · Guardian #42', html_url: 'https://github.com/example/actions/runs/420' }],
       }) };
       posts += 1;
       return { ok: true, status: 204, json: async () => ({}) };
@@ -643,8 +684,63 @@ test('Guardian AI review fails closed without an explicitly configured productio
       finishGuardianReviewJob: async (_db, args) => { finished.push(args); return true; },
     },
   });
-  assert.equal(result.status, 'review_failed');
-  assert.equal(result.reason, 'FRIEREN_AI_SERVICE_NOT_CONFIGURED');
+  assert.equal(result.status, 'not_configured');
+  assert.equal(result.reason, 'FRIEREN_NEURAL_QUALITY_GATE_CLOSED');
   assert.equal(requests, 0);
-  assert.equal(finished.at(-1).status, 'failed');
+  assert.equal(finished.length, 0);
+});
+
+
+
+test('Guardian review stays disabled until Neural quality approval; legacy service is never used as fallback', async () => {
+  let requests = 0;
+  let jobs = 0;
+  const result = await processGuardianIncidentRaw({
+    db: { query: async () => ({ rows: [{ setting_value: { enabled: false } }] }) },
+    incident,
+    env: { FRIEREN_AI_PUBLIC_URL: 'https://legacy-frieren-ai.test', FRIEREN_AI_BRIDGE_SECRET: 'x'.repeat(48) },
+    fetchImpl: async () => { requests += 1; throw new Error('must not call legacy service'); },
+    store: { createGuardianReviewJob: async () => { jobs += 1; } },
+  });
+  assert.equal(result.status, 'not_configured');
+  assert.equal(result.reason, 'FRIEREN_NEURAL_QUALITY_GATE_CLOSED');
+  assert.equal(requests, 0);
+  assert.equal(jobs, 0);
+});
+
+
+
+test("Neural review redacts incident secrets and identifiers before transmission", async () => {
+  let sent;
+  let contextQuestion = "";
+  const result = await requestNeuralGuardianReview({
+    incident: {
+      system: "pogaca_frieren",
+      code: "COMMAND_TIMEOUT",
+      title: "Timeout for user@example.com",
+      summary: "DISCORD_TOKEN=private-token failed for 1553794496234262641",
+      evidence: [
+        { file: "guardian/automation.js", line: 7, message: "API_KEY=hidden" },
+        { file: "../secrets.env", line: 8, message: "must be excluded" },
+      ],
+    },
+    env: {
+      FRIEREN_NEURAL_API_URL: "https://neural.example.test",
+      FRIEREN_NEURAL_API_TOKEN: "x".repeat(48),
+      FRIEREN_NEURAL_QUALITY_APPROVED: "1",
+      FRIEREN_NEURAL_GUARDIAN_ENABLED: "1",
+    },
+    collectContext: async input => {
+      contextQuestion = input.question;
+      return { text: "FILE: guardian/automation.js\nexport function test() {}", files: ["guardian/automation.js"], contextHash: "a".repeat(64) };
+    },
+    fetchImpl: async (_url, options) => {
+      sent = JSON.parse(options.body);
+      return { ok: true, status: 200, json: async () => ({ status: "proposal_only", applied: false }) };
+    },
+  });
+  assert.equal(result.status, "proposal_only");
+  assert.doesNotMatch(JSON.stringify(sent), /user@example\.com|private-token|1553794496234262641|API_KEY=hidden/);
+  assert.deepEqual(sent.incident.evidence.map(item => item.file), ["guardian/automation.js"]);
+  assert.doesNotMatch(contextQuestion, /user@example\.com|private-token|1553794496234262641/);
 });

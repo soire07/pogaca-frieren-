@@ -31,7 +31,11 @@ import { ensurePlayerExperienceSchema } from './player-experience.js';
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { runCommandTestSuite } from './scripts/live-command-test.js';
+import { runTargetedTests } from './scripts/targeted-test-runner.js';
+import { buildOwnerScenarioReport } from './ai-agent/owner-scenario-report.js';
+import { containsSensitiveInformation } from './ai-agent/memory-extractor.js';
 import { handleFrierenMentionMessage } from './frieren-chat.js';
+import { getFrierenNeuralHealthResponse } from './frieren-neural-health.js';
 import { handleOwnerDashboardRequest } from './owner-dashboard.js';
 import { startGuardianMonitor } from './guardian/monitor.js';
 import { processGuardianIncident, processPendingGuardianRepairDispatch, refreshGuardianRepairTracking } from './guardian/automation.js';
@@ -558,7 +562,7 @@ const stopGuardianMonitor = startGuardianMonitor({
 });
 await client.login(process.env.DISCORD_TOKEN);
 
-// Frieren AI runs as an independent Render service; the main bot never starts a second Discord client.
+// Frieren Neural is the single central inference service; Poğaça Frieren is its Discord-facing client.
 
 process.once('SIGTERM', async () => {
   stopGuardianMonitor?.();
@@ -572,6 +576,7 @@ process.once('SIGTERM', async () => {
 });
 const PORT = process.env.PORT || 3000;
 let uptimeRobotCache = null;
+let ownerScenarioRunning = false;
 
 createServer(withHttpErrorBoundary(async (req, res) => {
   const guardianEventSecret = String(process.env.FRIEREN_GUARD_EVENT_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
@@ -594,40 +599,11 @@ createServer(withHttpErrorBoundary(async (req, res) => {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(payload));
   };
-  if (req.method === 'GET' && ['/ai-health', '/ai-ready', '/ai-bridge-health'].includes(req.url)) {
-    try {
-      const aiBase = String(process.env.FRIEREN_AI_PUBLIC_URL || '').trim();
-      if (!aiBase) {
-        return sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent', reason: 'ai_service_not_configured' });
-      }
-      const parsedAiBase = new URL(aiBase);
-      if (parsedAiBase.protocol !== 'https:' || parsedAiBase.username || parsedAiBase.password) {
-        return sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent', reason: 'invalid_ai_service_url' });
-      }
-      const aiPath = req.url === '/ai-health' ? '/live'
-        : req.url === '/ai-ready' ? '/health' : '/bridge-health';
-      const headers = { accept: 'application/json' };
-      if (aiPath !== '/live') {
-        const bridgeSecret = String(process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
-        if (bridgeSecret.length < 32) {
-          return sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent', reason: 'bridge_secret_not_configured' });
-        }
-        headers['x-frieren-health-secret'] = bridgeSecret;
-      }
-      const response = await fetch(new URL(aiPath, parsedAiBase).toString(), {
-        headers,
-        signal: AbortSignal.timeout(5_000),
-      });
-      const body = await response.text();
-      res.writeHead(response.status, {
-        'Content-Type': response.headers.get('content-type') || 'application/json; charset=utf-8',
-        'Cache-Control': 'no-store',
-      });
-      res.end(body);
-    } catch {
-      sendJson(503, { status: 'not_ready', service: 'frieren-ai-agent', reason: 'upstream_unavailable' });
-    }
-    return;
+  if (req.method === 'GET' && ['/neural-health', '/neural-ready', '/ai-health', '/ai-ready', '/ai-bridge-health'].includes(req.url)) {
+    // The old /ai-* paths remain aliases for existing dashboards, but now report the central Neural service.
+    const healthPath = req.url === '/ai-health' ? 'live' : 'health';
+    const result = await getFrierenNeuralHealthResponse({ env: process.env, fetchImpl: fetch, timeoutMs: 5_000, healthPath });
+    return sendJson(result.status, result.payload);
   }
   if (req.method === 'GET' && req.url === '/uptimerobot-status') {
     const apiKey = process.env.UPTIMEROBOT_API_KEY;
@@ -702,6 +678,33 @@ createServer(withHttpErrorBoundary(async (req, res) => {
     const b = Buffer.from(suppliedSecret);
     const authorized = configuredSecret.length >= 32 && a.length === b.length && timingSafeEqual(a, b);
     if (!authorized) return sendJson(401, { error: 'unauthorized' });
+    if (req.method === 'POST' && req.url === '/internal/test-scenario') {
+      if (ownerScenarioRunning) return sendJson(409, { error: 'scenario_already_running' });
+      let raw = '';
+      try {
+        for await (const chunk of req) {
+          raw += chunk.toString('utf8');
+          if (Buffer.byteLength(raw, 'utf8') > 20_000) return sendJson(413, { error: 'payload_too_large' });
+        }
+      } catch {
+        return sendJson(400, { error: 'request_body_invalid' });
+      }
+      let body;
+      try { body = raw ? JSON.parse(raw) : {}; } catch { return sendJson(400, { error: 'request_json_invalid' }); }
+      const target = typeof body.target === 'string' ? body.target.trim() : '';
+      if (!target || target.length > 4_000) return sendJson(400, { error: 'invalid_test_target' });
+      if (containsSensitiveInformation(target)) return sendJson(422, { error: 'sensitive_test_target_rejected' });
+      ownerScenarioRunning = true;
+      try {
+        const result = await runTargetedTests(target);
+        return sendJson(200, buildOwnerScenarioReport(target, result));
+      } catch (error) {
+        console.error('Poğaça Owner Panel targeted test failed:', error?.name || 'Error');
+        return sendJson(500, { error: 'scenario_runner_failed' });
+      } finally {
+        ownerScenarioRunning = false;
+      }
+    }
     if (!client.isReady()) return sendJson(503, { error: 'discord_not_ready' });
     if (req.method === 'GET' && req.url === '/internal/test-catalog') {
       const commands = [...client.commands.values()].map(command => {

@@ -1,0 +1,10 @@
+Frieren Neural width-256 CPU pilot authorized by the project owner in ChatGPT on 2026-11-08.
+Parent checkpoint SHA-256: cc4a6e63a1fcf9aeed5abe9ebdbef6353391917c686624e96155412e1917041e
+Candidate: d_model=256, n_heads=8, n_layers=4, vocab=1024, context=512.
+Training: 1000 CPU steps, fresh optimizer, separate output checkpoint. No merge or production deployment.
+
+Retry 1: use immutable artifact ID 13608530293; do not alter parent checkpoint.
+
+Retry 2: extract the single artifact with merge-multiple=true.
+
+Retry 3: download parent evidence into frieren-neural/parent-evidence to match job working directory.

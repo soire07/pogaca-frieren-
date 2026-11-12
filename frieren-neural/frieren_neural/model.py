@@ -1,0 +1,289 @@
+"""A compact GPT-style decoder-only Transformer implemented with PyTorch."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import torch
+from torch import Tensor, nn
+from torch.nn import functional as F
+
+
+@dataclass(frozen=True)
+class GPTConfig:
+    vocab_size: int
+    d_model: int = 128
+    n_heads: int = 4
+    n_layers: int = 4
+    max_seq_len: int = 256
+    dropout: float = 0.1
+
+    def __post_init__(self) -> None:
+        if self.vocab_size < 4:
+            raise ValueError("vocab_size must include at least the four reserved tokens.")
+        if self.d_model <= 0 or self.n_heads <= 0 or self.n_layers <= 0 or self.max_seq_len <= 0:
+            raise ValueError("Model dimensions and layer counts must be positive.")
+        if self.d_model % self.n_heads:
+            raise ValueError("d_model must be divisible by n_heads.")
+        if not 0.0 <= self.dropout < 1.0:
+            raise ValueError("dropout must be in the interval [0, 1).")
+
+
+class CausalSelfAttention(nn.Module):
+    def __init__(self, config: GPTConfig) -> None:
+        super().__init__()
+        self.attention = nn.MultiheadAttention(
+            embed_dim=config.d_model,
+            num_heads=config.n_heads,
+            dropout=config.dropout,
+            batch_first=True,
+        )
+        self.register_buffer(
+            "causal_mask",
+            torch.triu(torch.ones(config.max_seq_len, config.max_seq_len, dtype=torch.bool), diagonal=1),
+            persistent=False,
+        )
+
+    def forward(self, hidden: Tensor) -> Tensor:
+        batch_size, sequence_length, channels = hidden.shape
+        heads = self.attention.num_heads
+        head_dim = channels // heads
+
+        # Keep nn.MultiheadAttention's parameter layout so existing checkpoints
+        # remain strictly loadable while using PyTorch's optimized SDPA kernels.
+        query, key, value = F.linear(
+            hidden,
+            self.attention.in_proj_weight,
+            self.attention.in_proj_bias,
+        ).chunk(3, dim=-1)
+        query = query.view(batch_size, sequence_length, heads, head_dim).transpose(1, 2)
+        key = key.view(batch_size, sequence_length, heads, head_dim).transpose(1, 2)
+        value = value.view(batch_size, sequence_length, heads, head_dim).transpose(1, 2)
+
+        attended = F.scaled_dot_product_attention(
+            query,
+            key,
+            value,
+            is_causal=True,
+            dropout_p=self.attention.dropout if self.training else 0.0,
+        )
+        attended = attended.transpose(1, 2).contiguous().view(
+            batch_size, sequence_length, channels
+        )
+        return self.attention.out_proj(attended)
+
+
+class TransformerBlock(nn.Module):
+    def __init__(self, config: GPTConfig) -> None:
+        super().__init__()
+        self.norm_attention = nn.LayerNorm(config.d_model)
+        self.attention = CausalSelfAttention(config)
+        self.norm_mlp = nn.LayerNorm(config.d_model)
+        self.mlp = nn.Sequential(
+            nn.Linear(config.d_model, 4 * config.d_model),
+            nn.GELU(),
+            nn.Linear(4 * config.d_model, config.d_model),
+            nn.Dropout(config.dropout),
+        )
+        self.residual_dropout = nn.Dropout(config.dropout)
+
+    def forward(self, hidden: Tensor) -> Tensor:
+        hidden = hidden + self.residual_dropout(self.attention(self.norm_attention(hidden)))
+        hidden = hidden + self.mlp(self.norm_mlp(hidden))
+        return hidden
+
+
+class GPTLanguageModel(nn.Module):
+    """Predicts the next token at each input position."""
+
+    def __init__(self, config: GPTConfig) -> None:
+        super().__init__()
+        self.config = config
+        self.token_embedding = nn.Embedding(config.vocab_size, config.d_model)
+        self.position_embedding = nn.Embedding(config.max_seq_len, config.d_model)
+        self.input_dropout = nn.Dropout(config.dropout)
+        self.blocks = nn.ModuleList([TransformerBlock(config) for _ in range(config.n_layers)])
+        self.final_norm = nn.LayerNorm(config.d_model)
+        self.output_projection = nn.Linear(config.d_model, config.vocab_size, bias=False)
+        self.output_projection.weight = self.token_embedding.weight
+        self.apply(self._initialize_weights)
+
+    @staticmethod
+    def _initialize_weights(module: nn.Module) -> None:
+        if isinstance(module, nn.Linear):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
+    def forward(self, input_ids: Tensor, targets: Tensor | None = None) -> Tensor | tuple[Tensor, Tensor]:
+        if input_ids.ndim != 2:
+            raise ValueError("input_ids must have shape [batch, sequence].")
+        batch_size, sequence_length = input_ids.shape
+        if sequence_length == 0 or sequence_length > self.config.max_seq_len:
+            raise ValueError("Input sequence length is outside the configured model context.")
+        if input_ids.dtype != torch.long:
+            raise ValueError("input_ids must use torch.long token IDs.")
+
+        positions = torch.arange(sequence_length, device=input_ids.device)
+        hidden = self.token_embedding(input_ids) + self.position_embedding(positions)[None, :, :]
+        hidden = self.input_dropout(hidden)
+        for block in self.blocks:
+            hidden = block(hidden)
+        logits = self.output_projection(self.final_norm(hidden))
+
+        if targets is None:
+            return logits
+        if targets.shape != input_ids.shape or targets.dtype != torch.long:
+            raise ValueError("targets must be torch.long and match input_ids shape.")
+        if not torch.any(targets != -100):
+            raise ValueError("targets must contain at least one supervised token.")
+        loss = F.cross_entropy(
+            logits.reshape(-1, logits.size(-1)), targets.reshape(-1), ignore_index=-100
+        )
+        return logits, loss
+
+    @torch.no_grad()
+    def generate(
+        self,
+        input_ids: Tensor,
+        *,
+        max_new_tokens: int = 40,
+        temperature: float = 1.0,
+        top_k: int | None = None,
+        eos_token_id: int | None = None,
+    ) -> Tensor:
+        if max_new_tokens < 0:
+            raise ValueError("max_new_tokens cannot be negative.")
+        if temperature <= 0:
+            raise ValueError("temperature must be greater than zero.")
+        if top_k is not None and top_k <= 0:
+            raise ValueError("top_k must be greater than zero.")
+        if eos_token_id is not None and not 0 <= eos_token_id < self.config.vocab_size:
+            raise ValueError("eos_token_id must be inside the model vocabulary.")
+        if input_ids.ndim != 2 or input_ids.size(1) == 0:
+            raise ValueError("input_ids must be a non-empty [batch, sequence] tensor.")
+
+        was_training = self.training
+        self.eval()
+        generated = input_ids
+        finished = torch.zeros(input_ids.size(0), dtype=torch.bool, device=input_ids.device)
+        try:
+            for _ in range(max_new_tokens):
+                context = generated[:, -self.config.max_seq_len :]
+                logits = self(context)[:, -1, :] / temperature
+                if top_k is not None:
+                    k = min(top_k, logits.size(-1))
+                    threshold = torch.topk(logits, k, dim=-1).values[:, -1, None]
+                    logits = logits.masked_fill(logits < threshold, float("-inf"))
+                probabilities = F.softmax(logits, dim=-1)
+                next_token = torch.multinomial(probabilities, num_samples=1)
+                if eos_token_id is not None:
+                    # Keep completed batch items at EOS while unfinished items continue.
+                    next_token = torch.where(
+                        finished.unsqueeze(1),
+                        torch.full_like(next_token, eos_token_id),
+                        next_token,
+                    )
+                    finished |= next_token.squeeze(1).eq(eos_token_id)
+                generated = torch.cat((generated, next_token), dim=1)
+                if eos_token_id is not None and bool(finished.all()):
+                    break
+        finally:
+            self.train(was_training)
+        return generated
+
+
+def load_expanded_weights(
+    model: GPTLanguageModel,
+    source_state: dict[str, Tensor],
+) -> None:
+    """Warm-start a wider model while preserving every compatible source weight.
+
+    Only width expansion is supported: vocabulary, context length and layer count
+    must remain unchanged. New channels retain the target model's seeded
+    initialization; the source subspace is copied without resizing or truncation.
+    """
+    target_config = model.config
+    target_state = model.state_dict()
+    if not isinstance(source_state, dict):
+        raise ValueError("Source model state must be a state dictionary.")
+
+    source_embedding = source_state.get("token_embedding.weight")
+    source_position = source_state.get("position_embedding.weight")
+    if not isinstance(source_embedding, Tensor) or not isinstance(source_position, Tensor):
+        raise ValueError("Source checkpoint is missing token or position embeddings.")
+    old_vocab, old_width = source_embedding.shape
+    old_context, position_width = source_position.shape
+    if position_width != old_width:
+        raise ValueError("Source embedding dimensions are inconsistent.")
+    if (
+        target_config.vocab_size != old_vocab
+        or target_config.max_seq_len != old_context
+        or target_config.n_layers != len(model.blocks)
+        or target_config.d_model < old_width
+        or target_config.d_model % target_config.n_heads
+    ):
+        raise ValueError("Expanded model must preserve vocabulary, context and layer count while widening channels.")
+
+    expanded: dict[str, Tensor] = {}
+    for name, target in target_state.items():
+        source = source_state.get(name)
+        if not isinstance(source, Tensor):
+            raise ValueError(f"Source checkpoint is missing tensor: {name}")
+        if source.shape == target.shape:
+            expanded[name] = source
+            continue
+
+        if name.endswith("attention.in_proj_weight"):
+            if source.shape != (3 * old_width, old_width) or target.shape != (3 * target_config.d_model, target_config.d_model):
+                raise ValueError(f"Unsupported attention projection shape for {name}.")
+            value = target.clone()
+            for projection in range(3):
+                value[
+                    projection * target_config.d_model:projection * target_config.d_model + old_width,
+                    :old_width,
+                ] = source[projection * old_width:(projection + 1) * old_width, :]
+            expanded[name] = value
+        elif name.endswith("attention.in_proj_bias"):
+            if source.shape != (3 * old_width,) or target.shape != (3 * target_config.d_model,):
+                raise ValueError(f"Unsupported attention bias shape for {name}.")
+            value = target.clone()
+            for projection in range(3):
+                value[projection * target_config.d_model:projection * target_config.d_model + old_width] = (
+                    source[projection * old_width:(projection + 1) * old_width]
+                )
+            expanded[name] = value
+        elif name in {"token_embedding.weight", "output_projection.weight"}:
+            value = target.clone()
+            value[:, :old_width] = source
+            expanded[name] = value
+        elif name == "position_embedding.weight":
+            value = target.clone()
+            value[:, :old_width] = source
+            expanded[name] = value
+        elif name.endswith("mlp.0.weight"):
+            value = target.clone()
+            value[:4 * old_width, :old_width] = source
+            expanded[name] = value
+        elif name.endswith("mlp.0.bias"):
+            value = target.clone()
+            value[:4 * old_width] = source
+            expanded[name] = value
+        elif name.endswith("mlp.2.weight"):
+            value = target.clone()
+            value[:old_width, :4 * old_width] = source
+            expanded[name] = value
+        elif name.endswith("mlp.2.bias") or name.endswith("norm_attention.weight") or name.endswith("norm_attention.bias") or name.endswith("norm_mlp.weight") or name.endswith("norm_mlp.bias") or name in {"final_norm.weight", "final_norm.bias"} or name.endswith("out_proj.bias"):
+            value = target.clone()
+            value[:old_width] = source
+            expanded[name] = value
+        elif name.endswith("out_proj.weight"):
+            value = target.clone()
+            value[:old_width, :old_width] = source
+            expanded[name] = value
+        else:
+            raise ValueError(f"No safe expansion mapping exists for parameter: {name}")
+
+    model.load_state_dict(expanded, strict=True)

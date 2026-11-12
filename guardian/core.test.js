@@ -152,10 +152,19 @@ function readyNeuralReport() {
     source_commit_sha: 'd'.repeat(40),
     outputs: Array.from({ length: 24 }, (_, index) => ({ id: 'TR-' + String(index + 1).padStart(3, '0'), output: 'Yanıt ' + index })),
     blocking_reasons: [],
-    human_review: { completed: true, reviewers_required: 2 },
-    review_template: { reviewers: ['reviewer_1', 'reviewer_2'] },
+    human_review: { completed: true, reviewers_required: 2, reviewer_identity_hashes: ['a'.repeat(64), 'b'.repeat(64)] },
+    review_template: { reviewers: ['a'.repeat(64), 'b'.repeat(64)] },
     checkpoint_metadata: { loss_objective_version: 2 },
-    training_provenance: { manifest_sha256: 'b'.repeat(64), licenses: ['Apache-2.0'] },
+    training_provenance: {
+      manifest_sha256: 'b'.repeat(64),
+      dataset_id: '3nesdeniz/turkish-daily-dialogues-5k',
+      dataset_revision: 'a'.repeat(40),
+      source_fingerprint_sha256: 'e'.repeat(64),
+      processed_sha256: 'f'.repeat(64),
+      sample_count: 120,
+      sources: ['Pinned Apache-2.0 corpus'],
+      licenses: ['Apache-2.0']
+    },
     heldout_metrics: {
       loss: 1.2,
       perplexity: 3.32,
@@ -166,7 +175,7 @@ function readyNeuralReport() {
       split: 'heldout',
       evaluation_version: 'ufakzeka-heldout-v1',
     },
-    baseline_comparison: { available: true, improved: true, baseline_checkpoint_sha256: 'c'.repeat(64) },
+    baseline_comparison: { available: true, improved: true, baseline_checkpoint_sha256: 'c'.repeat(64), baseline_loss_objective_version: 2, baseline_reviewer_identity_hashes: ['c'.repeat(64), 'd'.repeat(64)] },
     metrics: {
       dimension_averages: Object.fromEntries(dimensions.map(key => [key, 3.8])),
       overall_average: 3.8,
@@ -275,7 +284,8 @@ test('Neural Guardian requires the exact ordered benchmark IDs and objective pro
 
 test('Neural Guardian rejects incomplete reviewer identities and invalid training provenance', () => {
   const report = readyNeuralReport();
-  report.review_template.reviewers = ['reviewer_1', 'reviewer_1'];
+  report.review_template.reviewers = ['a'.repeat(64), 'a'.repeat(64)];
+  report.human_review.reviewer_identity_hashes = ['a'.repeat(64), 'a'.repeat(64)];
   report.training_provenance.manifest_sha256 = 'not-a-sha256';
   const result = evaluateNeuralQualityGate({ qualityReport: report });
   assert.equal(result.canStage, false);
@@ -393,4 +403,33 @@ test('Neural Guardian blocks pretrained GGUF reports without independent held-ou
   });
   assert.equal(result.canStage, false);
   assert.ok(result.reasons.includes('NEURAL_HELDOUT_METRICS_INVALID'));
+});
+
+
+
+test('Neural Guardian blocks baseline evidence without two distinct reviewer hashes', () => {
+  const report = readyNeuralReport();
+  report.baseline_comparison.baseline_reviewer_identity_hashes = ['c'.repeat(64), 'c'.repeat(64)];
+  const result = evaluateNeuralQualityGate({ qualityReport: report });
+  assert.equal(result.canStage, false);
+  assert.ok(result.reasons.includes('NEURAL_COMPARABLE_IMPROVED_BASELINE_REQUIRED'));
+});
+
+
+
+test('Neural Guardian rejects non-commercial or unknown training licenses', () => {
+  const report = readyNeuralReport();
+  report.training_provenance.licenses = ['CC-BY-NC-4.0'];
+  const result = evaluateNeuralQualityGate({ qualityReport: report });
+  assert.equal(result.canStage, false);
+  assert.ok(result.reasons.includes('NEURAL_TRAINING_PROVENANCE_MISSING'));
+});
+
+
+test('Neural Guardian rejects reports without pinned training dataset revision and file hashes', () => {
+  const report = readyNeuralReport();
+  delete report.training_provenance.processed_sha256;
+  const result = evaluateNeuralQualityGate({ qualityReport: report });
+  assert.equal(result.canStage, false);
+  assert.ok(result.reasons.includes('NEURAL_TRAINING_PROVENANCE_MISSING'));
 });

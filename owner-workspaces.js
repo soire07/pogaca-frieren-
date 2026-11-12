@@ -33,26 +33,67 @@ export async function getOwnerDatabaseDiagnostics(db) {
   };
 }
 
+function renderNeuralKnowledgeWorkspace(data = {}) {
+  const knowledge = data.knowledgeCandidates || { status: 'not_configured', candidates: [] };
+  const candidates = Array.isArray(knowledge.candidates) ? knowledge.candidates : [];
+  const statusLabel = status => status === 'promoted' ? 'Doğrulanmış' : status === 'rejected' ? 'Reddedildi' : 'İnceleme bekliyor';
+  const candidateRows = candidates.length ? candidates.map(candidate => {
+    const status = String(candidate.status || 'pending_review');
+    const reviewForm = status === 'pending_review'
+      ? '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="neural-knowledge-review"><input type="hidden" name="candidateId" value="' + escapeHtml(candidate.candidate_id) + '">'
+        + '<label>Bağımsız değerlendirici özel tokenı (en az 32 karakter)</label><input type="password" name="reviewerToken" minlength="32" maxlength="256" autocomplete="off" required>'
+        + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Bu kaydı değerlendirdiğimi onaylıyorum</label>'
+        + '<div class="actions"><button class="btn" name="decision" value="approve">Onayla</button><button class="btn danger" name="decision" value="reject">Reddet</button></div></form>'
+      : '';
+    return '<article class="rowitem"><div class="actions"><strong>' + escapeHtml(candidate.title) + '</strong><span class="' + (status === 'promoted' ? 'good' : status === 'rejected' ? 'bad' : 'warn') + '">' + statusLabel(status) + '</span></div>'
+      + '<div class="small">' + escapeHtml(candidate.source_title) + ' · ' + escapeHtml(candidate.license) + ' · ' + Number(candidate.approval_count || 0) + '/2 onay</div>'
+      + '<a class="small" href="' + escapeHtml(candidate.source_url) + '" target="_blank" rel="noopener">Kaynağı aç</a>'
+      + '<div class="small">Kaynak SHA-256: ' + escapeHtml(candidate.source_sha256) + '</div>'
+      + reviewForm + '</article>';
+  }).join('') : '<p class="muted">Henüz bilgi adayı yok.</p>';
+  const notice = data.notice === 'knowledge_candidate_submitted' ? '<p class="notice">Bilgi adayı kaydedildi ve iki bağımsız inceleme bekliyor.</p>'
+    : data.notice === 'knowledge_candidate_promoted' ? '<p class="notice">Bilgi adayı iki ayrı onay aldı ve doğrulanmış bilgi deposuna eklendi.</p>'
+    : data.notice === 'knowledge_candidate_rejected' ? '<p class="notice warn">Bilgi adayı reddedildi; arama ve eğitim verisine dahil edilmeyecek.</p>'
+    : data.notice === 'knowledge_candidate_reviewed' ? '<p class="notice">İnceleme kaydedildi; ikinci bağımsız onay bekleniyor.</p>'
+    : data.notice === 'knowledge_action_failed' ? '<p class="notice warn">Bilgi deposu işlemi başarısız oldu. API bağlantısını, tokenı ve aday verisini kontrol et.</p>' : '';
+  const connection = knowledge.status === 'not_configured'
+    ? '<p class="notice warn">Bilgi deposu için FRIEREN_NEURAL_API_URL ve FRIEREN_NEURAL_API_TOKEN gerekli.</p>'
+    : knowledge.status === 'unavailable' ? '<p class="notice warn">Bilgi deposu şu anda erişilemiyor. Var olan kayıtlar değiştirilmedi.</p>' : '';
+  return '<section class="panel" id="neural-knowledge"><h2>Doğrulanmış Bilgi Deposu</h2><p class="muted">Yalnızca açık lisanslı, kaynağı ve SHA-256 özeti kaydedilen içerikler aday olabilir. Özel Discord mesajları bu sisteme aktarılmaz. İki farklı değerlendirici tokenı gerekir; token hashleri farklı kişileri kriptografik olarak kanıtlamaz, bağımsız inceleme ayrıca sağlanmalıdır.</p>'
+    + notice + connection
+    + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="neural-knowledge-submit">'
+    + '<label>Bilgi başlığı</label><input name="title" minlength="5" maxlength="160" required>'
+    + '<label>Doğrulanmış kısa bilgi / özet</label><textarea name="content" minlength="30" maxlength="2500" required></textarea>'
+    + '<label>Kaynak başlığı</label><input name="sourceTitle" minlength="3" maxlength="180" required>'
+    + '<label>Kaynak HTTPS URL</label><input name="sourceUrl" type="url" maxlength="2048" required>'
+    + '<label>Kaynak sürümü / commit (isteğe bağlı)</label><input name="sourceRevision" maxlength="120">'
+    + '<label>Açık lisans</label><select name="license" required><option value="CC BY 4.0">CC BY 4.0</option><option value="CC BY-SA 4.0">CC BY-SA 4.0</option><option value="Apache 2.0">Apache 2.0</option><option value="MIT">MIT</option><option value="CC0-1.0">CC0-1.0</option></select>'
+    + '<label>Kaynak metin alıntısı (40–6000 karakter)</label><textarea name="sourceExcerpt" minlength="40" maxlength="6000" required></textarea>'
+    + '<p class="small">Telif koşullarını ve alıntı sınırlarını gözet. E-posta, Discord kimliği, token, parola veya özel kullanıcı mesajı ekleme.</p>'
+    + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Kaynağın açık lisanslı olduğunu ve özel veri içermediğini doğruluyorum</label><button class="btn"' + (knowledge.status === 'ready' ? '' : ' disabled') + '>Bilgi adayını incelemeye gönder</button></form>'
+    + '<h3>Bilgi adayları</h3>' + candidateRows + '</section>';
+}
+
 export function renderOwnerWorkspace(kind, data = {}) {
   const link = (href, label) => '<a class="btn secondary" href="' + href + '">' + label + '</a>';
   const card = (title, description, href, label = 'Aç') =>
     '<article class="panel"><h3>' + title + '</h3><p class="muted">' + description + '</p>' + link(href, label) + '</article>';
   const heading = (title, subtitle) => '<section class="hero"><span class="tag">FRIEREN OWNER · WORKSPACE</span><h1>' + title + '</h1><p class="muted">' + subtitle + '</p></section>';
   if (kind === 'ai') {
-    const ai = data.aiReadiness;
-    const ready = ai?.status === 'ok' && ai.discordReady === true && ai.memoryDatabaseReady === true && ai.modelConfigured === true;
+    const neural = data.neuralReadiness;
+    const ready = neural?.status === 'ready';
     const checks = [
-      ['Discord bağlantısı', ai?.discordReady],
-      ['Hafıza veritabanı', ai?.memoryDatabaseReady],
-      ['Model yapılandırması', ai?.modelConfigured]
+      ['Neural API', ready],
+      ['Model kimliği', Boolean(neural?.model)],
+      ['Üretim denemesi', neural?.generation_smoke === 'pass']
     ];
-    return heading('Frieren AI', 'Kod denetimi, senaryo testi ve kalıcı hafıza için ayrı yönetim alanı.')
+    return heading('Frieren Neural', 'Poğaça Frieren’in tek yapay zekâ motoru; model sağlığı, öğrenme ve mühendislik testleri.')
       + '<div class="grid"><div class="stat"><small>Genel durum</small><strong class="' + (ready ? 'good' : 'warn') + '">' + (ready ? 'Hazır' : 'Kontrol gerekli') + '</strong></div>'
-      + '<div class="stat"><small>İzinli sunucu</small><strong>Test sunucusu</strong><div class="small">1564945192803639356</div></div></div>'
-      + '<section class="panel"><h2>Servis kontrolleri</h2>' + checks.map(([label, value]) =>
-        '<div class="rowitem"><strong>' + label + '</strong><span class="' + (value === true ? 'good' : 'bad') + '"> · ' + (value === true ? 'Hazır' : value === false ? 'Başarısız' : 'Veri alınamadı') + '</span></div>'
-      ).join('') + '<p class="small">Bu ekran yalnızca test sunucusu için sentetik komut senaryoları çalıştırır; gerçek kullanıcı işlemi yapmaz.</p></section>'
-      + '<section class="panel"><h2>Poğaça sohbet kişiliği</h2><p class="muted">Bu ayarlar Poğaça Frieren’in etiketle açılan sohbet davranışını etkiler. Frieren AI kod/test ajanının çalışma sunucusu bu ayarlardan bağımsızdır.</p>'
+      + '<div class="stat"><small>Model</small><strong>' + escapeHtml(neural?.model || 'Bilinmiyor') + '</strong></div></div>'
+      + '<section class="panel"><h2>Neural servis kontrolleri</h2>' + checks.map(([label, value]) =>
+        '<div class="rowitem"><strong>' + label + '</strong><span class="' + (value ? 'good' : 'bad') + '"> · ' + (value ? 'Hazır' : 'Başarısız veya veri yok') + '</span></div>'
+      ).join('') + '<p class="small">Bu sağlık kontrolü model yanıtı ve servis hazırlığını doğrular; eğitim veya model terfisi başlatmaz.</p></section>'
+      + '<section class="panel"><h2>Poğaça sohbet kişiliği</h2><p class="muted">Bu ayarlar Poğaça Frieren’in etiketle açılan sohbet davranışını merkezi Frieren Neural modeliyle yönetir.</p>'
       + (data.notice === 'chat_settings_saved' ? '<p class="notice">Sohbet tercihleri kaydedildi.</p>' : '')
       + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="frieren-chat-settings">'
       + '<label><input type="checkbox" name="enabled" value="yes"' + (data.chatSettings?.enabled !== false ? ' checked' : '') + ' style="display:inline;width:auto"> Etiketle sohbet özelliği açık</label>'
@@ -64,13 +105,14 @@ export function renderOwnerWorkspace(kind, data = {}) {
       + '<button class="btn">Sohbet tercihlerini kaydet</button></form></section>'
       + (data.notice === 'test_saved' ? '<p class="notice">Test sonucu kaydedildi. PASS, FAIL veya TEST EDİLMEDİ durumunu geçmişten inceleyebilirsin.</p>' : data.notice === 'test_target_sensitive' ? '<p class="notice warn">Test senaryosu hassas bilgi içerdiği için çalıştırılmadı veya kaydedilmedi.</p>' : '')
       + '<section class="panel"><h2>Komut test çalıştırıcısı</h2><p class="muted">Boş bırakılırsa tüm komutlar denetlenir. Belirli komutları virgül veya satırla ayırarak girebilirsin. Testler sentetik etkileşim kullanır; gerçek Discord kullanıcısı adına işlem yapmaz.</p>'
-      + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="ai-test-run">'
+      + '<form method="post" action="/owner/action"><input type="hidden" name="csrf" value="' + escapeHtml(data.csrf || '') + '"><input type="hidden" name="action" value="neural-test-run">'
       + '<label>Yazdığın test senaryosu veya hedef (isteğe bağlı)</label><textarea name="target" maxlength="4000" placeholder="Örn. Ekipman kuşanıldığında temel HP/Mana değerleri kalıcı değişmemeli; çıkarıldığında eski değerler geri gelmeli."></textarea>'
       + '<label>Komut adları (isteğe bağlı)</label><textarea name="commands" maxlength="2000" placeholder="karakter, bakiye, zindan"></textarea>'
       + '<p class="small">Senaryo metni mevcut test dosyalarıyla eşleştirilir. Eşleşen test bulunamazsa veya hiçbir test gerçekten çalışmazsa sonuç BAŞARILI değil, TEST EDİLMEDİ olarak kaydedilir. PASS yalnızca seçilen testler geçerse verilir; bu, yazdığın senaryonun her ayrıntısının kapsandığı anlamına gelmez. Bu alan kendiliğinden yeni test kodu üretmez.</p>'
       + '<label><input type="checkbox" name="confirm" value="yes" required style="display:inline;width:auto"> Testleri şimdi çalıştırmayı onaylıyorum</label><button class="btn">Testleri çalıştır</button></form>'
       + (data.testRuns?.rows?.length ? '<section class="panel"><h3>Son test çalıştırmaları</h3>' + data.testRuns.rows.map(run => '<div class="rowitem"><div class="actions"><strong>#' + Number(run.id) + ' · ' + escapeHtml(String(run.target || '').slice(0, 180)) + '</strong><span class="' + (run.status === 'PASS' ? 'good' : run.status === 'FAIL' ? 'bad' : 'warn') + '">' + escapeHtml(run.status) + '</span></div><div class="small">' + Number(run.summary?.total || 0) + ' test · ' + Number(run.summary?.pass || 0) + ' PASS · ' + Number(run.summary?.fail || 0) + ' FAIL · ' + escapeHtml(new Date(run.created_at).toLocaleString('tr-TR')) + '</div>' + (Array.isArray(run.details?.testFiles) ? '<div class="small">Dosyalar: ' + escapeHtml(run.details.testFiles.join(', ')) + '</div>' : '') + (Array.isArray(run.details?.failedStages) && run.details.failedStages.length ? '<p class="notice warn">' + escapeHtml(run.details.failedStages.join(' · ')) + '</p>' : '') + '</div>').join('') + '<a href="/owner/activity">Tüm denetim ve test geçmişi</a></section>' : '<p class="muted">Henüz kaydedilmiş test çalıştırması yok.</p>') + '</section>'
-      + '<div class="columns">' + card('AI hafızası', 'Kayıtlı hafızaları görüntüle ve gerektiğinde sil.', '/owner#memories')
+      + renderNeuralKnowledgeWorkspace(data)
+      + '<div class="columns">' + card('Neural hafızası', 'Kayıtlı hafızaları görüntüle ve gerektiğinde sil.', '/owner#memories')
       + card('Teknik talepler', 'Kod değişikliği taleplerini onayla veya reddet.', '/owner#approvals')
       + card('Genel durum', 'Ana kontrol merkezine dön.', '/owner') + '</div>';
   }

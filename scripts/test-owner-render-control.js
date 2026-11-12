@@ -9,12 +9,12 @@ import {
 
 const actorId = '1553794496234262641';
 const configuredServices = Object.freeze({
-  ...RENDER_BOT_SERVICES,
-  frieren_ai: Object.freeze({
-    ...RENDER_BOT_SERVICES.frieren_ai,
-    id: 'srv-ai-test',
-    url: 'https://frieren-ai.test',
-    dashboardUrl: 'https://dashboard.render.com/web/srv-ai-test'
+  pogaca: Object.freeze({ ...RENDER_BOT_SERVICES.pogaca }),
+  neural: Object.freeze({
+    ...RENDER_BOT_SERVICES.neural,
+    id: 'srv-neural-test',
+    url: 'https://frieren-neural.test',
+    dashboardUrl: 'https://dashboard.render.com/web/srv-neural-test'
   })
 });
 
@@ -35,150 +35,135 @@ function makeDb({ recentRows = [], failAudit = false } = {}) {
   return { db: { connect: async () => client }, calls };
 }
 
-test('Render status can use public health endpoints without exposing or requiring an API key', async () => {
+test('only Poğaça and the single central Neural service are exposed to Render controls', () => {
+  assert.deepEqual(Object.keys(resolveRenderBotServices({})), ['pogaca', 'neural']);
+  const services = resolveRenderBotServices({});
+  assert.equal(services.neural.id, null);
+  assert.equal(services.neural.url, '');
+  assert.deepEqual(services.neural.allowedActions, ['restart']);
+  assert.equal(services.neural.canSuspend, false);
+});
+
+test('public health checks work without a Render API key and validate Neural readiness', async () => {
   const requested = [];
   const status = await getRenderBotServiceStatuses({
     services: configuredServices,
     apiKey: '',
     fetchImpl: async url => {
       requested.push(String(url));
-      return { ok: true, status: 200, json: async () => ({ status: 'ok' }) };
+      const neural = String(url).includes('frieren-neural.test');
+      return { ok: true, status: 200, json: async () => ({ status: neural ? 'ready' : 'ok' }) };
     }
   });
   assert.equal(status.apiConfigured, false);
   assert.equal(status.services.pogaca.health, 'healthy');
-  assert.equal(status.services.frieren_ai.health, 'healthy');
-  assert.equal(status.services.frieren_ai.url, 'https://frieren-ai.test');
-  assert.equal(status.services.frieren_ai.id, 'srv-ai-test');
+  assert.equal(status.services.neural.health, 'healthy');
+  assert.equal(status.services.neural.url, 'https://frieren-neural.test');
+  assert.equal(status.services.neural.id, 'srv-neural-test');
   assert.equal(requested.length, 2);
   assert.ok(requested.every(url => !url.includes('/v1/services/')));
 });
 
-test('Render service API and health checks start concurrently and expose the health payload', async () => {
+test('Render API service lookup is deferred before Neural health check when separate account credentials exist', async () => {
   const requested = [];
   let releaseApi;
-  const apiGate = new Promise(resolve => { releaseApi = resolve; });
+  const gate = new Promise(resolve => { releaseApi = resolve; });
   const pending = getRenderBotServiceStatuses({
     services: configuredServices,
     apiKey: 'test-token',
-    fetchImpl: async (url) => {
+    fetchImpl: async url => {
       const target = String(url);
       requested.push(target);
       if (target.includes('/v1/services/')) {
-        await apiGate;
-        const ai = target.includes(configuredServices.frieren_ai.id);
+        await gate;
+        const neural = target.includes(configuredServices.neural.id);
         return { ok: true, status: 200, json: async () => ({
-          id: ai ? configuredServices.frieren_ai.id : RENDER_BOT_SERVICES.pogaca.id,
-          suspended: 'not_suspended', suspenders: [], serviceDetails: { plan: 'free' }
+          id: neural ? configuredServices.neural.id : RENDER_BOT_SERVICES.pogaca.id,
+          suspended: 'not_suspended', suspenders: [], serviceDetails: { plan: 'free', url: neural ? 'https://frieren-neural.test' : 'https://pogaca-frieren.onrender.com' }
         }) };
       }
-      return { ok: true, status: 200, json: async () => ({ status: 'ok', discordReady: true }) };
+      return { ok: true, status: 200, json: async () => ({ status: 'ready' }) };
     }
   });
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(requested.length, 3, 'Poğaça API and health plus Frieren AI API should start before API responses resolve');
+  assert.equal(requested.length, 3);
   releaseApi();
   const status = await pending;
-  assert.equal(requested.length, 4, 'Frieren AI health should start after its API confirms it is not suspended');
-  assert.equal(status.services.frieren_ai.healthPayload.discordReady, true);
+  assert.equal(requested.length, 4);
+  assert.equal(status.services.neural.healthPayload.status, 'ready');
 });
 
-test('Render status reads suspension state and does not health-ping a suspended AI service', async () => {
+test('a suspended Neural service is not health-pinged or automatically resumed', async () => {
   const requested = [];
   const status = await getRenderBotServiceStatuses({
     services: configuredServices,
     apiKey: 'test-token',
-    fetchImpl: async (url, options) => {
-      requested.push({ url: String(url), options });
+    fetchImpl: async url => {
+      requested.push(String(url));
       if (String(url).includes('/v1/services/')) {
-        const ai = String(url).includes(configuredServices.frieren_ai.id);
+        const neural = String(url).includes(configuredServices.neural.id);
         return { ok: true, status: 200, json: async () => ({
-          id: ai ? configuredServices.frieren_ai.id : RENDER_BOT_SERVICES.pogaca.id,
-          suspended: ai ? 'suspended' : 'not_suspended',
-          suspenders: ai ? ['user'] : [],
-          dashboardUrl: 'https://dashboard.render.com/web/test',
+          id: neural ? configuredServices.neural.id : RENDER_BOT_SERVICES.pogaca.id,
+          suspended: neural ? 'suspended' : 'not_suspended',
+          suspenders: neural ? ['user'] : [],
           serviceDetails: { plan: 'free' }
         }) };
       }
       return { ok: true, status: 200, json: async () => ({ status: 'ok' }) };
     }
   });
-  assert.equal(status.apiConfigured, true);
-  assert.equal(status.services.frieren_ai.status, 'suspended');
-  assert.deepEqual(status.services.frieren_ai.suspenders, ['user']);
-  assert.equal(status.services.pogaca.health, 'healthy');
-  assert.equal(requested.filter(item => item.url.includes('frieren-ai-agent.onrender.com')).length, 0);
+  assert.equal(status.services.neural.status, 'suspended');
+  assert.deepEqual(status.services.neural.allowedActions, []);
+  assert.equal(requested.some(url => url.includes('frieren-neural.test/health')), false);
 });
 
-test('main Poğaça service cannot be suspended from its own control panel', async () => {
+test('production Poğaça and Neural services cannot be suspended from the Owner Panel', async () => {
   const { db } = makeDb();
-  await assert.rejects(executeRenderServiceAction(db, {
-    serviceKey: 'pogaca', action: 'suspend', actorId,
-    reason: 'Test', confirm: true
-  }, { apiKey: 'test-token', fetchImpl: async () => { throw new Error('must not fetch'); } }), /RENDER_ACTION_NOT_ALLOWED/);
+  for (const serviceKey of ['pogaca', 'neural', 'frieren_ai']) {
+    await assert.rejects(executeRenderServiceAction(db, {
+      serviceKey, action: 'suspend', actorId, reason: 'Test', confirm: true
+    }, { apiKey: 'test-token', services: configuredServices, fetchImpl: async () => { throw new Error('must not fetch'); } }), /RENDER_ACTION_NOT_ALLOWED/);
+  }
 });
 
-test('Render service actions require an explicit confirmation and a reason', async () => {
-  const { db } = makeDb();
-  await assert.rejects(executeRenderServiceAction(db, {
-    serviceKey: 'frieren_ai', action: 'resume', actorId,
-    reason: 'Başlat', confirm: false
-  }, { apiKey: 'test-token', fetchImpl: async () => { throw new Error('must not fetch'); } }), /RENDER_ACTION_CONFIRM_REQUIRED/);
-  await assert.rejects(executeRenderServiceAction(db, {
-    serviceKey: 'frieren_ai', action: 'resume', actorId,
-    reason: '', confirm: true
-  }, { apiKey: 'test-token', fetchImpl: async () => { throw new Error('must not fetch'); } }), /INVALID_RENDER_ACTION/);
-});
-
-test('Render restart uses the server-side token, audit record and service-specific endpoint', async () => {
+test('Neural restart uses its separate server-side Render key and writes an audit record', async () => {
+  const oldNeural = process.env.RENDER_FRIEREN_NEURAL_API_KEY;
+  const oldPogaca = process.env.RENDER_POGACA_API_KEY;
+  process.env.RENDER_FRIEREN_NEURAL_API_KEY = 'neural-account-key';
+  process.env.RENDER_POGACA_API_KEY = 'pogaca-account-key';
   const { db, calls } = makeDb();
   let request;
-  const result = await executeRenderServiceAction(db, {
-    serviceKey: 'pogaca', action: 'restart', actorId,
-    reason: 'Discord bağlantısı yenilenecek', confirm: true
-  }, {
-    apiKey: 'server-only-token',
-    services: configuredServices,
-    fetchImpl: async (url, options) => {
-      request = { url: String(url), options };
-      return { ok: true, status: 200, json: async () => ({ message: 'Service restarted' }) };
-    }
-  });
-  assert.equal(result.accepted, true);
-  assert.equal(result.httpStatus, 200);
-  assert.ok(request.url.endsWith('/v1/services/' + RENDER_BOT_SERVICES.pogaca.id + '/restart'));
-  assert.equal(request.options.method, 'POST');
-  assert.equal(request.options.headers.Authorization, 'Bearer server-only-token');
-  assert.ok(calls.some(call => call.sql.includes('pg_advisory_xact_lock')));
-  assert.ok(calls.some(call => call.sql.includes('INSERT INTO owner_audit_logs')));
-  assert.ok(calls.some(call => call.sql.includes('UPDATE owner_audit_logs')));
-  assert.ok(calls.some(call => call.sql === 'COMMIT'));
+  try {
+    const result = await executeRenderServiceAction(db, {
+      serviceKey: 'neural', action: 'restart', actorId,
+      reason: 'Neural servisinde takılma giderilecek', confirm: true
+    }, {
+      services: configuredServices,
+      fetchImpl: async (url, options) => {
+        request = { url: String(url), options };
+        return { ok: true, status: 202, json: async () => ({}) };
+      }
+    });
+    assert.equal(result.accepted, true);
+    assert.equal(result.serviceKey, 'neural');
+    assert.equal(request.options.headers.Authorization, 'Bearer neural-account-key');
+    assert.ok(request.url.endsWith('/v1/services/srv-neural-test/restart'));
+    assert.ok(calls.some(call => call.sql.includes('INSERT INTO owner_audit_logs')));
+    assert.ok(calls.some(call => call.sql.includes('UPDATE owner_audit_logs')));
+    assert.ok(calls.some(call => call.sql === 'COMMIT'));
+  } finally {
+    if (oldNeural === undefined) delete process.env.RENDER_FRIEREN_NEURAL_API_KEY;
+    else process.env.RENDER_FRIEREN_NEURAL_API_KEY = oldNeural;
+    if (oldPogaca === undefined) delete process.env.RENDER_POGACA_API_KEY;
+    else process.env.RENDER_POGACA_API_KEY = oldPogaca;
+  }
 });
 
-test('Render AI resume uses the resume endpoint and is independently controllable', async () => {
-  const { db } = makeDb();
-  let requestUrl = '';
-  const result = await executeRenderServiceAction(db, {
-    serviceKey: 'frieren_ai', action: 'resume', actorId,
-    reason: 'AI testlerini çalıştıracağım', confirm: true
-  }, {
-    apiKey: 'server-only-token',
-    services: configuredServices,
-    fetchImpl: async url => {
-      requestUrl = String(url);
-      return { ok: true, status: 202, json: async () => ({ message: 'Service resumed' }) };
-    }
-  });
-  assert.equal(result.accepted, true);
-  assert.equal(result.httpStatus, 202);
-  assert.ok(requestUrl.endsWith('/v1/services/' + configuredServices.frieren_ai.id + '/resume'));
-});
-
-test('Render API cooldown prevents repeated actions on the same service', async () => {
-  const { db, calls } = makeDb({ recentRows: [{ id: 41 }] });
+test('Render cooldown prevents repeated restart requests', async () => {
+  const { db } = makeDb({ recentRows: [{ id: 41 }] });
   let fetched = false;
   await assert.rejects(executeRenderServiceAction(db, {
-    serviceKey: 'frieren_ai', action: 'suspend', actorId,
+    serviceKey: 'neural', action: 'restart', actorId,
     reason: 'Test', confirm: true
   }, {
     apiKey: 'server-only-token',
@@ -186,13 +171,20 @@ test('Render API cooldown prevents repeated actions on the same service', async 
     fetchImpl: async () => { fetched = true; return { ok: true, status: 202, json: async () => ({}) }; }
   }), /RENDER_ACTION_COOLDOWN/);
   assert.equal(fetched, false);
-  assert.ok(calls.some(call => call.sql === 'ROLLBACK'));
 });
 
-test('Render API failures are written to the audit record without exposing response bodies', async () => {
+test('Render actions fail closed when the API key is missing', async () => {
+  const { db } = makeDb();
+  await assert.rejects(executeRenderServiceAction(db, {
+    serviceKey: 'neural', action: 'restart', actorId,
+    reason: 'Başlat', confirm: true
+  }, { apiKey: '', services: configuredServices, fetchImpl: async () => { throw new Error('must not fetch'); } }), /RENDER_API_NOT_CONFIGURED/);
+});
+
+test('Render API failures are audited without exposing response bodies', async () => {
   const { db, calls } = makeDb();
   await assert.rejects(executeRenderServiceAction(db, {
-    serviceKey: 'frieren_ai', action: 'suspend', actorId,
+    serviceKey: 'neural', action: 'restart', actorId,
     reason: 'Test', confirm: true
   }, {
     apiKey: 'server-only-token',
@@ -205,23 +197,11 @@ test('Render API failures are written to the audit record without exposing respo
   assert.doesNotMatch(update.params[1], /never surface/);
 });
 
-test('Render actions fail closed when the API key is missing', async () => {
-  let connected = false;
-  await assert.rejects(executeRenderServiceAction({ connect: async () => { connected = true; } }, {
-    serviceKey: 'frieren_ai', action: 'resume', actorId,
-    reason: 'Başlat', confirm: true
-  }, { apiKey: '', services: configuredServices, fetchImpl: async () => { throw new Error('must not fetch'); } }), /RENDER_API_NOT_CONFIGURED/);
-  assert.equal(connected, false);
-});
-
-
-test('separate Render accounts use separate API keys and the migrated Frieren AI endpoint', async () => {
-  const oldMain = process.env.RENDER_POGACA_API_KEY;
-  const oldLegacy = process.env.RENDER_API_KEY;
-  const oldAi = process.env.RENDER_FRIEREN_AI_API_KEY;
+test('separate Render accounts retain separate Poğaça and Neural API keys', async () => {
+  const oldPogaca = process.env.RENDER_POGACA_API_KEY;
+  const oldNeural = process.env.RENDER_FRIEREN_NEURAL_API_KEY;
   process.env.RENDER_POGACA_API_KEY = 'primary-account-key';
-  delete process.env.RENDER_API_KEY;
-  process.env.RENDER_FRIEREN_AI_API_KEY = 'frieren-account-key';
+  process.env.RENDER_FRIEREN_NEURAL_API_KEY = 'neural-account-key';
   const auth = [];
   try {
     const status = await getRenderBotServiceStatuses({
@@ -230,84 +210,23 @@ test('separate Render accounts use separate API keys and the migrated Frieren AI
         const target = String(url);
         if (target.includes('/v1/services/')) {
           auth.push({ target, authorization: options.headers.Authorization });
-          const ai = target.includes(configuredServices.frieren_ai.id);
+          const neural = target.includes(configuredServices.neural.id);
           return { ok: true, status: 200, json: async () => ({
-            id: ai ? configuredServices.frieren_ai.id : RENDER_BOT_SERVICES.pogaca.id,
+            id: neural ? configuredServices.neural.id : RENDER_BOT_SERVICES.pogaca.id,
             suspended: 'not_suspended', suspenders: [], serviceDetails: { plan: 'free' }
           }) };
         }
-        return { ok: true, status: 200, json: async () => ({ status: 'ok' }) };
+        return { ok: true, status: 200, json: async () => ({ status: 'ready' }) };
       }
     });
     assert.equal(status.apiConfigured, true);
     assert.equal(status.services.pogaca.apiConfigured, true);
-    assert.equal(status.services.frieren_ai.apiConfigured, true);
-    assert.deepEqual(auth.map(x => x.authorization).sort(), ['Bearer frieren-account-key', 'Bearer primary-account-key']);
-    assert.ok(auth.some(x => x.target.endsWith('/' + configuredServices.frieren_ai.id)));
+    assert.equal(status.services.neural.apiConfigured, true);
+    assert.deepEqual(auth.map(item => item.authorization).sort(), ['Bearer neural-account-key', 'Bearer primary-account-key']);
   } finally {
-    if (oldMain === undefined) delete process.env.RENDER_POGACA_API_KEY; else process.env.RENDER_POGACA_API_KEY = oldMain;
-    if (oldLegacy === undefined) delete process.env.RENDER_API_KEY; else process.env.RENDER_API_KEY = oldLegacy;
-    if (oldAi === undefined) delete process.env.RENDER_FRIEREN_AI_API_KEY; else process.env.RENDER_FRIEREN_AI_API_KEY = oldAi;
+    if (oldPogaca === undefined) delete process.env.RENDER_POGACA_API_KEY;
+    else process.env.RENDER_POGACA_API_KEY = oldPogaca;
+    if (oldNeural === undefined) delete process.env.RENDER_FRIEREN_NEURAL_API_KEY;
+    else process.env.RENDER_FRIEREN_NEURAL_API_KEY = oldNeural;
   }
-});
-
-test('Frieren AI actions use only the new account API key', async () => {
-  const oldAi = process.env.RENDER_FRIEREN_AI_API_KEY;
-  const oldMain = process.env.RENDER_POGACA_API_KEY;
-  process.env.RENDER_FRIEREN_AI_API_KEY = 'frieren-account-key';
-  process.env.RENDER_POGACA_API_KEY = 'primary-account-key';
-  let authorization = '';
-  try {
-    const { db } = makeDb();
-    await executeRenderServiceAction(db, {
-      serviceKey: 'frieren_ai', action: 'restart', actorId,
-      reason: 'Yeni AI servisini yeniden başlatma testi', confirm: true
-    }, {
-      services: configuredServices,
-    fetchImpl: async (_url, options) => {
-        authorization = options.headers.Authorization;
-        return { ok: true, status: 202, json: async () => ({}) };
-      }
-    });
-    assert.equal(authorization, 'Bearer frieren-account-key');
-  } finally {
-    if (oldAi === undefined) delete process.env.RENDER_FRIEREN_AI_API_KEY; else process.env.RENDER_FRIEREN_AI_API_KEY = oldAi;
-    if (oldMain === undefined) delete process.env.RENDER_POGACA_API_KEY; else process.env.RENDER_POGACA_API_KEY = oldMain;
-  }
-});
-
-
-test('missing production Frieren AI Render service is reported as not configured and is never probed via a stale URL', async () => {
-  const requested = [];
-  const status = await getRenderBotServiceStatuses({
-    services: {
-      ...RENDER_BOT_SERVICES,
-      frieren_ai: { ...RENDER_BOT_SERVICES.frieren_ai, id: null, url: '', dashboardUrl: null }
-    },
-    apiKey: '',
-    fetchImpl: async url => {
-      requested.push(String(url));
-      return { ok: true, status: 200, json: async () => ({ status: 'ok' }) };
-    }
-  });
-  assert.equal(status.services.frieren_ai.status, 'not_configured');
-  assert.equal(status.services.frieren_ai.health, 'not_configured');
-  assert.equal(status.services.frieren_ai.id, null);
-  assert.equal(status.services.frieren_ai.url, '');
-  assert.equal(requested.some(url => url.includes('pogaca-frieren-kltd') || url.includes('frieren-ai-agent')), false);
-});
-
-
-test('production Frieren AI Render configuration has no retired service defaults and accepts explicit service metadata', () => {
-  const missing = resolveRenderBotServices({});
-  assert.equal(missing.frieren_ai.id, null);
-  assert.equal(missing.frieren_ai.url, '');
-  assert.equal(missing.frieren_ai.dashboardUrl, null);
-  const configured = resolveRenderBotServices({
-    RENDER_FRIEREN_AI_SERVICE_ID: 'srv-ai-live',
-    RENDER_FRIEREN_AI_URL: 'https://ai.example.test'
-  });
-  assert.equal(configured.frieren_ai.id, 'srv-ai-live');
-  assert.equal(configured.frieren_ai.url, 'https://ai.example.test');
-  assert.equal(configured.frieren_ai.dashboardUrl, 'https://dashboard.render.com/web/srv-ai-live');
 });

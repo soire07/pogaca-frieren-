@@ -1,0 +1,296 @@
+name: Frieren Neural 24K to 48K Quality-Gated Continuation
+
+on:
+  push:
+    branches:
+      - feat/neural-single-core-integration-20261107
+    paths:
+      - frieren-neural/.continuation-request
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: frieren-neural-continuation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: neural_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d neural_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: frieren-neural
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Install CPU-only PyTorch and complete test dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+          python -m pip install -e ".[dev]" "fastapi>=0.110" "uvicorn[standard]>=0.27" "psycopg[binary]>=3.2"
+      - name: Run complete test suite before continuation
+        run: pytest
+      - name: Download the exact archived 24K checkpoint and immutable corpus
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 42415925022
+          name: frieren-neural-chat-max-24k-candidate-858563082d95261f5cd552ea921f1499bdef1718
+          path: frieren-neural/
+      - name: Verify checkpoint lineage, training configuration, and corpus manifests
+        run: |
+          python - <<'PY'
+          import hashlib, json, math
+          from pathlib import Path
+          import torch
+
+          checkpoint_path = Path("checkpoints/frieren-neural-chat-max-25k.pt")
+          checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+          assert checkpoint["step"] == 24000, checkpoint.get("step")
+          assert checkpoint["format_version"] == 2
+          assert checkpoint["dialogue_encoding_version"] == 2
+          assert checkpoint["loss_objective_version"] == 2
+          assert checkpoint["training_config"]["d_model"] == 128
+          assert checkpoint["training_config"]["n_heads"] == 4
+          assert checkpoint["training_config"]["n_layers"] == 4
+          assert checkpoint["training_config"]["block_size"] == 512
+          assert checkpoint["training_config"]["batch_size"] == 1
+          assert checkpoint["training_config"]["tokenizer_vocab_size"] == 1024
+          assert math.isfinite(checkpoint["train_loss"])
+          assert math.isfinite(checkpoint["validation_loss"])
+
+          train_manifest_path = Path("corpus/turkish-chat-max-25k/train/corpus_manifest.json")
+          heldout_manifest_path = Path("corpus/turkish-chat-max-25k/heldout/corpus_manifest.json")
+          train_manifest = json.loads(train_manifest_path.read_text(encoding="utf-8"))
+          heldout_manifest = json.loads(heldout_manifest_path.read_text(encoding="utf-8"))
+          train_manifest_sha = hashlib.sha256(train_manifest_path.read_bytes()).hexdigest()
+          assert train_manifest["dataset"]["split"] == "train"
+          assert heldout_manifest["dataset"]["split"] == "heldout"
+          assert checkpoint["training_dataset"]["dataset_sha256"] == train_manifest_sha
+          assert checkpoint["training_dataset"]["dataset_id"] == train_manifest["dataset"]["id"]
+          assert checkpoint["training_dataset"]["dataset_revision"] == train_manifest["dataset"]["revision"]
+          assert checkpoint["training_dataset"]["processed_sha256"] == train_manifest["dataset"]["processed_sha256"]
+          assert train_manifest["dataset"]["license"] == "apache-2.0"
+          assert heldout_manifest["dataset"]["license"] == "apache-2.0"
+          print(json.dumps({
+              "checkpoint_step": checkpoint["step"],
+              "train_loss": checkpoint["train_loss"],
+              "validation_loss": checkpoint["validation_loss"],
+              "model_config": checkpoint["model_config"],
+              "training_dataset": checkpoint["training_dataset"],
+              "heldout_dialogues": heldout_manifest["dataset"]["dialogues"],
+              "status": "verified; exact checkpoint and corpus lineage preserved"
+          }, ensure_ascii=False, indent=2))
+          PY
+      - name: Archive verified continuation inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: frieren-neural-continuation-inputs-${{ github.sha }}
+          path: |
+            frieren-neural/corpus/turkish-chat-max-25k/
+            frieren-neural/checkpoints/frieren-neural-chat-max-25k.pt
+          if-no-files-found: error
+          retention-days: 30
+
+  train-32000:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: frieren-neural
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Install CPU-only PyTorch and Frieren Neural
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+          python -m pip install "numpy>=1.24"
+          python -m pip install --no-deps -e .
+      - uses: actions/download-artifact@v4
+        with:
+          name: frieren-neural-continuation-inputs-${{ github.sha }}
+          path: frieren-neural/
+      - name: Continue the same optimizer and checkpoint to step 32,000
+        run: |
+          set -o pipefail
+          frieren-neural-train-small --data ./corpus/turkish-chat-max-25k/train \
+            --checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt --resume \
+            --steps 32000 --batch-size 1 --block-size 512 --eval-interval 500 --eval-batches 10 \
+            --d-model 128 --n-heads 4 --n-layers 4 --tokenizer-vocab-size 1024 --seed 1337 \
+            | tee ./training-metrics-step-32000.json
+      - name: Evaluate unchanged held-out split and reject regression
+        run: |
+          set -o pipefail
+          frieren-neural-evaluate --data ./corpus/turkish-chat-max-25k/heldout \
+            --checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt \
+            --batch-size 1 --batches 25 --device cpu | tee ./heldout-metrics-step-32000.json
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          train = json.loads(Path("training-metrics-step-32000.json").read_text())
+          heldout = json.loads(Path("heldout-metrics-step-32000.json").read_text())
+          if train["step"] != 32000 or heldout["step"] != 32000:
+              sys.exit("Unexpected checkpoint step.")
+          if train["validation_loss"] > 4.1186667738:
+              sys.exit("Validation loss regressed by more than 2% from the 24K baseline.")
+          if heldout["loss"] > 3.6955724308:
+              sys.exit("Held-out loss regressed by more than 1% from the 24K baseline.")
+          print("32K candidate passed the loss-regression guard.")
+          PY
+      - name: Archive 32K checkpoint and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frieren-neural-continuation-step-32000-${{ github.sha }}
+          path: |
+            frieren-neural/corpus/turkish-chat-max-25k/
+            frieren-neural/checkpoints/frieren-neural-chat-max-25k.pt
+            frieren-neural/training-metrics-step-32000.json
+            frieren-neural/heldout-metrics-step-32000.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  train-40000:
+    needs: train-32000
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: frieren-neural
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Install CPU-only PyTorch and Frieren Neural
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+          python -m pip install "numpy>=1.24"
+          python -m pip install --no-deps -e .
+      - uses: actions/download-artifact@v4
+        with:
+          name: frieren-neural-continuation-step-32000-${{ github.sha }}
+          path: frieren-neural/
+      - name: Continue the same optimizer and checkpoint to step 40,000
+        run: |
+          set -o pipefail
+          frieren-neural-train-small --data ./corpus/turkish-chat-max-25k/train \
+            --checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt --resume \
+            --steps 40000 --batch-size 1 --block-size 512 --eval-interval 500 --eval-batches 10 \
+            --d-model 128 --n-heads 4 --n-layers 4 --tokenizer-vocab-size 1024 --seed 1337 \
+            | tee ./training-metrics-step-40000.json
+      - name: Evaluate unchanged held-out split and reject regression
+        run: |
+          set -o pipefail
+          frieren-neural-evaluate --data ./corpus/turkish-chat-max-25k/heldout \
+            --checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt \
+            --batch-size 1 --batches 25 --device cpu | tee ./heldout-metrics-step-40000.json
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          train = json.loads(Path("training-metrics-step-40000.json").read_text())
+          heldout = json.loads(Path("heldout-metrics-step-40000.json").read_text())
+          if train["step"] != 40000 or heldout["step"] != 40000:
+              sys.exit("Unexpected checkpoint step.")
+          if train["validation_loss"] > 4.1186667738:
+              sys.exit("Validation loss regressed by more than 2% from the 24K baseline.")
+          if heldout["loss"] > 3.6955724308:
+              sys.exit("Held-out loss regressed by more than 1% from the 24K baseline.")
+          print("40K candidate passed the loss-regression guard.")
+          PY
+      - name: Archive 40K checkpoint and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frieren-neural-continuation-step-40000-${{ github.sha }}
+          path: |
+            frieren-neural/corpus/turkish-chat-max-25k/
+            frieren-neural/checkpoints/frieren-neural-chat-max-25k.pt
+            frieren-neural/training-metrics-step-40000.json
+            frieren-neural/heldout-metrics-step-40000.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  train-48000:
+    needs: train-40000
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: frieren-neural
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Install CPU-only PyTorch and Frieren Neural
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+          python -m pip install "numpy>=1.24"
+          python -m pip install --no-deps -e .
+      - uses: actions/download-artifact@v4
+        with:
+          name: frieren-neural-continuation-step-40000-${{ github.sha }}
+          path: frieren-neural/
+      - name: Continue the same optimizer and checkpoint to step 48,000
+        run: |
+          set -o pipefail
+          frieren-neural-train-small --data ./corpus/turkish-chat-max-25k/train \
+            --checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt --resume \
+            --steps 48000 --batch-size 1 --block-size 512 --eval-interval 500 --eval-batches 10 \
+            --d-model 128 --n-heads 4 --n-layers 4 --tokenizer-vocab-size 1024 --seed 1337 \
+            | tee ./training-metrics-step-48000.json
+      - name: Evaluate held-out data and generate the 24-prompt quality report
+        run: |
+          set -o pipefail
+          frieren-neural-evaluate --data ./corpus/turkish-chat-max-25k/heldout \
+            --checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt \
+            --batch-size 1 --batches 25 --device cpu | tee ./heldout-metrics-step-48000.json
+          frieren-neural-evaluate-quality \
+            --checkpoint ./checkpoints/frieren-neural-chat-max-25k.pt \
+            --output-dir ./quality-reports/turkish-chat-max-25k-48k \
+            --training-manifest ./corpus/turkish-chat-max-25k/train/corpus_manifest.json \
+            --heldout-report ./heldout-metrics-step-48000.json
+      - name: Archive final 48K checkpoint and all evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frieren-neural-chat-max-48k-candidate-${{ github.sha }}
+          path: |
+            frieren-neural/corpus/turkish-chat-max-25k/
+            frieren-neural/checkpoints/frieren-neural-chat-max-25k.pt
+            frieren-neural/training-metrics-step-48000.json
+            frieren-neural/heldout-metrics-step-48000.json
+            frieren-neural/quality-reports/turkish-chat-max-25k-48k/
+          if-no-files-found: warn
+          retention-days: 30
