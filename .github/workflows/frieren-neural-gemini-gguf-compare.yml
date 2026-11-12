@@ -1,4 +1,5 @@
 name: Frieren Neural Gemini vs GGUF fixed-prompt comparison
+# Comment-only update: re-run after repository secrets/variables were configured.
 
 on:
   workflow_dispatch:
