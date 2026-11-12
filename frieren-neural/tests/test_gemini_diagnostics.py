@@ -121,3 +121,30 @@ def test_gemini_health_distinguishes_short_credential_without_exposing_it(monkey
         "credential_length_valid": False,
     }
     assert "short-secret-value" not in response.text
+
+
+
+def test_gemini_health_smoke_uses_low_thinking_and_small_output_budget(monkeypatch):
+    import io
+    import json
+
+    monkeypatch.setenv("GEMINI_API_KEY", "synthetic-secret-key-" + "x" * 32)
+    monkeypatch.setenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", "1")
+    captured = {}
+
+    def fake_urlopen(request, timeout):
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        captured["timeout"] = timeout
+        return io.BytesIO(json.dumps({
+            "candidates": [{"content": {"parts": [{"text": "Merhaba"}]}}]
+        }).encode("utf-8"))
+
+    monkeypatch.setattr(api.urllib.request, "urlopen", fake_urlopen)
+    completion = api._generate_gemini_completion(
+        "health smoke", max_new_tokens=8, temperature=0.2, top_k=20,
+        thinking_level="low",
+    )
+    assert completion == "Merhaba"
+    assert captured["payload"]["generationConfig"]["maxOutputTokens"] == 32
+    assert captured["payload"]["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "low"
+    assert captured["timeout"] == 60
