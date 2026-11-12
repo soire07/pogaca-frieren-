@@ -269,7 +269,7 @@ client.once(Events.ClientReady, async readyClient => {
   setInterval(() => void processDueGuildEventReminders(readyClient), 60_000);
   setInterval(() => void processDuePlayerMarketPriceAlerts(readyClient), 5 * 60_000);
   setInterval(() => void processNewsBirdDigests(readyClient), 60 * 60_000);
-  readyClient.user.setActivity("Frieren: Beyond Journey's End Season 6", { type: ActivityType.Watching });
+  readyClient.user.setActivity(FRIEREN_WATCHING_ACTIVITY.name, { type: FRIEREN_WATCHING_ACTIVITY.type });
 });
 
 client.on(Events.GuildMemberAdd, async member => {
