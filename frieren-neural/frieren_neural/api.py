@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import hmac
 import os
@@ -23,6 +24,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
+
+
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI(
@@ -215,6 +219,15 @@ def _gemini_model_name() -> str:
     return GEMINI_MODEL_ID
 
 
+class GeminiProviderError(RuntimeError):
+    """Provider failure with a safe, non-secret diagnostic category."""
+
+    def __init__(self, reason: str, http_status: int | None = None):
+        self.reason = reason
+        self.http_status = http_status
+        super().__init__(reason)
+
+
 class GeminiRateLimitError(RuntimeError):
     def __init__(self, retry_after: int = 10):
         self.retry_after = max(1, min(int(retry_after), 120))
@@ -355,15 +368,20 @@ def _generate_gemini_completion(
             except (TypeError, ValueError):
                 retry_after = 10
             raise GeminiRateLimitError(retry_after) from error
-        if error.code in {401, 403}:
-            raise RuntimeError("The inference provider rejected its configured credentials.") from error
-        raise RuntimeError(f"The inference provider returned HTTP {error.code}.") from error
+        reason_by_status = {
+            400: "provider_bad_request",
+            401: "provider_auth_rejected",
+            403: "provider_access_denied",
+            404: "provider_model_not_found",
+        }
+        reason = reason_by_status.get(error.code, "provider_temporarily_unavailable" if error.code >= 500 else "provider_http_error")
+        raise GeminiProviderError(reason, error.code) from error
     except urllib.error.URLError as error:
-        raise RuntimeError("The inference provider is temporarily unreachable.") from error
+        raise GeminiProviderError("provider_network_error") from error
     try:
         result = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise RuntimeError("The inference provider returned invalid JSON.") from error
+        raise GeminiProviderError("provider_invalid_response") from error
     candidates = result.get("candidates") if isinstance(result, dict) else None
     candidate = candidates[0] if isinstance(candidates, list) and candidates else None
     content = candidate.get("content") if isinstance(candidate, dict) else None
@@ -374,7 +392,7 @@ def _generate_gemini_completion(
     ]
     completion = "\n".join(part for part in answer_parts if isinstance(part, str)).strip()
     if not completion:
-        raise RuntimeError("The inference provider returned an empty completion.")
+        raise GeminiProviderError("provider_empty_response")
     return completion
 
 
@@ -421,6 +439,21 @@ def _run_generation_smoke() -> str:
     if not isinstance(completion, str) or not completion.strip():
         raise RuntimeError("The model returned an empty health-check completion.")
     return "pass"
+
+
+def _health_failure_reason(error: Exception, backend: str) -> str:
+    if isinstance(error, GeminiProviderError):
+        return error.reason
+    if backend == "gemini":
+        message = str(error).lower()
+        if "data-use acknowledgement" in message:
+            return "free_tier_ack_missing"
+        if "not configured" in message:
+            return "provider_credentials_missing"
+        if "pinned" in message or "model" in message and "allowed" in message:
+            return "provider_model_configuration_invalid"
+        return "provider_runtime_error"
+    return "model_unavailable"
 
 
 def _checkpoint_path() -> Path:
@@ -780,7 +813,12 @@ def health():
         if error.status_code == 503:
             return JSONResponse(status_code=503, content={"status": "busy"})
         raise
-    except (OSError, RuntimeError, ValueError, KeyError, EOFError, ImportError, pickle.UnpicklingError):
+    except (OSError, RuntimeError, ValueError, KeyError, EOFError, ImportError, pickle.UnpicklingError) as error:
+        backend = _model_backend()
+        reason = _health_failure_reason(error, backend)
+        if backend == "gemini":
+            logger.warning("Health generation check failed: backend=gemini reason=%s", reason)
+            return JSONResponse(status_code=503, content={"status": "model_unavailable", "reason": reason})
         return JSONResponse(status_code=503, content={"status": "model_unavailable"})
     backend = _model_backend()
     model_name = GEMINI_MODEL_ID if backend == "gemini" else GROQ_MODEL_ID if backend == "groq" else "ufakai/ufakzeka-1" if backend == "ufakzeka" else "frieren-neural-scratch"
