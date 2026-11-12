@@ -48,9 +48,6 @@ jobs:
         run: node guardian/github-guard-sender.js audit "$RUNNER_TEMP/npm-audit.json" "$RUNNER_TEMP/guardian-event.json"
 
       - name: Send the event using the pinned GitHub Actions OIDC identity
-        env:
-          ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
-          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
         run: node guardian/github-guard-sender.js send "$RUNNER_TEMP/guardian-event.json"
 
       - name: Fail the audit after Guardian receives the finding
