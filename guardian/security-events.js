@@ -43,6 +43,8 @@ function normalizeSecurityEvent(input = {}, expectedSource, system) {
   if (!/^[A-Z0-9_.:-]{1,80}$/.test(code)) throw new Error('GUARDIAN_EVENT_CODE_INVALID');
   const severity = String(input.severity || '').toLowerCase();
   if (!['critical', 'high', 'medium', 'low'].includes(severity)) throw new Error('GUARDIAN_EVENT_SEVERITY_INVALID');
+  const eventType = String(input.eventType || 'incident').toLowerCase();
+  if (!['incident', 'heartbeat'].includes(eventType)) throw new Error('GUARDIAN_EVENT_TYPE_INVALID');
   const observedAt = new Date(input.observedAt || input.observed_at || Date.now());
   if (!Number.isFinite(observedAt.getTime()) || observedAt.getTime() > Date.now() + MAX_CLOCK_SKEW_MS
       || observedAt.getTime() < Date.now() - 30 * 24 * 60 * 60 * 1000) throw new Error('GUARDIAN_EVENT_TIME_INVALID');
@@ -65,6 +67,7 @@ function normalizeSecurityEvent(input = {}, expectedSource, system) {
     evidence: base.evidence,
     fingerprint: base.fingerprint,
     observedAt: observedAt.toISOString(),
+    eventType,
   };
 }
 
@@ -115,6 +118,8 @@ export async function recordGuardianSecurityEvent(db, event, {
       observedAt: event.observedAt,
       clientIp: safeIp,
       ipSource: safeText(resolvedIpSource, 32),
+      eventType: event.eventType || 'incident',
+      ...(event.sender ? { sender: safeText(event.sender, 64) } : {}),
     };
     const eventHash = createHash('sha256').update(previousHash + '\n' + canonicalJson(payload)).digest('hex');
     await client.query(
@@ -127,7 +132,7 @@ export async function recordGuardianSecurityEvent(db, event, {
       ...event.evidence,
       { message: 'Guard event ' + event.eventId + ' · SHA-256 ' + eventHash },
     ].slice(0, 8);
-    const incident = await upsertGuardianIncident(client, {
+    const incident = event.eventType === 'heartbeat' ? null : await upsertGuardianIncident(client, {
       system: event.system,
       code: event.code,
       severity: event.severity,
