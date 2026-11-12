@@ -36,7 +36,7 @@ test('robots policy exposes the public SEO landing and noindex login discovery p
   assert.equal(response.status, 200);
   assert.match(response.body, /Allow: \/tanitim/);
   assert.match(response.body, /Allow: \/login/);
-  assert.match(response.body, /Disallow: \/\\n/);
+  assert.match(response.body, /^Disallow: \/$/m);
   assert.match(response.body, /Sitemap: https:\/\/frierenbot\.vercel\.app\/sitemap\.xml/);
 });
 
