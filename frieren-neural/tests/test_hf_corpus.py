@@ -71,6 +71,41 @@ def test_build_corpus_creates_stable_train_and_heldout_splits():
     assert len(train) + len(heldout) == 40
 
 
+def test_exact_duplicate_dialogues_with_distinct_ids_never_cross_splits():
+    duplicate_messages = [
+        {"role": "user", "content": "Aynı soru"},
+        {"role": "assistant", "content": "Aynı yanıt"},
+    ]
+    rows = [make_row(f"unique-{index}") for index in range(40)]
+    rows.extend([
+        make_row("duplicate-a", messages=duplicate_messages),
+        make_row("duplicate-b", messages=duplicate_messages),
+    ])
+
+    train, heldout, _, train_ids, heldout_ids = build_corpus(rows)
+
+    duplicate_ids = {"duplicate-a", "duplicate-b"}
+    assert duplicate_ids <= set(train_ids) or duplicate_ids <= set(heldout_ids)
+    assert not (duplicate_ids & set(train_ids) and duplicate_ids & set(heldout_ids))
+    assert len(train) + len(heldout) == len(rows)
+
+
+def test_content_split_is_independent_of_source_row_order():
+    rows = [make_row(f"stable-{index}") for index in range(40)]
+    forward = build_corpus(rows)
+    reversed_rows = build_corpus(list(reversed(rows)))
+
+    forward_assignments = {
+        row_id: "heldout" if row_id in set(forward[4]) else "train"
+        for row_id in forward[3] + forward[4]
+    }
+    reversed_assignments = {
+        row_id: "heldout" if row_id in set(reversed_rows[4]) else "train"
+        for row_id in reversed_rows[3] + reversed_rows[4]
+    }
+    assert forward_assignments == reversed_assignments
+
+
 def test_prepare_corpus_writes_apache_manifest_and_loader_verifies_content_hash(tmp_path):
     output = tmp_path / "corpus"
     rows = [make_row(f"row-{index}") for index in range(40)]
