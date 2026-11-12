@@ -33,7 +33,7 @@ async function readBody(req) {
 }
 
 function bearerToken(value) {
-  const match = /^Bearer\\s+(.+)$/i.exec(String(value || ''));
+  const match = /^Bearer\s+(.+)$/i.exec(String(value || ''));
   return match ? match[1].trim() : '';
 }
 
