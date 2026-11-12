@@ -1,7 +1,7 @@
 import { ActivityType } from 'discord.js';
 
 const WATCHING_ACTIVITY = Object.freeze({
-  name: "Frieren: Beyond Journey's End Season 2",
+  name: "Frieren: Beyond Journey's End Season 6",
   type: ActivityType.Watching,
 });
 
