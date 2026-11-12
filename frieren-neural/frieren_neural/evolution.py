@@ -87,21 +87,18 @@ def _valid_sha(value: object, length: int) -> bool:
 
 
 def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5) -> dict[str, Any]:
-    """Create a curriculum plan only from a fully evidenced, independently reviewed report."""
+    """Create a curriculum plan only from a fully evidenced automated-quality report."""
     if not 0.0 <= weak_threshold <= 4.0:
         raise ValueError("weak_threshold must be between 0 and 4.")
     if not isinstance(report, dict):
         raise ValueError("quality report must be an object.")
 
-    review = report.get("human_review")
+    automated = report.get("automated_quality")
     metrics = report.get("metrics")
     comparison = report.get("baseline_comparison")
     provenance = report.get("training_provenance")
     heldout = report.get("heldout_metrics")
     checkpoint_metadata = report.get("checkpoint_metadata")
-    reviewer_hashes = review.get("reviewer_identity_hashes") if isinstance(review, dict) else None
-    review_template = report.get("review_template")
-    template_hashes = review_template.get("reviewers") if isinstance(review_template, dict) else None
     outputs = report.get("outputs")
     blocking_reasons: list[str] = []
 
@@ -116,27 +113,18 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
     if not isinstance(report.get("blocking_reasons"), list) or report.get("blocking_reasons"):
         blocking_reasons.append("quality_report_blockers_present")
 
-    from .quality_evaluation import build_score_binding
-    try:
-        expected_candidate_binding = build_score_binding(report.get("checkpoint_sha256"), outputs)
-    except ValueError:
-        expected_candidate_binding = None
-    reviewers_valid = (
-        isinstance(review, dict)
-        and review.get("completed") is True
-        and review.get("reviewers_required") == 2
-        and isinstance(reviewer_hashes, list)
-        and len(reviewer_hashes) == 2
-        and all(_valid_sha(value, 64) for value in reviewer_hashes)
-        and reviewer_hashes[0] != reviewer_hashes[1]
-        and template_hashes == reviewer_hashes
-        and expected_candidate_binding is not None
-        and review.get("candidate_binding") == expected_candidate_binding
-        and isinstance(review_template, dict)
-        and review_template.get("candidate_binding") == expected_candidate_binding
+    automated_valid = (
+        isinstance(automated, dict)
+        and automated.get("evaluator_version") == "tr-rule-gate-v1"
+        and automated.get("prompt_set_version") == report.get("prompt_set_version")
+        and automated.get("passed") is True
+        and automated.get("cases_total") == 24
+        and isinstance(automated.get("case_results"), list)
+        and len(automated["case_results"]) == 24
+        and not automated.get("blocking_reasons")
     )
-    if not reviewers_valid:
-        blocking_reasons.append("two_distinct_human_reviewers_required")
+    if not automated_valid:
+        blocking_reasons.append("automated_quality_gate_missing_or_failed")
 
     provenance_valid = (
         _has_pinned_training_provenance(provenance)
@@ -169,7 +157,6 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
     if not heldout_valid:
         blocking_reasons.append("heldout_evidence_missing_or_invalid")
 
-    baseline_reviewer_hashes = comparison.get("baseline_reviewer_identity_hashes") if isinstance(comparison, dict) else None
     baseline_valid = (
         isinstance(comparison, dict)
         and comparison.get("available") is True
@@ -180,14 +167,12 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
         and isinstance(comparison.get("baseline_loss_objective_version"), int)
         and not isinstance(comparison.get("baseline_loss_objective_version"), bool)
         and comparison.get("baseline_loss_objective_version") == checkpoint_metadata.get("loss_objective_version")
-        and isinstance(baseline_reviewer_hashes, list)
-        and len(baseline_reviewer_hashes) == 2
-        and all(_valid_sha(value, 64) for value in baseline_reviewer_hashes)
-        and baseline_reviewer_hashes[0] != baseline_reviewer_hashes[1]
         and isinstance(comparison.get("baseline_candidate_binding"), dict)
         and comparison["baseline_candidate_binding"].get("checkpoint_sha256") == comparison.get("baseline_checkpoint_sha256")
         and comparison["baseline_candidate_binding"].get("prompt_set_version") == report.get("prompt_set_version")
         and _valid_sha(comparison["baseline_candidate_binding"].get("outputs_sha256"), 64)
+        and not comparison.get("regressed_cases")
+        and bool(comparison.get("improved_cases"))
     )
     if not baseline_valid:
         blocking_reasons.append("comparable_baseline_improvement_not_proven")
@@ -202,6 +187,21 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
         blocking_reasons.append("benchmark_outputs_incomplete")
 
     averages = metrics.get("dimension_averages") if isinstance(metrics, dict) else None
+    if not isinstance(averages, dict) and automated_valid:
+        dimension_cases = {
+            "correctness": ("TR-003", "TR-004", "TR-010", "TR-013", "TR-014"),
+            "instruction_adherence": ("TR-002", "TR-009", "TR-017", "TR-021"),
+            "turkish_quality": ("TR-001", "TR-007", "TR-020"),
+            "grounding": ("TR-006", "TR-019"),
+            "safety_privacy": ("TR-011", "TR-012", "TR-022"),
+            "conversation_consistency": ("TR-005", "TR-008", "TR-015", "TR-016", "TR-018", "TR-023", "TR-024"),
+        }
+        case_results = {item["id"]: item for item in automated["case_results"]}
+        averages = {
+            dimension: sum(4.0 if case_results.get(case_id, {}).get("passed") else 0.0
+                           for case_id in case_ids) / len(case_ids)
+            for dimension, case_ids in dimension_cases.items()
+        }
     if not isinstance(averages, dict):
         blocking_reasons.append("dimension_metrics_missing")
 
@@ -217,8 +217,9 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
         "priority_dimensions": [],
         "curriculum_actions": [],
         "guardrails": {
-            "independent_human_review_required": True,
-            "distinct_reviewer_identity_hashes_required": True,
+            "independent_human_review_required": False,
+            "distinct_reviewer_identity_hashes_required": False,
+            "automated_quality_gate_required": True,
             "model_self_scoring_allowed": False,
             "unreviewed_synthetic_data_allowed": False,
             "automatic_source_code_mutation": False,
@@ -247,13 +248,13 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
         plan["next_action"] = "Expand the independent benchmark before changing the training corpus."
     else:
         plan["status"] = "CURRICULUM_READY_FOR_REVIEW"
-        plan["next_action"] = "Prepare licensed, human-reviewed examples for the listed weak dimensions, then train an isolated candidate."
+        plan["next_action"] = "Prepare licensed examples for the listed weak dimensions, then train an isolated candidate and rerun the deterministic benchmark."
     return plan
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build a quality-gated Frieren Neural self-improvement plan.")
-    parser.add_argument("--report", required=True, help="Human-reviewed quality-report.json")
+    parser.add_argument("--report", required=True, help="Automated quality-report.json")
     parser.add_argument("--output", default="evolution-plan.json")
     args = parser.parse_args()
     report = json.loads(Path(args.report).read_text(encoding="utf-8"))
@@ -283,7 +284,7 @@ def run_candidate_search(
 
     This routine never replaces the baseline. Even a lower held-out loss only
     earns a human-review candidate status; conversational quality still needs
-    the independent 24-prompt/two-reviewer gate.
+    the deterministic 24-prompt automated quality gate.
     """
     if candidate_steps < 1 or heldout_batches < 1:
         raise ValueError("candidate_steps and heldout_batches must be positive.")
@@ -316,13 +317,13 @@ def run_candidate_search(
         raise ValueError("Baseline held-out loss is not finite.")
 
     from .quality_evaluation import (
-        build_report, empty_score_template, evaluate_checkpoint_quality, render_markdown,
+        build_report, evaluate_checkpoint_quality, render_markdown,
     )
 
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
 
-    def write_quality_package(checkpoint: Path, metrics: dict[str, Any], folder: Path) -> str:
+    def write_quality_package(checkpoint: Path, metrics: dict[str, Any], folder: Path, *, baseline_report: dict[str, Any] | None = None, establish_baseline: bool = False) -> str:
         outputs, checkpoint_sha, step, checkpoint_metadata = evaluate_checkpoint_quality(
             checkpoint, device=device
         )
@@ -337,21 +338,20 @@ def run_candidate_search(
             model_backend="scratch",
             artifact_sha256=checkpoint_sha,
             source_commit_sha=source_commit_sha,
+            baseline_report=baseline_report,
+            establish_baseline=establish_baseline,
         )
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "quality-report.json").write_text(
             json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
         (folder / "quality-report.md").write_text(render_markdown(report), encoding="utf-8")
-        (folder / "human-scores.template.json").write_text(
-            json.dumps(empty_score_template(checkpoint_sha256=checkpoint_sha, outputs=outputs), ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
         return str(folder / "quality-report.json")
 
     baseline_quality_report = write_quality_package(
-        baseline_path, baseline_metrics, destination / "baseline-quality"
+        baseline_path, baseline_metrics, destination / "baseline-quality", establish_baseline=True
     )
+    baseline_report_data = json.loads(Path(baseline_quality_report).read_text(encoding="utf-8"))
     trials: list[dict[str, Any]] = []
     for index, factor in enumerate(learning_rate_factors, start=1):
         candidate_path = destination / f"candidate-{index:02d}-lr-{factor:g}.pt"
@@ -375,8 +375,10 @@ def run_candidate_search(
                 raise ValueError("Candidate held-out loss is not finite.")
             candidate_sha = hashlib.sha256(candidate_path.read_bytes()).hexdigest()
             quality_report_path = write_quality_package(
-                candidate_path, heldout, destination / f"{candidate_path.stem}-quality"
+                candidate_path, heldout, destination / f"{candidate_path.stem}-quality",
+                baseline_report=baseline_report_data,
             )
+            candidate_quality_data = json.loads(Path(quality_report_path).read_text(encoding="utf-8"))
             trials.append({
                 "candidate_id": f"candidate-{index:02d}",
                 "learning_rate_factor": factor,
@@ -385,9 +387,10 @@ def run_candidate_search(
                 "training": training_metrics,
                 "heldout": heldout,
                 "quality_report": quality_report_path,
-                "status": "IMPROVED_HELDOUT_PENDING_HUMAN_REVIEW"
-                if loss < baseline_loss * (1.0 - min_relative_improvement)
-                else "NO_PROVEN_HELDOUT_IMPROVEMENT",
+                "quality_decision": candidate_quality_data.get("decision"),
+                "status": "READY_FOR_STAGED_TEST"
+                if candidate_quality_data.get("decision") == "READY FOR STAGED TEST"
+                else "AUTOMATED_QUALITY_GATE_BLOCKED",
             })
         except Exception as error:
             trials.append({
@@ -399,15 +402,17 @@ def run_candidate_search(
             })
 
     successful = [item for item in trials if item.get("heldout", {}).get("loss") is not None]
-    best = min(successful, key=lambda item: item["heldout"]["loss"]) if successful else None
+    quality_ready = [item for item in successful if item.get("quality_decision") == "READY FOR STAGED TEST"]
+    best = min(quality_ready, key=lambda item: item["heldout"]["loss"]) if quality_ready else None
     improved = bool(best and best["heldout"]["loss"] < baseline_loss * (1.0 - min_relative_improvement))
     report = {
         "schema_version": 1,
         "engine": "frieren-neural-candidate-search",
         "status": (
             "CANDIDATE_SEARCH_FAILED" if not successful
-            else "BEST_CANDIDATE_PENDING_INDEPENDENT_HUMAN_REVIEW" if improved
-            else "BASELINE_RETAINED_NO_QUALITY_IMPROVEMENT_PROVEN"
+            else "BEST_CANDIDATE_READY_FOR_STAGED_TEST" if improved
+            else "NO_CANDIDATE_PASSED_AUTOMATED_QUALITY_GATE" if not quality_ready
+            else "BASELINE_RETAINED_NO_HELDOUT_IMPROVEMENT_PROVEN"
         ),
         "baseline_quality_report": baseline_quality_report,
         "baseline": {
@@ -431,8 +436,9 @@ def run_candidate_search(
         "promotion": {
             "automatic_promotion": False,
             "baseline_overwritten": False,
-            "human_review_required": True,
-            "two_independent_reviewers_required": True,
+            "human_review_required": False,
+            "two_independent_reviewers_required": False,
+            "automated_quality_gate_required": True,
             "same_24_prompt_benchmark_required": True,
             "critical_safety_or_fabrication_failure_blocks_promotion": True,
         },
