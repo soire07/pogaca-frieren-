@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, Collection, EmbedBuilder, Events, GatewayIntentBits, MessageFlags, PermissionFlagsBits } from 'discord.js';
+import { ActivityType, ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, Collection, EmbedBuilder, Events, GatewayIntentBits, MessageFlags, PermissionFlagsBits } from 'discord.js';
 import { readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -269,20 +269,7 @@ client.once(Events.ClientReady, async readyClient => {
   setInterval(() => void processDueGuildEventReminders(readyClient), 60_000);
   setInterval(() => void processDuePlayerMarketPriceAlerts(readyClient), 5 * 60_000);
   setInterval(() => void processNewsBirdDigests(readyClient), 60 * 60_000);
-  const activities = [
-    'bin yıllık büyüler öğreniyor ✨',
-    'Fern ile büyü çalışıyor 🔮',
-    'Stark ile iblis avlıyor ⚔️',
-    'Himmel’in yolculuklarını hatırlıyor 🌼',
-    'mimic sandıklarından uzak duruyor 📦',
-    'poğaça ve mana arıyor 🥐'
-  ];
-  let activityIndex = 0;
-  readyClient.user.setActivity(activities[activityIndex]);
-  setInterval(() => {
-    activityIndex = (activityIndex + 1) % activities.length;
-    readyClient.user.setActivity(activities[activityIndex]);
-  }, 60_000);
+  readyClient.user.setActivity(FRIEREN_WATCHING_ACTIVITY.name, { type: FRIEREN_WATCHING_ACTIVITY.type });
 });
 
 client.on(Events.GuildMemberAdd, async member => {
