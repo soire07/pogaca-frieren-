@@ -98,3 +98,4 @@ jobs:
             frieren-neural/quality-reports/gemini/
           if-no-files-found: warn
           retention-days: 14
+# Safe credential recheck trigger 2026-11-12
