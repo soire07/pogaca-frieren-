@@ -10,7 +10,7 @@ import { redactGuardianText } from './core.js';
 
 export { getGuardianProposalFingerprint };
 
-export const GUARDIAN_REPAIR_BRANCH = 'guardian-isolated-repair-test-v2';
+export const GUARDIAN_REPAIR_BRANCH = 'main';
 const REPAIR_WORKFLOW = 'frieren-ai-self-repair.yml';
 const REPOSITORY = 'soire07/pogaca-frieren-';
 
