@@ -173,6 +173,22 @@ print(generate_text(model, tokenizer, "Frieren ", max_new_tokens=80))
 
 The FastAPI service exposes health, authenticated server-to-server generation, and a same-origin browser chat. Poğaça Frieren is the only Discord client and calls this inference core; Neural itself does not run a separate Discord bot.
 
+### Temporary reasoning backend (free-tier only)
+
+The API also supports an explicitly selected `FRIEREN_MODEL_BACKEND=groq` backend for the fastest usable assistant path while the local model remains experimental. It calls the existing Groq Chat Completions API with the pinned model `openai/gpt-oss-20b`; it does not download model weights, add a paid dependency, or change the scratch/`ufakzeka` checkpoints.
+
+Configure these variables on the **Neural service only**:
+
+```bash
+FRIEREN_MODEL_BACKEND=groq
+GROQ_API_KEY=<existing Groq key, stored as a Render secret>
+FRIEREN_GROQ_REASONING_EFFORT=medium
+```
+
+The model ID is pinned; setting a different FRIEREN_GROQ_MODEL is rejected. Requests are bounded to 512 completion tokens and 45 seconds, reasoning output is hidden, credentials are never returned by health endpoints, and provider HTTP 429 responses are passed through as retryable 429s with Retry-After. The backend fails closed when the key is missing or invalid; it does not silently switch to a different model. /health checks configuration without spending a generation request. Set FRIEREN_HEALTH_GENERATION_SMOKE=1 only when an actual inference check is intended.
+
+Use this only while the Groq account remains on its Free plan. Do not add a payment method or upgrade to a paid tier. Groq's current rate-limit reference lists openai/gpt-oss-20b at 30 requests/minute, 1,000 requests/day, 8,000 tokens/minute and 200,000 tokens/day; the account's own Limits page is authoritative. See [Groq rate limits](https://console.groq.com/docs/rate-limits) and [model details/pricing](https://console.groq.com/docs/model/openai/gpt-oss-20b). This is a temporary inference provider, not evidence that the local Neural model has learned or passed its quality gate.
+
 ### Turkish-first model backend
 
 The serving API supports `FRIEREN_MODEL_BACKEND=ufakzeka`. This selects `ufakai/ufakzeka-1`, a Turkish-first 151M-parameter chat model published under Apache-2.0. Its recommended Q8 GGUF is approximately 196 MB. The runtime downloads it on first model load, verifies the published SHA-256 before accepting it, uses memory mapping, and keeps one model instance per process. It uses the model's native user/assistant chat template; do not inject a system-role message because the released chat model was trained without system messages.
