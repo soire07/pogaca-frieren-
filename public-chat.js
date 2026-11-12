@@ -33,7 +33,7 @@ async function createPublicChatSchema(db){
    ALTER TABLE frieren_public_chat_reactions DROP CONSTRAINT IF EXISTS frieren_public_chat_reactions_emoji_check;
    ALTER TABLE frieren_public_chat_reactions ADD CONSTRAINT frieren_public_chat_reactions_emoji_check CHECK (emoji IN ('❤️','✨','😂','😍','🥰','😭','👀','🎉','🙌','💜','🍪','🌸'));
   END IF;
- END $$`);
+ END; $$`);
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_blocks(blocker_account_id TEXT NOT NULL,blocked_account_id TEXT NOT NULL,blocked_username VARCHAR(24) NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(blocker_account_id,blocked_account_id),CHECK(blocker_account_id<>blocked_account_id))');
  await db.query('CREATE INDEX IF NOT EXISTS frieren_public_chat_recent_idx ON frieren_public_chat_messages(created_at DESC) WHERE hidden=FALSE');
  await db.query('CREATE INDEX IF NOT EXISTS frieren_public_chat_account_idx ON frieren_public_chat_messages(account_id,created_at DESC)');
