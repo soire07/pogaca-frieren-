@@ -1,14 +1,16 @@
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
+import { assertIsolatedAuditDatabase } from './isolated-audit-db-guard.js';
 import {pool,initDatabase} from '../database/db.js';
 import {adoptCompanion,careForCompanion,equipCompanionCosmetic,evolveCompanion,getCompanion,getCompanionEvolutionHistory,initCompanionSchema} from '../companions.js';
 const guild='companion-audit-guild',user='companion-audit-user',poorUser='companion-audit-poor',lockUser='companion-audit-lock',evolutionUser='companion-audit-evolution',evolutionPoor='companion-audit-evolution-poor',evolutionRace='companion-audit-evolution-race';
 before(async()=>{
+ assertIsolatedAuditDatabase();
  await initDatabase();await initCompanionSchema(pool);
  await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id IN ($2,$3,$4,$5,$6,$7)',[guild,user,poorUser,lockUser,evolutionUser,evolutionPoor,evolutionRace]);
  await pool.query('INSERT INTO users(guild_id,user_id,coins) VALUES($1,$2,1000),($1,$3,0),($1,$4,1000),($1,$5,20000),($1,$6,500),($1,$7,20000)',[guild,user,poorUser,lockUser,evolutionUser,evolutionPoor,evolutionRace]);
 });
-after(async()=>{await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id IN ($2,$3,$4,$5,$6,$7)',[guild,user,poorUser,lockUser,evolutionUser,evolutionPoor,evolutionRace]);await pool.end();});
+after(async()=>{assertIsolatedAuditDatabase();await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id IN ($2,$3,$4,$5,$6,$7)',[guild,user,poorUser,lockUser,evolutionUser,evolutionPoor,evolutionRace]);await pool.end();});
 test('concurrent adoption charges once and persists exactly one companion',async()=>{
  const results=await Promise.all([
   adoptCompanion(pool,{guildId:guild,userId:user,companionKey:'flamme_fox'}),

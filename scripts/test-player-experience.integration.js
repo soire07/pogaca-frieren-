@@ -1,18 +1,20 @@
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
+import { assertIsolatedAuditDatabase } from './isolated-audit-db-guard.js';
 import {pool,initDatabase} from '../database/db.js';
 import {ensureAdventurerPlatformTables,createGuildEvent,joinGuildEvent} from '../adventurer-platform.js';
 import {HOME_ROOMS,ALCHEMY_RECIPES,PLAYER_COSMETICS,ensurePlayerExperienceSchema,brewHomePotion,getPlayerHome,unlockHomeRoom,saveHomeLayout,getHomeTrophies,placeHomeTrophy,getCosmeticAcquisitionHistory,setHomeVisibility,getPublicPlayerHome,purchaseCosmetic,equipCosmetic,saveCosmeticPreset,applyCosmeticPreset,checkInGuildEvent,claimEventMilestone} from '../player-experience.js';
 const guild='1539562273197260860',user='123456789012345678';
 let eventId;
 before(async()=>{
+ assertIsolatedAuditDatabase();
  await initDatabase();await ensureAdventurerPlatformTables(pool);await ensurePlayerExperienceSchema(pool);
  await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);
  await pool.query('INSERT INTO users(guild_id,user_id,level,coins) VALUES($1,$2,50,50000)',[guild,user]);
  const event=await createGuildEvent(pool,{guildId:guild,createdBy:'123456789012345678',title:'Audit Event',startsAt:new Date(Date.now()+60000).toISOString(),endsAt:new Date(Date.now()+3600000).toISOString()});
  eventId=event.eventId;
 });
-after(async()=>{await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);await pool.end();});
+after(async()=>{assertIsolatedAuditDatabase();await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guild,user]);await pool.end();});
 test('home room unlock and layout persist only supported unlocked rooms and decorations',async()=>{
  const home=await getPlayerHome(pool,{guildId:guild,userId:user});
  assert.equal(home.home.active_room,'starter');

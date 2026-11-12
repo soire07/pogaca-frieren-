@@ -1,14 +1,16 @@
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { assertIsolatedAuditDatabase } from './isolated-audit-db-guard.js';
 import { pool, initDatabase } from '../database/db.js';
 import { fishAtZone, getFishCollection, getFishingGear, initFishingSchema, upgradeFishingRod, purchaseFishingBait } from '../fishing.js';
 const guildId='99000000000000004', userId='82000000000000001';
 before(async () => {
+  assertIsolatedAuditDatabase();
   await initDatabase(); await initFishingSchema(pool);
   await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
   await pool.query('INSERT INTO users(guild_id,user_id,level,coins) VALUES($1,$2,1,10000)',[guildId,userId]);
 });
-after(async () => { await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]); await pool.end(); });
+after(async () => { assertIsolatedAuditDatabase(); await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]); await pool.end(); });
 test('concurrent fishing requests award one catch and enforce cooldown atomically', async () => {
   const results=await Promise.all([
     fishAtZone(pool,{guildId,userId,zoneKey:'kuzey_kiyisi'},{random:()=>0}),

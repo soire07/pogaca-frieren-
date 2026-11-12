@@ -1,10 +1,12 @@
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
+import { assertIsolatedAuditDatabase } from './isolated-audit-db-guard.js';
 import {pool,initDatabase} from '../database/db.js';
 import {claimCreature,getCreatureCollection,getCreatureWishlist,initCreatureSchema,maybeSpawnCreature,setCreatureWishlist} from '../creatures.js';
 const guild='creature-audit-guild',channel='creature-audit-channel',userA='creature-user-a',userB='creature-user-b',wishlistGuild='creature-wishlist-audit';
-before(async()=>{await initDatabase();await initCreatureSchema(pool);});
+before(async()=>{assertIsolatedAuditDatabase();await initDatabase();await initCreatureSchema(pool);});
 after(async()=>{
+ assertIsolatedAuditDatabase();
  await pool.query('DELETE FROM users WHERE (guild_id=$1 AND user_id IN ($2,$3)) OR (guild_id=$4 AND user_id=$2)',[guild,userA,userB,wishlistGuild]);
  await pool.query('DELETE FROM active_creature_spawns WHERE guild_id IN ($1,$2)',[guild,wishlistGuild]);
  await pool.query('DELETE FROM guild_creature_spawn_state WHERE guild_id IN ($1,$2)',[guild,wishlistGuild]);
