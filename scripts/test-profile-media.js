@@ -18,7 +18,7 @@ test('profile media enforces avatar and banner byte limits',()=>{
  assert.throws(()=>validateProfileImage('avatar',Buffer.alloc(2*1024*1024+1)),/PROFILE_MEDIA_SIZE_INVALID/);
 });
 
-test('profile media read bootstraps its table before selecting',async()=>{
+test('profile media read initializes its account dependency before its own table and SELECT',async()=>{
  const statements=[];
  const db={query:async(sql)=>{
   statements.push(String(sql).trim());
@@ -28,6 +28,10 @@ test('profile media read bootstraps its table before selecting',async()=>{
  const {getProfileMedia}=await import('../profile-media.js');
  const result=await getProfileMedia(db,'site_123e4567-e89b-42d3-a456-426614174000','avatar');
  assert.equal(result,null);
- assert.match(statements[0],/CREATE TABLE IF NOT EXISTS frieren_profile_media/);
- assert.match(statements[1],/SELECT mime_type,media_data,width,height FROM frieren_profile_media/);
+ const accountTable=statements.findIndex(sql=>/CREATE TABLE IF NOT EXISTS frieren_site_accounts/.test(sql));
+ const mediaTable=statements.findIndex(sql=>/CREATE TABLE IF NOT EXISTS frieren_profile_media/.test(sql));
+ const mediaRead=statements.findIndex(sql=>/SELECT mime_type,media_data,width,height FROM frieren_profile_media/.test(sql));
+ assert.ok(accountTable>=0,'site account table must be initialized');
+ assert.ok(mediaTable>accountTable,'profile media table must be initialized after its FK target');
+ assert.ok(mediaRead>mediaTable,'profile media SELECT must happen after both tables are initialized');
 });
