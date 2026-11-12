@@ -1,6 +1,9 @@
 import json
+import sys
+from types import SimpleNamespace
 
 import pytest
+import frieren_neural.hf_corpus as hf_corpus
 
 from frieren_neural.hf_corpus import (
     build_corpus,
@@ -164,3 +167,52 @@ def test_source_fingerprint_supports_one_shot_iterables(tmp_path):
     )
     assert train_manifest["dataset"]["source_sha256"] == heldout_manifest["dataset"]["source_sha256"]
     assert len(train_manifest["dataset"]["source_sha256"]) == 64
+
+
+def test_importer_uses_the_approved_immutable_revision_and_license(tmp_path, monkeypatch):
+    calls = {}
+    rows = [make_row(f"pinned-{index}") for index in range(40)]
+
+    class FakeApi:
+        def dataset_info(self, dataset_id, *, revision):
+            calls["dataset_info"] = (dataset_id, revision)
+            return SimpleNamespace(
+                sha=hf_corpus.DATASET_REVISION,
+                cardData={"license": "apache-2.0"},
+            )
+
+    def fake_load_dataset(dataset_id, *, split, revision):
+        calls["load_dataset"] = (dataset_id, split, revision)
+        return rows
+
+    monkeypatch.setitem(sys.modules, "huggingface_hub", SimpleNamespace(HfApi=FakeApi))
+    monkeypatch.setitem(sys.modules, "datasets", SimpleNamespace(load_dataset=fake_load_dataset))
+    monkeypatch.setattr(hf_corpus, "EXPECTED_DATASET_ROWS", len(rows))
+    output = tmp_path / "pinned-corpus"
+    monkeypatch.setattr(sys, "argv", ["frieren-neural-import-chat-max", "--output", str(output)])
+
+    hf_corpus.main()
+
+    assert calls["dataset_info"] == (hf_corpus.DATASET_ID, hf_corpus.DATASET_REVISION)
+    assert calls["load_dataset"] == (hf_corpus.DATASET_ID, "train", hf_corpus.DATASET_REVISION)
+    manifest = json.loads((output / "train" / "corpus_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["dataset"]["revision"] == hf_corpus.DATASET_REVISION
+    assert manifest["dataset"]["license"] == "apache-2.0"
+
+
+def test_importer_fails_closed_if_hugging_face_resolves_a_different_revision(tmp_path, monkeypatch):
+    class FakeApi:
+        def dataset_info(self, dataset_id, *, revision):
+            assert dataset_id == hf_corpus.DATASET_ID
+            assert revision == hf_corpus.DATASET_REVISION
+            return SimpleNamespace(sha="f" * 40, cardData={"license": "apache-2.0"})
+
+    def unexpected_load_dataset(*_args, **_kwargs):
+        raise AssertionError("Dataset rows must not be downloaded after a revision mismatch.")
+
+    monkeypatch.setitem(sys.modules, "huggingface_hub", SimpleNamespace(HfApi=FakeApi))
+    monkeypatch.setitem(sys.modules, "datasets", SimpleNamespace(load_dataset=unexpected_load_dataset))
+    monkeypatch.setattr(sys, "argv", ["frieren-neural-import-chat-max", "--output", str(tmp_path / "rejected-corpus")])
+
+    with pytest.raises(SystemExit, match="approved immutable source commit"):
+        hf_corpus.main()
