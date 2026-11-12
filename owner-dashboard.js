@@ -692,7 +692,7 @@ export function renderOwnerSecurityWorkspace({ incidents = [], evidenceEvents = 
   const secretModeLabel = githubActionsEventCount > 0 ? 'GitHub Actions OIDC doğrulandı (anahtarsız)'
     : ingestSecretMode === 'dedicated' ? 'Ayrılmış Guard anahtarı (HMAC)'
       : ingestSecretMode === 'shared' ? 'Ortak AI bridge anahtarı (geçiş modu)'
-        : ingestSecretMode === 'invalid' ? 'HMAC anahtarı geçersiz' : 'GitHub Actions OIDC olayı bekleniyor';
+        : ingestSecretMode === 'invalid' ? 'HMAC anahtarı geçersiz' : 'GitHub Actions OIDC olayı bekleniyor · HMAC anahtarı eksik';
   const chainLabel = !chainStatus ? 'Kontrol edilemedi'
     : !chainStatus.valid ? 'Bütünlük hatası'
       : chainStatus.checked === 0 ? 'Henüz delil yok'
