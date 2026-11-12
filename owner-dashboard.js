@@ -682,8 +682,15 @@ export function renderOwnerGuardianWorkspace({ incidents = [], jobs = [], csrf =
 }
 
 
-export function renderOwnerSecurityWorkspace({ incidents = [], evidenceEvents = [], chainStatus = null, ingestConfigured = false } = {}) {
-  const senderVerified = evidenceEvents.some(item => item.source === 'frieren_guard');
+export function renderOwnerSecurityWorkspace({ incidents = [], evidenceEvents = [], chainStatus = null, ingestSecretMode = 'missing' } = {}) {
+  const recentExternalEvents = evidenceEvents.filter(item => item.source === 'frieren_guard');
+  const latestExternalEvent = recentExternalEvents[0] || null;
+  const senderEventCount = recentExternalEvents.length;
+  const senderEventTimestamp = latestExternalEvent?.received_at ? Date.parse(latestExternalEvent.received_at) : NaN;
+  const senderEventLabel = Number.isFinite(senderEventTimestamp) ? new Date(senderEventTimestamp).toLocaleString('tr-TR') : 'yok';
+  const secretModeLabel = ingestSecretMode === 'dedicated' ? 'Ayrılmış Guard anahtarı'
+    : ingestSecretMode === 'shared' ? 'Ortak AI bridge anahtarı (geçiş modu)'
+      : ingestSecretMode === 'invalid' ? 'Anahtar geçersiz' : 'Anahtar eksik';
   const chainLabel = !chainStatus ? 'Kontrol edilemedi'
     : !chainStatus.valid ? 'Bütünlük hatası'
       : chainStatus.checked === 0 ? 'Henüz delil yok'
@@ -713,7 +720,7 @@ export function renderOwnerSecurityWorkspace({ incidents = [], evidenceEvents = 
     + '<section class="security-hero"><span class="security-kicker">✦ FRIEREN SECURITY CENTER</span><h1>Güvenlik merkezi</h1><p>Poğaça Frieren altyapısı ve Frieren web platformu için güvenlik görünümü. Bu alan yalnızca doğrulanmış Owner oturumuna açıktır; Frieren AI kendi mühendislik görevini sürdürür, Frieren Guard ise güvenlik olaylarını izlemek üzere ayrı rolde kalır.</p></section>'
     + '<div class="security-grid">'
     + '<article class="security-card"><small>Vercel platform koruması</small><strong>Otomatik DDoS azaltma</strong><p>Vercel platform katmanındaki DDoS koruması tüm planlarda otomatik uygulanır.</p></article>'
-    + '<article class="security-card"><small>Frieren Guard olay alımı</small><strong>' + (ingestConfigured ? (senderVerified ? 'Canlı olay alındı' : 'Gönderici doğrulanmadı') : 'Anahtar eksik') + '</strong><p>' + (ingestConfigured ? (senderVerified ? 'Frieren Guard kaynaklı imzalı olay delil zincirinde doğrulandı.' : 'Alıcı HMAC doğrulaması için yapılandırıldı; Guard göndericisi henüz canlı olayla doğrulanmadı.') : 'Guard olaylarını kabul etmek için ortak imza anahtarı yapılandırılmalı.') + '</p></article>'
+    + '<article class="security-card"><small>Frieren Guard olay alımı</small><strong>' + (senderEventCount > 0 ? 'İmzalı olay kaydı var' : 'Son 30 delilde imzalı olay yok') + '</strong><p>Alıcı anahtarı: ' + escapeHtml(secretModeLabel) + ' · Son 30 delil içindeki harici imzalı olay sayısı: ' + senderEventCount + '. ' + (senderEventCount > 0 ? 'Son kayıt: ' + escapeHtml(senderEventLabel) + '.' : 'Harici Frieren Guard olayı bulunamadı.') + ' Bu kayıt göndericinin şu anda çevrimiçi olduğunu kanıtlamaz.</p></article>'
     + '<article class="security-card"><small>Delil zinciri</small><strong>' + chainLabel + '</strong><p>' + Number(chainStatus?.checked || 0) + ' kayıt denetlendi' + (chainStatus?.firstInvalidSequence ? ' · bozuk sıra #' + Number(chainStatus.firstInvalidSequence) : '') + '.</p></article>'
     + '</div>'
     + '<section class="panel"><h2>Gerçek güvenlik olayları</h2><p class="muted">Harici Frieren Guard göndericisi olayları HMAC imzasıyla doğrulanır. Yerel Guard izleyici kayıtları ve web hesabı olayları ayrı kaynaklarla zincire eklenir; bunlar harici gönderici bağlantısının kanıtı sayılmaz.</p>' + incidentHtml + '</section>'
@@ -830,9 +837,15 @@ export async function handleOwnerDashboardRequest(req, res, { client, db }) {
         verifyGuardianEvidenceChain(db),
       ]);
       const incidents = allIncidents.filter(item => item.system === 'guardian' || item.system === 'site_auth').slice(0, 25);
-      const ingestSecret = String(process.env.FRIEREN_GUARD_EVENT_SECRET || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '').trim();
+      const dedicatedSecretRaw = process.env.FRIEREN_GUARD_EVENT_SECRET;
+      const fallbackSecretRaw = process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET;
+      const selectedSecretRaw = dedicatedSecretRaw || process.env.FRIEREN_AI_BRIDGE_SECRET || process.env.FRIEREN_BRIDGE_SECRET || '';
+      const selectedSecret = String(selectedSecretRaw).trim();
+      const ingestSecretMode = dedicatedSecretRaw
+        ? (selectedSecret.length >= 32 ? 'dedicated' : 'invalid')
+        : fallbackSecretRaw ? (selectedSecret.length >= 32 ? 'shared' : 'invalid') : 'missing';
       send(res, 200, page('Frieren Security', renderOwnerNavigation() + renderOwnerSecurityWorkspace({
-        incidents, evidenceEvents, chainStatus, ingestConfigured: ingestSecret.length >= 32,
+        incidents, evidenceEvents, chainStatus, ingestSecretMode,
       })));
     } catch (error) {
       console.error('Frieren Security page failed:', error?.message || error);

@@ -83,7 +83,8 @@ jobs:
 
           ready=0
           for attempt in $(seq 1 60); do
-            if docker exec "$container" pg_isready -U postgres -d restore_test >/dev/null 2>&1; then
+            # pg_isready can succeed before POSTGRES_DB has been created.
+            if docker exec "$container" psql -U postgres -d restore_test -Atqc 'SELECT 1' >/dev/null 2>&1; then
               ready=1
               break
             fi
