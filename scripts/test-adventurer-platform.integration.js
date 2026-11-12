@@ -146,6 +146,11 @@ test('single-use Discord link codes connect only the intended profile to a web a
   await ensureUser(guildId,userId);
   try {
     await pool.query("UPDATE users SET character_name='Test Maceracı',class_name='Büyücü',level=7,xp=360,coins=125,hp=80,mana=60 WHERE guild_id=$1 AND user_id=$2",[guildId,userId]);
+    const season=await ensureActiveArenaSeason(pool,guildId);
+    await pool.query('INSERT INTO arena_ratings(season_id,guild_id,user_id,rating,wins,losses,matches,points) VALUES($1,$2,$3,1850,3,1,4,9)',[season.season_id,guildId,userId]);
+    const eventStart=new Date(Date.now()+60*60_000).toISOString();
+    const eventEnd=new Date(Date.now()+2*60*60_000).toISOString();
+    const eventId=(await createGuildEvent(pool,{guildId,createdBy:userId,title:'Dashboard Test Etkinliği',description:'Panel takvim doğrulaması',startsAt:eventStart,endsAt:eventEnd,maxParticipants:5})).eventId;
     const {token}=await createSiteLinkToken(pool,{guildId,userId});
     const linked=await redeemSiteLinkToken(pool,accountId,token);
     assert.equal(linked.status,'linked');
@@ -156,9 +161,17 @@ test('single-use Discord link codes connect only the intended profile to a web a
     assert.equal(dashboard.profiles.length,1);
     assert.equal(dashboard.profiles[0].character_name,'Test Maceracı');
     assert.equal(Number(dashboard.profiles[0].level),7);
+    assert.equal(Number(dashboard.profiles[0].rating),1850);
+    assert.equal(dashboard.profiles[0].rank_name,'Efsane');
+    assert.equal(dashboard.profiles[0].season_name,season.name);
+    assert.equal(dashboard.events.length,1);
+    assert.equal(dashboard.events[0].event_id,eventId);
+    assert.equal(dashboard.events[0].title,'Dashboard Test Etkinliği');
     const sessionDashboard=await getAdventurerDashboard(pool,accountUuid);
     assert.equal(sessionDashboard.profiles.length,1,'canonical UUID from authenticated site session must be accepted');
   } finally {
+    await pool.query('DELETE FROM guild_events WHERE guild_id=$1 AND title=$2',[guildId,'Dashboard Test Etkinliği']);
+    await pool.query('DELETE FROM arena_seasons WHERE guild_id=$1',[guildId]);
     await pool.query('DELETE FROM site_discord_links WHERE account_id=$1',[accountId.slice(5)]);
     await pool.query('DELETE FROM site_link_tokens WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
     await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
