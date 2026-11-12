@@ -1,9 +1,9 @@
 name: Android Rich Presence SDK access check
 
 on:
-  push:
+  pull_request:
     branches:
-      - feat/android-rich-presence-helper
+      - main
     paths:
       - .github/workflows/android-presence-sdk-check.yml
   workflow_dispatch:
@@ -20,20 +20,18 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import re
           import requests
 
           file_id = "1IdhZ_yHOtsU5OHKk-1IGdQRc-oq7sR2e"
           url = f"https://drive.google.com/uc?export=download&id={file_id}"
-          session = requests.Session()
-          response = session.get(url, headers={"Range": "bytes=0-4095"}, stream=True, timeout=30)
+          response = requests.get(url, headers={"Range": "bytes=0-4095"}, stream=True, timeout=30)
           content_type = response.headers.get("content-type", "")
           first = next(response.iter_content(4096), b"")
           response.close()
 
           if response.status_code not in (200, 206):
               raise SystemExit(f"Drive download unavailable: HTTP {response.status_code}")
-          if b"<!DOCTYPE html" in first[:512].lower() or b"<html" in first[:512].lower():
+          if b"<html" in first[:512].lower():
               sample = first[:4096].decode("utf-8", "replace")
               if "accounts.google.com" in sample or "Sign in" in sample:
                   raise SystemExit("Drive file is not publicly downloadable; Google sign-in is required.")
