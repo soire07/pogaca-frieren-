@@ -54,7 +54,7 @@ test('public chat members can delete their own messages through the signed-in CS
  const seen=[];const db={async query(sql,params){seen.push({sql,params});if(sql.startsWith('UPDATE frieren_public_chat_messages SET body='))return{rows:[{message_id:params[0]}],rowCount:1};return{rows:[],rowCount:0};}};
  const form=new URLSearchParams({csrf:createSiteCsrfToken(secret),messageId:'123e4567-e89b-12d3-a456-426614174000'});
  const req=Readable.from([Buffer.from(form.toString())]);Object.assign(req,{method:'POST',url:'/api/public-chat/messages/delete',headers:{cookie:cookieFor(account),'content-type':'application/x-www-form-urlencoded'}});
- const res=response();await handlePublicSiteRequest(req,res,{db});assert.equal(res.status,200);assert.match(res.body,/"status":"deleted"/);assert.ok(seen[0].sql.includes('account_id=$2'));
+ const res=response();await handlePublicSiteRequest(req,res,{db});assert.equal(res.status,200);assert.match(res.body,/"status":"deleted"/);const deletion=seen.find(item=>item.sql.startsWith('UPDATE frieren_public_chat_messages SET body='));assert.ok(deletion?.sql.includes('account_id=$2'));assert.equal(deletion.params[1],account.id);
 });
 test('configured site owner can pin and pause chat through CSRF-protected endpoints',async()=>{
  const previous=process.env.FRIEREN_OWNER_ACCOUNT_IDS;process.env.FRIEREN_OWNER_ACCOUNT_IDS='123e4567-e89b-12d3-a456-426614174000';const seen=[];
