@@ -2,6 +2,12 @@ name: Frieren Guard External Security Scan
 run-name: "Frieren Guard · Dependency audit #${{ github.run_id }}"
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/frieren-guard-external.yml'
+      - 'guardian/github-guard-sender.js'
+      - 'package.json'
   push:
     branches: [main]
     paths:
@@ -17,17 +23,52 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: frieren-guard-external-security
   cancel-in-progress: false
 
 jobs:
+  validate-audit-payload:
+    if: github.event_name == 'pull_request'
+    name: Validate ephemeral dependency audit without sending events
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the pull request commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Generate a temporary lockfile without changing the repository
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund --legacy-peer-deps
+      - name: Run production dependency audit and validate event payload
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set +e
+          npm audit --omit=dev --json > "$RUNNER_TEMP/npm-audit.json"
+          audit_exit=$?
+          set -e
+          echo "npm audit exit code: $audit_exit"
+          test -s "$RUNNER_TEMP/npm-audit.json"
+          node guardian/github-guard-sender.js audit "$RUNNER_TEMP/npm-audit.json" "$RUNNER_TEMP/guardian-event.json"
+
   production-dependency-audit:
+    if: github.event_name != 'pull_request'
     name: Audit production dependencies and report to Guardian
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Check out the exact audited commit
         uses: actions/checkout@v4
@@ -39,6 +80,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      - name: Generate a temporary lockfile without changing the repository
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund --legacy-peer-deps
 
       - name: Run npm production dependency audit
         run: |
