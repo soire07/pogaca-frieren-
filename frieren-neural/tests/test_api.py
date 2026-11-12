@@ -22,14 +22,7 @@ def test_health_does_not_expose_secrets_and_reports_missing_checkpoint(api_clien
     monkeypatch.setenv("FRIEREN_CHECKPOINT", str(tmp_path / "missing.pt"))
     response = api_client.get("/health")
     assert response.status_code == 503
-    assert response.json() == {
-        "status": "model_unavailable",
-        "reason": "provider_credentials_missing",
-        "diagnostics": {
-            "credential_present": False,
-            "credential_length_valid": False,
-        },
-    }
+    assert response.json() == {"status": "model_unavailable"}
     assert "token" not in response.text.lower()
 
 
@@ -1156,5 +1149,12 @@ def test_gemini_health_fails_closed_when_key_or_data_ack_is_missing(api_client, 
     monkeypatch.delenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", raising=False)
     response = api_client.get("/health")
     assert response.status_code == 503
-    assert response.json() == {"status": "model_unavailable"}
+    assert response.json() == {
+        "status": "model_unavailable",
+        "reason": "provider_credentials_missing",
+        "diagnostics": {
+            "credential_present": False,
+            "credential_length_valid": False,
+        },
+    }
     assert "GEMINI_API_KEY" not in response.text
