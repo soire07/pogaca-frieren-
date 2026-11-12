@@ -25,7 +25,7 @@ on:
         required: false
         type: string
       base_branch:
-        description: "Isolated branch to test against"
+        description: "Current source branch used as the repair PR base"
         required: true
         default: "main"
         type: choice
