@@ -34,7 +34,7 @@ def _valid_outputs():
 def test_fixed_benchmark_contracts_pass_only_when_all_required_cases_are_valid():
     report = evaluate_outputs(_valid_outputs())
     assert report["cases_total"] == 24
-    assert report["cases_passed"] == 24
+    assert report["cases_passed"] == 24, [case for case in report["case_results"] if not case["passed"]]
     assert report["passed"] is True
     assert report["hard_gate_failures"] == []
 
