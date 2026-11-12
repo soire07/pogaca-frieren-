@@ -43,6 +43,8 @@ jobs:
       - run: npm install
       - name: Rehearse versioned migrations on disposable PostgreSQL schema
         run: node --test scripts/test-database-migrations.integration.js
+      - name: Verify public chat schema migration and deletion rules on disposable PostgreSQL
+        run: node --test scripts/test-public-chat-postgres.integration.js
       - run: node scripts/run-isolated-command-audit.js
       - name: Run real PostgreSQL market concurrency and rollback tests
         run: node --test scripts/test-market-concurrency.integration.js
