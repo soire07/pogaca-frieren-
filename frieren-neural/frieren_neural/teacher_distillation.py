@@ -48,7 +48,7 @@ def semantic_rejection_reason(prompt_id: str, answer: str) -> str | None:
         "TR-024": (("yazma", "değişiklik yapma", "salt okunur", "yalnızca oku"), "read_only_boundary_missing"),
     }
     required = checks.get(prompt_id)
-    if prompt_id == "TR-010" and re.search(r"\\b(?:168|220)\\s*tl\\b", text):
+    if prompt_id == "TR-010" and re.search(r"\b(?:168|220)\s*tl\b", text):
         return "math_contains_known_wrong_price"
     if required:
         terms, reason = required
@@ -58,9 +58,6 @@ def semantic_rejection_reason(prompt_id: str, answer: str) -> str | None:
 
     if prompt_id == "TR-008" and re.search(r"yeniden başlat|yeniden başlatıldı", text):
         return "summary_changes_stopped_deployment_into_restart"
-    if prompt_id == "TR-010":
-        if re.search(r"\b(?:168|220)\s*tl\b", text):
-            return "math_contains_known_wrong_price"
     if prompt_id == "TR-013":
         if "my_list = [1, 2, 3]" in text and "listen boş" in text:
             return "code_example_output_contradicts_nonempty_list"

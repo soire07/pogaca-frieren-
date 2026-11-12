@@ -29,9 +29,10 @@ def test_wrong_math_is_rejected_even_when_response_is_long_enough():
 
 
 def test_correct_answer_with_wrong_intermediate_price_is_rejected():
-    draft = validate_teacher_draft("TR-010", "İndirim hesapla.", "168 TL olur, ancak sonuç 204 TL'dir.")
-    assert draft["status"] == "rejected"
-    assert draft["reason"] == "math_contains_known_wrong_price"
+    for wrong_price in ("168 TL", "220 TL"):
+        draft = validate_teacher_draft("TR-010", "İndirim hesapla.", f"{wrong_price} olur, ancak sonuç 204 TL'dir.")
+        assert draft["status"] == "rejected"
+        assert draft["reason"] == "math_contains_known_wrong_price"
 
 
 def test_summary_cannot_turn_stopped_deployment_into_restart():
