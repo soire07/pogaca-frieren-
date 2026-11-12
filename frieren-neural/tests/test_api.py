@@ -22,7 +22,14 @@ def test_health_does_not_expose_secrets_and_reports_missing_checkpoint(api_clien
     monkeypatch.setenv("FRIEREN_CHECKPOINT", str(tmp_path / "missing.pt"))
     response = api_client.get("/health")
     assert response.status_code == 503
-    assert response.json() == {"status": "model_unavailable"}
+    assert response.json() == {
+        "status": "model_unavailable",
+        "reason": "provider_credentials_missing",
+        "diagnostics": {
+            "credential_present": False,
+            "credential_length_valid": False,
+        },
+    }
     assert "token" not in response.text.lower()
 
 
