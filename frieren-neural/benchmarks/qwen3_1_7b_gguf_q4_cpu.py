@@ -172,7 +172,23 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", type=Path, default=Path("benchmark-results/gguf-q4"))
     parser.add_argument("--model-path", type=Path, default=Path("benchmark-cache/Qwen3-1.7B-Q4_K_M.gguf"))
     parser.add_argument("--threads", type=int, default=2)
+    parser.add_argument("--model-id", default=MODEL_ID)
+    parser.add_argument("--model-file", default=MODEL_FILE)
+    parser.add_argument("--model-revision", default=MODEL_REVISION)
+    parser.add_argument("--model-url", default=MODEL_URL)
+    parser.add_argument("--model-sha256", default=MODEL_SHA256)
+    parser.add_argument("--model-license", default=MODEL_LICENSE)
+    parser.add_argument("--candidate-name", default=CANDIDATE_NAME)
+    parser.add_argument("--max-model-size-bytes", type=int, default=MODEL_MAX_SIZE_BYTES)
     args = parser.parse_args()
+    MODEL_ID = args.model_id
+    MODEL_FILE = args.model_file
+    MODEL_REVISION = args.model_revision
+    MODEL_URL = args.model_url
+    MODEL_SHA256 = args.model_sha256
+    MODEL_LICENSE = args.model_license
+    CANDIDATE_NAME = args.candidate_name
+    MODEL_MAX_SIZE_BYTES = args.max_model_size_bytes
     result = run(args.output_dir, args.model_path, args.threads)
     print(json.dumps({key: result[key] for key in (
         "decision", "model_sha256", "download_seconds", "model_load_seconds",
