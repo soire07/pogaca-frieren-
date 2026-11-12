@@ -76,3 +76,25 @@ test('Neon backup restore waits for the target database to accept a query', asyn
   assert.ok(!restore.includes('pg_isready -U postgres -d restore_test'), 'pg_isready can succeed before POSTGRES_DB is created');
   assert.ok(restore.indexOf(readiness) < restore.indexOf('pg_restore --exit-on-error'), 'restore must wait until the target database accepts queries');
 });
+
+test('Poğaça external HTTP health probe checks liveness and dependency readiness independently', async () => {
+  const source = await workflow('pogaca-external-health.yml');
+  const triggerBlock = source.split('permissions:')[0];
+
+  assert.ok(triggerBlock.includes('pull_request:'), 'external probe must run on the PR before merge');
+  assert.ok(triggerBlock.includes('schedule:'));
+  assert.ok(source.includes("cron: '17 */6 * * *'"), 'scheduled probes run every six hours');
+  assert.ok(triggerBlock.includes('workflow_dispatch:'), 'manual diagnostics must remain available');
+  assert.ok(source.includes('https://pogaca-frieren.onrender.com'));
+  assert.ok(source.includes('check_endpoint /health liveness'));
+  assert.ok(source.includes('check_endpoint /ready readiness'));
+  assert.ok(source.includes("payload.status === 'alive'"), 'liveness validates the documented payload');
+  assert.ok(source.includes("payload.status === 'ok'"), 'readiness validates the documented payload');
+  assert.ok(source.includes("payload.checks?.discord === 'ok'"));
+  assert.ok(source.includes("payload.checks?.database === 'ok'"));
+  assert.ok(source.includes('for attempt in 1 2 3'), 'each endpoint has bounded retries');
+  assert.ok(source.includes('--connect-timeout 8 --max-time 15'), 'requests must have bounded network timeouts');
+  assert.ok(source.includes('timeout-minutes: 3'));
+  assert.ok(!source.includes('FRIEREN_AI_HEALTH_URL'));
+  assert.ok(!source.includes('DATABASE_URL'));
+});
