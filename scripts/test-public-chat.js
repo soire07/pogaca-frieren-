@@ -10,6 +10,14 @@ test('public chat schema is additive and never destroys existing data',async()=>
  assert.ok(statements.some(sql=>sql.includes('frieren_public_chat_recent_idx')));
  assert.ok(statements.every(sql=>! /DROP TABLE|TRUNCATE|DELETE FROM/i.test(sql)));
 });
+test('reaction schema upgrades the existing three-emoji database constraint',async()=>{
+ const statements=[];await ensurePublicChatSchema({query:async sql=>{statements.push(sql);return{rows:[],rowCount:0};}});
+ const upgrade=statements.find(sql=>sql.includes('pg_get_constraintdef')&&sql.includes('frieren_public_chat_reactions_emoji_check'));
+ assert.ok(upgrade,'schema must inspect and upgrade the existing three-emoji database constraint');
+ assert.match(upgrade,/DROP CONSTRAINT IF EXISTS frieren_public_chat_reactions_emoji_check/);
+ assert.match(upgrade,/ADD CONSTRAINT frieren_public_chat_reactions_emoji_check CHECK/);
+ for(const emoji of ['😍','🥰','😭','👀','🎉','🙌','💜','🍪','🌸'])assert.ok(upgrade.includes(emoji));
+});
 test('public chat rejects anonymous, malformed and oversized writes before database access',async()=>{
  let queries=0;const db={query:async()=>{queries++;return{rows:[],rowCount:0};}};
  await assert.rejects(sendPublicChatMessage(db,{accountId:'anonymous',username:'Gezgin',body:'Merhaba'}),/PUBLIC_CHAT_ACCOUNT_INVALID/);
@@ -68,6 +76,12 @@ test('chat blocking resolves a message author without exposing account identifie
  const unblocked=await unblockPublicChatUser(db,{accountId:account,targetAccountId:'site_123e4567-e89b-12d3-a456-426614174999'});assert.equal(unblocked.status,'unblocked');
 });
 
+test('members can soft-delete only their own recent messages',async()=>{
+ const {deleteOwnPublicChatMessage}=await import('../public-chat.js');let sql='',params;
+ const db={async query(q,p){if(q.startsWith('UPDATE frieren_public_chat_messages')){sql=q;params=p;return{rows:[{message_id:p[0]}],rowCount:1};}return{rows:[],rowCount:0};}};
+ assert.equal((await deleteOwnPublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000'})).status,'deleted');
+ assert.match(sql,/account_id=\$2/);assert.match(sql,/deleted_at IS NULL/);assert.match(sql,/15 minutes/);assert.equal(params[1],account);
+});
 test('chat edits are limited to the author and recent messages',async()=>{
  const {updatePublicChatMessage}=await import('../public-chat.js');let sql='',params;
  const db={async query(q,p){if(q.startsWith('UPDATE frieren_public_chat_messages')){sql=q;params=p;return{rows:[{message_id:p[0]}],rowCount:1};}return{rows:[],rowCount:0};}};
