@@ -1,3 +1,5 @@
+import { ensureSiteAccountSchema } from './site-auth.js';
+
 const ACCOUNT=/^site_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const KINDS=new Set(['avatar','banner']);
 const LIMITS={avatar:2*1024*1024,banner:4*1024*1024};
@@ -30,6 +32,9 @@ export function validateProfileImage(kind, input) {
 }
 
 export async function ensureProfileMediaSchema(db){
+  // frieren_profile_media has a foreign key to frieren_site_accounts.
+  // Enforce the dependency here so every caller (startup, read, write, delete) is safe.
+  await ensureSiteAccountSchema(db);
   await db.query(`CREATE TABLE IF NOT EXISTS frieren_profile_media(
     account_id UUID NOT NULL REFERENCES frieren_site_accounts(id) ON DELETE CASCADE,
     media_kind TEXT NOT NULL CHECK(media_kind IN ('avatar','banner')),
