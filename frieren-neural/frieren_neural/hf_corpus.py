@@ -101,7 +101,7 @@ def _source_rows_sha256(rows: Iterable[object]) -> str:
 
 
 def build_corpus(rows: Iterable[object]) -> tuple[list[str], list[str], dict[str, int], list[str], list[str]]:
-    """Filter and deterministically split conversations by stable row ID."""
+    """Filter and split by dialogue content so exact duplicates cannot cross splits."""
     train_dialogues: list[str] = []
     heldout_dialogues: list[str] = []
     train_ids: list[str] = []
@@ -132,7 +132,9 @@ def build_corpus(rows: Iterable[object]) -> tuple[list[str], list[str], dict[str
         row_id, dialogue = rendered
         seen.add(row_id)
         stats["accepted_rows"] += 1
-        bucket = int(hashlib.sha256(row_id.encode("utf-8")).hexdigest()[:8], 16) % 10
+        # Row IDs are not a leakage boundary: duplicate conversations can have distinct IDs.
+        # Hash the exact rendered dialogue so identical training examples always share a split.
+        bucket = int(hashlib.sha256(dialogue.encode("utf-8")).hexdigest()[:8], 16) % 10
         if bucket == 0:
             heldout_dialogues.append(dialogue)
             heldout_ids.append(row_id)
