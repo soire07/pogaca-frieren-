@@ -7,7 +7,7 @@ on:
       - frieren-neural-foundation
     paths:
       - "frieren-neural/benchmarks/qwen3_1_7b_gguf_q4_cpu.py"
-      - ".github/workflows/frieren-neural-qwen3-1-7b-gguf-q4-benchmark.yml"
+      - ".github/workflows/frieren-neural-qwen3-1-7b-gguf-q4.yml"
 
 permissions:
   contents: read
