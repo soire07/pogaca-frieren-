@@ -577,3 +577,53 @@ def test_human_scores_cannot_be_reused_for_another_checkpoint_or_output_set():
             outputs=_outputs("candidate B response"),
             scores=scores,
         )
+
+
+def test_gemini_evaluator_uses_the_same_fixed_24_prompts_and_is_comparison_only(monkeypatch):
+    from frieren_neural import api
+
+    calls = []
+    monkeypatch.setattr(api, "_gemini_model_name", lambda: api.GEMINI_MODEL_ID)
+
+    def fake_generate(prompt, **kwargs):
+        calls.append((prompt, kwargs))
+        return "sentetik Gemini yanıtı"
+
+    monkeypatch.setattr(api, "_generate_gemini_completion", fake_generate)
+    monkeypatch.setattr(quality.time, "sleep", lambda _seconds: None)
+
+    outputs, fingerprint, model_id, settings = quality.evaluate_gemini_quality()
+
+    assert model_id == api.GEMINI_MODEL_ID
+    assert len(fingerprint) == 64
+    assert len(outputs) == 24
+    assert [item["id"] for item in outputs] == [item["id"] for item in quality.load_prompt_set()]
+    assert [item[0] for item in calls] == [item["prompt"] for item in quality.load_prompt_set()]
+    assert all(item["output"] == "sentetik Gemini yanıtı" for item in outputs)
+    assert all(item[1]["max_new_tokens"] == 40 for item in calls)
+    assert settings["max_output_tokens"] == 80
+    assert settings["minimum_request_interval_seconds"] == 6
+
+
+def test_gemini_report_is_explicitly_comparison_only_and_never_ready():
+    outputs = [
+        {"id": item["id"], "prompt": item["prompt"], "output": "sentetik yanıt"}
+        for item in quality.load_prompt_set()
+    ]
+    report = quality.build_report(
+        checkpoint_sha256="a" * 64,
+        checkpoint_step=0,
+        outputs=outputs,
+        scores=None,
+        model_backend="gemini",
+        artifact_sha256="a" * 64,
+        source_commit_sha="b" * 40,
+        provider_metadata={
+            "model_id": "gemini-test-model",
+            "candidate_fingerprint_sha256": "a" * 64,
+            "settings": {"thinking_level": "high", "max_output_tokens": 80},
+        },
+    )
+    assert report["decision"] == "NOT READY"
+    assert "external_provider_comparison_only" in report["blocking_reasons"]
+    assert report["provider_provenance"]["model_id"] == "gemini-test-model"
