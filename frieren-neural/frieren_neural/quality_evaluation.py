@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 from typing import Any
 import os
+import time
 import urllib.error
 import urllib.request
 from urllib.parse import urlparse
@@ -208,9 +209,9 @@ def _metrics(scores: dict[str, Any]) -> dict[str, Any]:
       "turkish_quality_3_or_4_rate":sum(e["turkish_quality"]>=3 for _,e in entries)/len(entries),
       "critical_safety_failures":critical,"fabricated_claims":fabricated,"multi_turn_failures":mt_fail}
 
-def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[str,str]],scores:dict[str,Any]|None,baseline_report:dict[str,Any]|None=None,checkpoint_metadata:dict[str,Any]|None=None,training_provenance:dict[str,Any]|None=None,heldout_metrics:dict[str,Any]|None=None,model_backend:str="scratch",artifact_sha256:str|None=None,source_commit_sha:str|None=None,establish_baseline:bool=False)->dict[str,Any]:
+def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[str,str]],scores:dict[str,Any]|None,baseline_report:dict[str,Any]|None=None,checkpoint_metadata:dict[str,Any]|None=None,training_provenance:dict[str,Any]|None=None,heldout_metrics:dict[str,Any]|None=None,model_backend:str="scratch",artifact_sha256:str|None=None,source_commit_sha:str|None=None,establish_baseline:bool=False,provider_metadata:dict[str,Any]|None=None)->dict[str,Any]:
     report={"schema_version":1,"prompt_set_version":PROMPT_SET_VERSION,"model_backend":model_backend,"artifact_sha256":artifact_sha256 or checkpoint_sha256,"decoding_settings":dict(DECODING_SETTINGS),
-      "checkpoint_sha256":checkpoint_sha256,"checkpoint_step":checkpoint_step,"outputs":outputs,"checkpoint_metadata":checkpoint_metadata,"training_provenance":training_provenance,"heldout_metrics":heldout_metrics,
+      "checkpoint_sha256":checkpoint_sha256,"checkpoint_step":checkpoint_step,"outputs":outputs,"checkpoint_metadata":checkpoint_metadata,"training_provenance":training_provenance,"heldout_metrics":heldout_metrics,"provider_provenance":provider_metadata,
       "human_review":{"completed":False,"reviewers_required":2,"reviewer_identity_hashes":[],"candidate_binding":None},"review_template":{"reviewers":[None,None],"candidate_binding":None},"metrics":None,
       "baseline_role":"baseline_candidate" if establish_baseline else "candidate",
       "baseline_comparison":{"available":False,"improved":False,"baseline_reviewer_identity_hashes":[]},"pretrained_provenance":None,"source_commit_sha":source_commit_sha,"decision":"NOT READY","blocking_reasons":[]}
@@ -219,7 +220,13 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
     actual_ids=[item.get("id") for item in outputs if isinstance(item,dict)]
     if actual_ids != expected_ids:
         reasons.append("benchmark_outputs_incomplete_or_out_of_order")
-    if model_backend == "ufakzeka":
+    if model_backend == "gemini":
+        if not isinstance(provider_metadata, dict) or not isinstance(provider_metadata.get("model_id"), str):
+            reasons.append("gemini_provider_identity_missing")
+        else:
+            report["decoding_settings"] = provider_metadata.get("settings", DECODING_SETTINGS)
+            reasons.append("external_provider_comparison_only")
+    elif model_backend == "ufakzeka":
         from .gguf_runtime import MODEL_FILENAME, MODEL_ID, MODEL_LICENSE, MODEL_REPOSITORY, MODEL_SHA256
         report["pretrained_provenance"] = {
             "model_id": MODEL_ID,
@@ -472,6 +479,13 @@ def render_markdown(report:dict[str,Any])->str:
       f"- Training dialogue count: {(report.get('training_provenance') or {}).get('sample_count', 'missing')}",
       f"- Checkpoint step: {report['checkpoint_step']}",f"- Baseline role: **{report.get('baseline_role', 'candidate')}**",f"- Human review completed: **{report['human_review']['completed']}**",
       f"- Distinct reviewer identity hashes: **{'verified' if distinct_reviewers_verified else 'missing'}**"]
+    provider = report.get("provider_provenance") or {}
+    if provider:
+        lines.extend(["", "## External provider comparison", "",
+          f"- Provider model: {provider.get('model_id')}",
+          f"- Candidate fingerprint SHA-256: {provider.get('candidate_fingerprint_sha256')}",
+          f"- Provider settings: {json.dumps(provider.get('settings', {}), ensure_ascii=False, sort_keys=True)}",
+          "- This is a comparison-only provider report, not a trainable checkpoint."])
     pretrained = report.get("pretrained_provenance") or {}
     if pretrained:
         lines.extend(["", "## Pretrained model provenance", "",
@@ -567,6 +581,62 @@ def evaluate_gguf_quality(model_path:str|Path|None=None)->tuple[list[dict[str,st
     return outputs,artifact_sha
 
 
+def evaluate_gemini_quality() -> tuple[list[dict[str, Any]], str, str, dict[str, Any]]:
+    """Run the exact fixed 24-prompt set against the explicitly configured Gemini test provider."""
+    from . import api
+
+    model_id = api._gemini_model_name()
+    thinking_level = os.environ.get("FRIEREN_GEMINI_THINKING_LEVEL", "high").strip().lower()
+    if thinking_level not in {"low", "medium", "high"}:
+        raise ValueError("FRIEREN_GEMINI_THINKING_LEVEL must be low, medium, or high.")
+    settings = {
+        "thinking_level": thinking_level,
+        "max_output_tokens": 80,
+        "timeout_seconds": 60,
+        "minimum_request_interval_seconds": 6,
+        "temperature": "provider_default_not_supported",
+        "top_k": "provider_default_not_supported",
+        "seed": "provider_not_supported",
+    }
+    outputs: list[dict[str, Any]] = []
+    previous_start: float | None = None
+    for item in load_prompt_set():
+        if previous_start is not None:
+            wait_seconds = settings["minimum_request_interval_seconds"] - (time.monotonic() - previous_start)
+            if wait_seconds > 0:
+                time.sleep(wait_seconds)
+        started = time.monotonic()
+        completion = api._generate_gemini_completion(
+            item["prompt"],
+            max_new_tokens=40,
+            temperature=DECODING_SETTINGS["temperature"],
+            top_k=DECODING_SETTINGS["top_k"],
+            thinking_level=thinking_level,
+            timeout_seconds=settings["timeout_seconds"],
+        )
+        latency_ms = round((time.monotonic() - started) * 1000, 2)
+        previous_start = started
+        outputs.append({
+            "id": item["id"],
+            "category": item["category"],
+            "prompt": item["prompt"],
+            "model_prompt": item["prompt"],
+            "review_hint": item["review_hint"],
+            "output": completion.strip(),
+            "latency_ms": latency_ms,
+        })
+    identity = {
+        "backend": "gemini",
+        "model_id": model_id,
+        "prompt_set_version": PROMPT_SET_VERSION,
+        "settings": settings,
+    }
+    fingerprint = hashlib.sha256(
+        json.dumps(identity, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return outputs, fingerprint, model_id, settings
+
+
 def submit_report_to_guardian(report: dict[str, Any], endpoint: str, secret: str) -> dict[str, Any]:
     """Send a bounded quality report to the separately authenticated Guardian endpoint."""
     parsed = urlparse(endpoint)
@@ -596,7 +666,7 @@ def submit_report_to_guardian(report: dict[str, Any], endpoint: str, secret: str
 
 def build_parser()->argparse.ArgumentParser:
     parser=argparse.ArgumentParser(description="Generate the fixed Turkish human-review benchmark report for the selected model backend.")
-    parser.add_argument("--backend",choices=("scratch","ufakzeka"),default=None,help="Backend to evaluate; defaults to FRIEREN_MODEL_BACKEND or scratch")
+    parser.add_argument("--backend",choices=("scratch","ufakzeka","gemini"),default=None,help="Backend to evaluate; defaults to FRIEREN_MODEL_BACKEND or scratch")
     parser.add_argument("--model-path",help="Optional pinned GGUF artifact path for ufakzeka")
     parser.add_argument("--source-commit",help="40-character source commit SHA used for this evaluation")
     parser.add_argument("--checkpoint",help="Scratch checkpoint path (required only for --backend scratch)")
@@ -612,7 +682,17 @@ def build_parser()->argparse.ArgumentParser:
 def main()->None:
     args=build_parser().parse_args()
     backend=(args.backend or os.environ.get("FRIEREN_MODEL_BACKEND","scratch")).strip().lower()
-    if backend=="ufakzeka":
+    provider_metadata = None
+    if backend=="gemini":
+        outputs, candidate_sha, model_id, provider_settings = evaluate_gemini_quality()
+        checkpoint_sha, step, checkpoint_metadata = candidate_sha, 0, None
+        artifact_sha = candidate_sha
+        provider_metadata = {
+            "model_id": model_id,
+            "candidate_fingerprint_sha256": candidate_sha,
+            "settings": provider_settings,
+        }
+    elif backend=="ufakzeka":
         outputs,artifact_sha=evaluate_gguf_quality(args.model_path)
         checkpoint_sha,step,checkpoint_metadata=artifact_sha,0,None
     else:
@@ -645,7 +725,7 @@ def main()->None:
             "sample_count": manifest_metadata["sample_count"],
         }
     heldout=json.loads(Path(args.heldout_report).read_text(encoding="utf-8")) if args.heldout_report else None
-    report=build_report(checkpoint_sha256=checkpoint_sha,checkpoint_step=step,outputs=outputs,scores=scores,baseline_report=baseline,checkpoint_metadata=checkpoint_metadata,training_provenance=provenance,heldout_metrics=heldout,model_backend=backend,artifact_sha256=artifact_sha,source_commit_sha=args.source_commit or os.environ.get("GITHUB_SHA"),establish_baseline=args.establish_baseline)
+    report=build_report(checkpoint_sha256=checkpoint_sha,checkpoint_step=step,outputs=outputs,scores=scores,baseline_report=baseline,checkpoint_metadata=checkpoint_metadata,training_provenance=provenance,heldout_metrics=heldout,model_backend=backend,artifact_sha256=artifact_sha,source_commit_sha=args.source_commit or os.environ.get("GITHUB_SHA"),establish_baseline=args.establish_baseline,provider_metadata=provider_metadata)
     out=Path(args.output_dir)
     out.mkdir(parents=True,exist_ok=True)
     (out/"quality-report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
