@@ -44,6 +44,7 @@ import { withHttpErrorBoundary } from './guardian/http-error-boundary.js';
 import { handleHealthRequest } from './guardian/health-route.js';
 import { handleGuardianSecurityEventRequest } from './guardian/security-events.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
+import { buildPresenceActivities } from './bot-presence.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 if (!process.env.DISCORD_TOKEN) throw new Error('DISCORD_TOKEN eksik. Render Environment bölümünü kontrol et.');
@@ -268,20 +269,15 @@ client.once(Events.ClientReady, async readyClient => {
   setInterval(() => void processDueGuildEventReminders(readyClient), 60_000);
   setInterval(() => void processDuePlayerMarketPriceAlerts(readyClient), 5 * 60_000);
   setInterval(() => void processNewsBirdDigests(readyClient), 60 * 60_000);
-  const activities = [
-    'bin yıllık büyüler öğreniyor ✨',
-    'Fern ile büyü çalışıyor 🔮',
-    'Stark ile iblis avlıyor ⚔️',
-    'Himmel’in yolculuklarını hatırlıyor 🌼',
-    'mimic sandıklarından uzak duruyor 📦',
-    'poğaça ve mana arıyor 🥐'
-  ];
   let activityIndex = 0;
-  readyClient.user.setActivity(activities[activityIndex]);
-  setInterval(() => {
+  const updatePresence = () => {
+    const activities = buildPresenceActivities(readyClient.guilds.cache.size);
+    const activity = activities[activityIndex % activities.length];
+    readyClient.user.setActivity(activity.name, { type: activity.type });
     activityIndex = (activityIndex + 1) % activities.length;
-    readyClient.user.setActivity(activities[activityIndex]);
-  }, 60_000);
+  };
+  updatePresence();
+  setInterval(updatePresence, 60_000);
 });
 
 client.on(Events.GuildMemberAdd, async member => {
