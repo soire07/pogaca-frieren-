@@ -109,16 +109,16 @@ async function runCli() {
     });
     await writeFile(outputPath, JSON.stringify(event), { mode: 0o600 });
     if (process.env.GITHUB_OUTPUT) {
-      await appendFile(process.env.GITHUB_OUTPUT, 'has_findings=' + (event.eventType === 'incident' ? 'true' : 'false') + '\\n');
+      await appendFile(process.env.GITHUB_OUTPUT, 'has_findings=' + (event.eventType === 'incident' ? 'true' : 'false') + '\n');
     }
-    process.stdout.write('Dependency audit event prepared: ' + event.eventType + ', severity=' + event.severity + '\\n');
+    process.stdout.write('Dependency audit event prepared: ' + event.eventType + ', severity=' + event.severity + '\n');
     return;
   }
   if (mode === 'send') {
     if (!inputPath) throw new Error('Usage: node guardian/github-guard-sender.js send <event.json>');
     const event = JSON.parse(await readFile(inputPath, 'utf8'));
     const receipt = await sendGithubGuardEvent(event);
-    process.stdout.write('Guardian receipt: ' + receipt.status + ' · ' + receipt.eventId + '\\n');
+    process.stdout.write('Guardian receipt: ' + receipt.status + ' · ' + receipt.eventId + '\n');
     return;
   }
   throw new Error('Unknown mode. Use audit or send.');
@@ -126,7 +126,7 @@ async function runCli() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   runCli().catch(error => {
-    process.stderr.write(String(error?.message || error) + '\\n');
+    process.stderr.write(String(error?.message || error) + '\n');
     process.exitCode = 1;
   });
 }
