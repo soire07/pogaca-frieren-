@@ -19,7 +19,7 @@ from frieren_neural.quality_evaluation import DIMENSIONS, PROMPTS, PROMPT_SET_VE
 from frieren_neural.qwen3_decoding import build_qwen3_chat_request
 
 MODEL_URL = "https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/daeb8e2d528a760970442092f6bf1e55c3b659eb/Qwen3-1.7B-Q4_K_M.gguf"
-MODEL_SHA256 = "dd4750858c52f1c040e9ff4f54ba9365e11e8e81021abffd9b9c02646cf334d7"
+MODEL_SHA256 = "d2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5"
 MODEL_MAX_SIZE_BYTES = 1400 * 1024 * 1024
 MAX_NEW_TOKENS = 256
 
