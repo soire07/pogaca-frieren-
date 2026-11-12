@@ -89,3 +89,35 @@ def test_gemini_provider_classifies_network_failure_without_leaking_url_details(
         assert "synthetic-network-detail" not in str(error)
     else:
         raise AssertionError("Expected a classified Gemini network error")
+
+
+def test_gemini_health_reports_only_safe_credential_presence_flags(monkeypatch):
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "gemini")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", "1")
+    with TestClient(api.app, base_url="https://testserver") as client:
+        response = client.get("/health")
+    assert response.status_code == 503
+    payload = response.json()
+    assert payload["reason"] == "provider_credentials_missing"
+    assert payload["diagnostics"] == {
+        "credential_present": False,
+        "credential_length_valid": False,
+    }
+    assert "GEMINI_API_KEY" not in response.text
+
+
+def test_gemini_health_distinguishes_short_credential_without_exposing_it(monkeypatch):
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "short-secret-value")
+    monkeypatch.setenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", "1")
+    with TestClient(api.app, base_url="https://testserver") as client:
+        response = client.get("/health")
+    assert response.status_code == 503
+    payload = response.json()
+    assert payload["reason"] == "provider_credentials_missing"
+    assert payload["diagnostics"] == {
+        "credential_present": True,
+        "credential_length_valid": False,
+    }
+    assert "short-secret-value" not in response.text
