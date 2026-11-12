@@ -30,6 +30,16 @@ test('account-only player routes reject legacy Discord sessions before querying 
   }
 });
 
+test('robots policy exposes the public SEO landing and noindex login discovery path', async () => {
+  const response = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/robots.txt', headers: {} }, response), true);
+  assert.equal(response.status, 200);
+  assert.match(response.body, /Allow: \/tanitim/);
+  assert.match(response.body, /Allow: \/login/);
+  assert.match(response.body, /Disallow: \/\\n/);
+  assert.match(response.body, /Sitemap: https:\/\/frierenbot\.vercel\.app\/sitemap\.xml/);
+});
+
 test('public command catalog includes the new guild mini-game command', async () => {
   const response = res();
   const client = { guilds: { cache: { size: 1 } }, commands: { size: 1 }, isReady: () => true };
@@ -146,6 +156,10 @@ test('public SEO landing page includes the exact Google site-verification meta t
   assert.match(response.headers['Content-Type'], /text\/html/);
   assert.match(response.body, /<head>[\s\S]*<meta name="google-site-verification" content="zQvll4lo6fEkpcbHjwSdQeMbJggVxdAviEDKvLC0Ebc">[\s\S]*<\/head>/);
   assert.equal((response.body.match(/name="google-site-verification"/g) || []).length, 1);
+  const description = response.body.match(/<meta name="description" content="([^"]*)">/);
+  assert.ok(description && description[1].length <= 160, 'SEO description must stay within 160 characters');
+  assert.match(response.body, /SIK SORULAN SORULAR/);
+  assert.match(response.body, /Frieren AI yetenekleri Poğaça Frieren deneyiminin parçası/);
 });
 
 test('anonymous visitors must authenticate before viewing the homepage', async () => {
