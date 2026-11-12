@@ -343,27 +343,24 @@ def test_generation_capacity_covers_checkpoint_loading(api_client, monkeypatch, 
         assert second.result(timeout=5).status_code == 200
 
 
-def test_health_check_does_not_bypass_generation_capacity(api_client, monkeypatch, tmp_path):
+def test_health_check_does_not_wait_for_generation_capacity(api_client, monkeypatch):
     import frieren_neural.api as api
 
-    checkpoint = tmp_path / "health-model.pt"
-    checkpoint.write_bytes(b"placeholder")
-    monkeypatch.setenv("FRIEREN_CHECKPOINT", str(checkpoint))
-    load_called = False
-
-    def unexpected_load(*_args, **_kwargs):
-        nonlocal load_called
-        load_called = True
-        raise AssertionError("health check must not load while capacity is full")
-
-    monkeypatch.setattr(api, "_load_runtime", unexpected_load)
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "synthetic-secret-key-" + "x" * 32)
+    monkeypatch.setenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", "1")
+    monkeypatch.delenv("FRIEREN_HEALTH_GENERATION_SMOKE", raising=False)
+    monkeypatch.setattr(api, "_load_active_runtime", lambda: api.GEMINI_MODEL_ID)
     assert api._generation_slots.acquire(blocking=False)
     assert api._generation_slots.acquire(blocking=False)
     try:
         response = api_client.get("/health")
-        assert response.status_code == 503
-        assert response.json() == {"status": "busy"}
-        assert not load_called
+        assert response.status_code == 200
+        assert response.json() == {
+            "status": "ready",
+            "model": "gemini-3.8-flash",
+            "generation_smoke": "skipped",
+        }
     finally:
         api._generation_slots.release()
         api._generation_slots.release()
