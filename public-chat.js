@@ -63,7 +63,7 @@ export async function listPublicChatMessages(db,{limit=100,viewerAccountId=null,
   ) r),'[]'::jsonb) AS reactions,
   (SELECT jsonb_build_object('username',p.username,'body',LEFT(p.body,120)) FROM frieren_public_chat_messages p WHERE p.message_id=m.reply_to_message_id) AS reply
   FROM frieren_public_chat_messages m LEFT JOIN frieren_account_profiles ap ON ap.account_id=m.account_id
-  WHERE m.hidden=FALSE AND m.deleted_at IS NULL AND m.created_at>=NOW()-INTERVAL '30 days'
+  WHERE m.hidden=FALSE AND m.created_at>=NOW()-INTERVAL '30 days'
    AND ($2::text IS NULL OR NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE b.blocker_account_id=$2 AND b.blocked_account_id=m.account_id))
    AND ($3::timestamptz IS NULL OR (m.created_at<$3 AND m.pinned_at IS NULL))
    AND ($4::text='' OR m.username ILIKE '%'||$4||'%' OR ap.display_name ILIKE '%'||$4||'%' OR m.body ILIKE '%'||$4||'%')
