@@ -61,7 +61,7 @@ export async function listPublicChatMessages(db,{limit=100,viewerAccountId=null,
   COALESCE((SELECT jsonb_agg(jsonb_build_object('emoji',r.emoji,'count',r.count,'reacted',r.reacted)) FROM (
    SELECT emoji,COUNT(*)::int AS count,BOOL_OR(account_id=$2) AS reacted FROM frieren_public_chat_reactions WHERE message_id=m.message_id GROUP BY emoji
   ) r),'[]'::jsonb) AS reactions,
-  (SELECT jsonb_build_object('username',p.username,'body',LEFT(p.body,120)) FROM frieren_public_chat_messages p WHERE p.message_id=m.reply_to_message_id) AS reply
+  (SELECT jsonb_build_object('username',p.username,'body',CASE WHEN p.deleted_at IS NOT NULL THEN 'Bu mesaj silindi' ELSE LEFT(p.body,120) END) FROM frieren_public_chat_messages p WHERE p.message_id=m.reply_to_message_id) AS reply
   FROM frieren_public_chat_messages m LEFT JOIN frieren_account_profiles ap ON ap.account_id=m.account_id
   WHERE m.hidden=FALSE AND m.created_at>=NOW()-INTERVAL '30 days'
    AND ($2::text IS NULL OR NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE b.blocker_account_id=$2 AND b.blocked_account_id=m.account_id))
@@ -83,7 +83,7 @@ export async function sendPublicChatMessage(db,{accountId,username,body,replyToM
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',[accountId]);
   const recent=await client.query("SELECT COUNT(*)::int AS count FROM frieren_public_chat_messages WHERE account_id=$1 AND created_at>NOW()-INTERVAL '60 seconds'",[accountId]);
   if(Number(recent.rows?.[0]?.count||0)>=5)return{status:'rate_limited'};
-  let parentAuthor=null;if(replyToMessageId){const parent=await client.query('SELECT message_id,account_id FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE',[replyToMessageId]);if(!parent.rowCount)return{status:'reply_not_found'};parentAuthor=parent.rows[0].account_id;}
+  let parentAuthor=null;if(replyToMessageId){const parent=await client.query('SELECT message_id,account_id FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE AND deleted_at IS NULL',[replyToMessageId]);if(!parent.rowCount)return{status:'reply_not_found'};parentAuthor=parent.rows[0].account_id;}
   const id=randomUUID();
   const result=await client.query('INSERT INTO frieren_public_chat_messages(message_id,account_id,username,body,reply_to_message_id) VALUES($1,$2,$3,$4,$5) RETURNING message_id,username,body,created_at,reply_to_message_id',[id,accountId,author,message,replyToMessageId]);
   if(parentAuthor&&parentAuthor!==accountId)await createAccountNotification(client,{accountId:parentAuthor,type:'chat_reply',title:'Sohbet mesajına yanıt',body:author+' mesajına yanıt verdi.',href:'/kesfet#topluluk-sohbeti',schemaReady:true});
@@ -98,7 +98,7 @@ export async function togglePublicChatReaction(db,{accountId,messageId,emoji}){
  await ensureAccountProfileSchema(db);
  return transaction(db,async client=>{
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',[accountId+':'+messageId]);
-  const message=await client.query('SELECT message_id,account_id,username FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE',[messageId]);
+  const message=await client.query('SELECT message_id,account_id,username FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE AND deleted_at IS NULL',[messageId]);
   if(!message.rowCount)return{status:'not_found'};
   const existing=await client.query('SELECT 1 FROM frieren_public_chat_reactions WHERE message_id=$1 AND account_id=$2 AND emoji=$3',[messageId,accountId,emoji]);
   if(existing.rowCount){await client.query('DELETE FROM frieren_public_chat_reactions WHERE message_id=$1 AND account_id=$2 AND emoji=$3',[messageId,accountId,emoji]);return{status:'removed'};}
@@ -113,7 +113,7 @@ export async function blockPublicChatUser(db,{accountId,messageId}){
  if(!/^[0-9a-f-]{36}$/i.test(String(messageId||'')))throw new Error('PUBLIC_CHAT_BLOCK_INVALID');
  await ensurePublicChatSchema(db);
  return transaction(db,async client=>{
-  const target=await client.query('SELECT account_id,username FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE',[messageId]);
+  const target=await client.query('SELECT account_id,username FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE AND deleted_at IS NULL',[messageId]);
   if(!target.rowCount)return{status:'not_found'};
   if(target.rows[0].account_id===accountId)return{status:'self_block'};
   const result=await client.query('INSERT INTO frieren_public_chat_blocks(blocker_account_id,blocked_account_id,blocked_username) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING blocked_account_id',[accountId,target.rows[0].account_id,target.rows[0].username]);
@@ -153,12 +153,12 @@ export async function deleteOwnPublicChatMessage(db,{accountId,messageId}){
 export async function updatePublicChatMessage(db,{accountId,messageId,body}){
  assertAccount(accountId);if(!/^[0-9a-f-]{36}$/i.test(String(messageId||'')))throw new Error('PUBLIC_CHAT_MESSAGE_INVALID');
  const message=clean(body,500,'PUBLIC_CHAT_MESSAGE_INVALID');await ensurePublicChatSchema(db);
- const r=await db.query("UPDATE frieren_public_chat_messages SET body=$3,edited_at=NOW() WHERE message_id=$1 AND account_id=$2 AND hidden=FALSE AND created_at>NOW()-INTERVAL '15 minutes' RETURNING message_id",[messageId,accountId,message]);
+ const r=await db.query("UPDATE frieren_public_chat_messages SET body=$3,edited_at=NOW() WHERE message_id=$1 AND account_id=$2 AND hidden=FALSE AND deleted_at IS NULL AND created_at>NOW()-INTERVAL '15 minutes' RETURNING message_id",[messageId,accountId,message]);
  return{status:r.rowCount?'updated':'not_found'};
 }
 export async function togglePublicChatPin(db,{accountId,messageId,isOwner=false}){
  assertAccount(accountId);if(isOwner!==true)throw new Error('PUBLIC_CHAT_OWNER_REQUIRED');if(!/^[0-9a-f-]{36}$/i.test(String(messageId||'')))throw new Error('PUBLIC_CHAT_MESSAGE_INVALID');await ensurePublicChatSchema(db);
- const r=await db.query("UPDATE frieren_public_chat_messages SET pinned_at=CASE WHEN pinned_at IS NULL THEN NOW() ELSE NULL END WHERE message_id=$1 AND hidden=FALSE RETURNING pinned_at",[messageId]);
+ const r=await db.query("UPDATE frieren_public_chat_messages SET pinned_at=CASE WHEN pinned_at IS NULL THEN NOW() ELSE NULL END WHERE message_id=$1 AND hidden=FALSE AND deleted_at IS NULL RETURNING pinned_at",[messageId]);
  return{status:r.rowCount?(r.rows[0].pinned_at?'pinned':'unpinned'):'not_found'};
 }
 export async function touchPublicChatPresence(db,{accountId}){
@@ -194,7 +194,7 @@ export async function markPublicChatMessagesRead(db,{accountId,messageIds=[]}){
 export async function reportPublicChatMessage(db,{accountId,messageId,reason='other',details=''}){
  assertAccount(accountId);if(!/^[0-9a-f-]{36}$/i.test(String(messageId||''))||!['spam','harassment','inappropriate','other'].includes(reason))throw new Error('PUBLIC_CHAT_REPORT_INVALID');
  const note=clean(details,500,'PUBLIC_CHAT_REPORT_INVALID',{optional:true});await ensurePublicChatSchema(db);
- const target=await db.query('SELECT account_id FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE',[messageId]);
+ const target=await db.query('SELECT account_id FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE AND deleted_at IS NULL',[messageId]);
  if(!target.rowCount)return{status:'not_found'};if(target.rows[0].account_id===accountId)return{status:'self_report'};
  const result=await db.query("INSERT INTO frieren_public_chat_reports(report_id,message_id,reporter_account_id,reason,details) VALUES($1,$2,$3,$4,$5) ON CONFLICT(message_id,reporter_account_id) DO NOTHING RETURNING report_id",[randomUUID(),messageId,accountId,reason,note]);
  return{status:result.rowCount?'reported':'already_reported'};
