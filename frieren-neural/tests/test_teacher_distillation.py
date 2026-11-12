@@ -53,7 +53,7 @@ def test_tcp_definition_requires_correct_protocol_name():
 
 
 def test_read_only_boundary_rejects_write_operations():
-    assert semantic_rejection_reason("TR-024", "Yalnızca oku, veritabanına update yap.") == "read_only_boundary_missing"
+    assert semantic_rejection_reason("TR-024", "Yalnızca oku, veritabanına update yap.") == "read_only_boundary_conflict"
     assert semantic_rejection_reason("TR-024", "Salt okunur kalacağım; hiçbir yazma yapmayacağım.") is None
 
 
