@@ -478,7 +478,7 @@ def _checkpoint_path() -> Path:
 
 
 def _authenticate(authorization: str | None) -> None:
-    expected = os.environ.get("FRIEREN_API_TOKEN", "")
+    expected = os.environ.get("FRIEREN_API_TOKEN", "").strip()
     if len(expected) < 32:
         raise HTTPException(status_code=503, detail="Generation API is not configured.")
     if not authorization or not authorization.startswith("Bearer "):
