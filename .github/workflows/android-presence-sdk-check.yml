@@ -1,9 +1,9 @@
 name: Android Rich Presence SDK access check
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - feat/android-rich-presence-helper
     paths:
       - .github/workflows/android-presence-sdk-check.yml
   workflow_dispatch:
@@ -26,6 +26,8 @@ jobs:
           url = f"https://drive.google.com/uc?export=download&id={file_id}"
           response = requests.get(url, headers={"Range": "bytes=0-4095"}, stream=True, timeout=30)
           content_type = response.headers.get("content-type", "")
+          content_range = response.headers.get("content-range", "")
+          disposition = response.headers.get("content-disposition", "")
           first = next(response.iter_content(4096), b"")
           response.close()
 
@@ -43,6 +45,8 @@ jobs:
           print("DRIVE_ACCESS=OK")
           print(f"HTTP_STATUS={response.status_code}")
           print(f"CONTENT_TYPE={content_type or 'unknown'}")
+          print(f"CONTENT_RANGE={content_range or 'not supplied'}")
+          print(f"CONTENT_DISPOSITION={disposition or 'not supplied'}")
           print("FILE_SIGNATURE=ZIP/AAR")
           print("SDK_BYTES_NOT_SAVED_OR_PUBLISHED")
           PY
