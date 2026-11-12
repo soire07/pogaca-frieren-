@@ -1,0 +1,99 @@
+name: Frieren Neural Gemini vs GGUF fixed-prompt comparison
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - test/frieren-neural-render-free
+    paths:
+      - ".github/workflows/frieren-neural-gemini-gguf-compare.yml"
+      - "frieren-neural/frieren_neural/quality_evaluation.py"
+      - "frieren-neural/tests/test_quality_evaluation.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frieren-neural-gemini-gguf-compare
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: frieren-neural
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: frieren-neural/pyproject.toml
+      - name: Check explicit Gemini test authorization
+        id: gate
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FRIEREN_GEMINI_FREE_TIER_DATA_ACK: ${{ vars.FRIEREN_GEMINI_FREE_TIER_DATA_ACK }}
+        run: |
+          set -euo pipefail
+          if [ -z "$GEMINI_API_KEY" ] || [ "$FRIEREN_GEMINI_FREE_TIER_DATA_ACK" != "1" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "GEMINI_COMPARISON=SKIPPED (Gemini secret or explicit Free-tier data acknowledgement missing)"
+            exit 0
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+      - name: Install CPU-only PyTorch and pinned GGUF runtime
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2"
+          python -m pip install --only-binary=llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu -e ".[dev,serve]"
+      - name: Generate local GGUF answers for all 24 fixed prompts
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          FRIEREN_MODEL_THREADS: "2"
+          FRIEREN_CONTEXT_SIZE: "2048"
+        run: |
+          python -m frieren_neural.quality_evaluation --backend ufakzeka --source-commit "$GITHUB_SHA" --output-dir quality-reports/gguf
+      - name: Generate Gemini answers for the same 24 fixed prompts
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FRIEREN_GEMINI_FREE_TIER_DATA_ACK: ${{ vars.FRIEREN_GEMINI_FREE_TIER_DATA_ACK }}
+          FRIEREN_GEMINI_THINKING_LEVEL: high
+        run: |
+          python -m frieren_neural.quality_evaluation --backend gemini --source-commit "$GITHUB_SHA" --output-dir quality-reports/gemini
+      - name: Verify prompt-set identity and complete paired outputs
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("quality-reports")
+          gguf = json.loads((root / "gguf" / "quality-report.json").read_text(encoding="utf-8"))
+          gemini = json.loads((root / "gemini" / "quality-report.json").read_text(encoding="utf-8"))
+          expected = [f"TR-{index:03d}" for index in range(1, 25)]
+          assert gguf["prompt_set_version"] == gemini["prompt_set_version"]
+          assert [item["id"] for item in gguf["outputs"]] == expected
+          assert [item["id"] for item in gemini["outputs"]] == expected
+          assert [item["prompt"] for item in gguf["outputs"]] == [item["prompt"] for item in gemini["outputs"]]
+          assert all(isinstance(item.get("output"), str) and item["output"].strip() for item in gguf["outputs"] + gemini["outputs"])
+          assert gemini["provider_provenance"]["model_id"]
+          assert gemini["decision"] == "NOT READY"
+          assert "external_provider_comparison_only" in gemini["blocking_reasons"]
+          print("PAIRED_PROMPT_SET=PASS (24/24 identical prompt IDs and texts)")
+          print("GGUF_DECISION=" + gguf["decision"])
+          print("GEMINI_DECISION=" + gemini["decision"])
+          print("GEMINI_MODEL=" + gemini["provider_provenance"]["model_id"])
+          PY
+      - name: Upload paired comparison evidence
+        if: steps.gate.outputs.enabled == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frieren-neural-gemini-gguf-paired-comparison
+          path: |
+            frieren-neural/quality-reports/gguf/
+            frieren-neural/quality-reports/gemini/
+          if-no-files-found: warn
+          retention-days: 14
