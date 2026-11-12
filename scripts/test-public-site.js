@@ -312,6 +312,26 @@ test('owner link is only rendered for the configured bot owner', async () => {
   assert.doesNotMatch(visitorResponse.body, /href="\/owner"/);
 });
 
+test('linked site-account owner sees the Owner Panel navigation after Discord account enrichment', async () => {
+  const ownerAccount = { id: 'site_123e4567-e89b-42d3-a456-426614174000', username: 'Owner' };
+  const db = {
+    async query(sql) {
+      if (sql.includes('SELECT user_id FROM site_discord_links')) {
+        return { rows: [{ user_id: '1553794496234262641' }], rowCount: 1 };
+      }
+      if (sql.includes('SELECT 1 FROM frieren_profile_media')) {
+        return { rows: [], rowCount: 0 };
+      }
+      throw new Error('Unexpected owner navigation query: ' + sql);
+    }
+  };
+  const response = res();
+  await handlePublicSiteRequest(request('/kesfet', ownerAccount), response, { db });
+  assert.equal(response.status, 200);
+  assert.match(response.body, /href="\\/owner"/);
+  assert.match(response.body, /site-owner-badge/);
+});
+
 test('logout clears the shared member session cookie', async () => {
   const response = res();
   await handlePublicSiteRequest({ method: 'GET', url: '/logout', headers: {} }, response);
