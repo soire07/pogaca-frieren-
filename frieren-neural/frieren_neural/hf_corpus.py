@@ -17,6 +17,7 @@ from typing import Iterable
 DATASET_ID = "cisimcik/turkish-chat-max-25k"
 DATASET_URL = f"https://huggingface.co/datasets/{DATASET_ID}"
 DATASET_LICENSE = "apache-2.0"
+DATASET_REVISION = "7cf29049fd24970df3a32fb19a49eedd937128b9"
 EXPECTED_DATASET_ROWS = 24_543
 PREPROCESSING_VERSION = "2"
 DIALOGUE_SEPARATOR = "\n\n---\n\n"
@@ -272,13 +273,15 @@ def main() -> None:
     except ImportError as error:
         raise SystemExit("Install Frieren Neural with the [data] extra to import this dataset.") from error
 
-    info = HfApi().dataset_info(DATASET_ID)
+    info = HfApi().dataset_info(DATASET_ID, revision=DATASET_REVISION)
     revision = info.sha
+    if revision != DATASET_REVISION:
+        raise SystemExit("Hugging Face dataset revision did not match the approved immutable source commit; refusing to continue.")
     card_data = info.cardData or {}
     license_name = card_data.get("license") if isinstance(card_data, dict) else getattr(card_data, "license", None)
     if not revision:
         raise SystemExit("Hugging Face did not provide an immutable dataset revision; refusing to continue.")
-    dataset = load_dataset(DATASET_ID, split="train", revision=revision)
+    dataset = load_dataset(DATASET_ID, split="train", revision=DATASET_REVISION)
     if len(dataset) != EXPECTED_DATASET_ROWS:
         raise SystemExit(f"Expected {EXPECTED_DATASET_ROWS} pinned dataset rows; received {len(dataset)}.")
     result = prepare_turkish_chat_max_25k(
