@@ -46,6 +46,17 @@ def test_generation_fails_closed_without_server_token(api_client, monkeypatch):
     assert response.status_code == 503
 
 
+def test_generation_accepts_matching_token_with_environment_whitespace(api_client, monkeypatch):
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "  " + "a" * 40 + "\n")
+    response = api_client.post(
+        "/generate",
+        json={"prompt": "Frieren"},
+        headers={"Authorization": "Bearer " + "a" * 40},
+    )
+    # Authentication must pass; inference may still be unavailable in this unit test.
+    assert response.status_code != 401
+
+
 def test_generation_rejects_invalid_bearer_token(api_client, monkeypatch):
     monkeypatch.setenv("FRIEREN_API_TOKEN", "x" * 40)
     response = api_client.post(
