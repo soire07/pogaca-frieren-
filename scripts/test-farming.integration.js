@@ -1,8 +1,8 @@
 import test,{before,after} from 'node:test';import assert from 'node:assert/strict';
-import {pool,initDatabase} from '../database/db.js';import {farmYield,harvestFarm,initFarmSchema,plantSeed} from '../farming.js';
+import {pool,initDatabase} from '../database/db.js';import {assertIsolatedAuditDatabase} from './isolated-audit-db-guard.js';import {farmYield,harvestFarm,initFarmSchema,plantSeed} from '../farming.js';
 const guildId='farm-audit-guild',userId='farm-audit-user';
-before(async()=>{await initDatabase();await initFarmSchema(pool);await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);await pool.query('INSERT INTO users(guild_id,user_id,level,coins) VALUES($1,$2,1,1000)',[guildId,userId]);});
-after(async()=>{await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);await pool.end();});
+before(async()=>{assertIsolatedAuditDatabase();await initDatabase();await initFarmSchema(pool);await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);await pool.query('INSERT INTO users(guild_id,user_id,level,coins) VALUES($1,$2,1,1000)',[guildId,userId]);});
+after(async()=>{assertIsolatedAuditDatabase();await pool.query('DELETE FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);await pool.end();});
 test('concurrent planting reserves one plot and concurrent harvest grants one reward',async()=>{
  const plants=await Promise.all([plantSeed(pool,{guildId,userId,seedKey:'winter_berry'}),plantSeed(pool,{guildId,userId,seedKey:'winter_berry'})]);
  assert.equal(plants.filter(x=>x.status==='planted').length,1);assert.equal(plants.filter(x=>x.status==='plot_occupied').length,1);
