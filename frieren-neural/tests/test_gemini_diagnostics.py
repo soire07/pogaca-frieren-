@@ -1,4 +1,3 @@
-import json
 import urllib.error
 
 from fastapi.testclient import TestClient
@@ -30,7 +29,7 @@ def test_gemini_health_exposes_safe_reason_for_provider_http_error(monkeypatch):
         api._run_generation_smoke.cache_clear()
 
 
-def test_gemini_provider_maps_http_status_without_logging_response_body(monkeypatch, caplog):
+def test_gemini_provider_maps_http_status_without_exposing_provider_body(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "synthetic-secret-key-" + "x" * 32)
     monkeypatch.setenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", "1")
 
@@ -68,3 +67,25 @@ def test_gemini_health_classifies_missing_free_tier_ack_without_exposing_configu
     }
     assert "GEMINI_API_KEY" not in response.text
     assert "synthetic-secret-key" not in response.text
+
+
+def test_gemini_provider_classifies_network_failure_without_leaking_url_details(monkeypatch):
+    import urllib.error
+
+    monkeypatch.setenv("GEMINI_API_KEY", "synthetic-secret-key-" + "x" * 32)
+    monkeypatch.setenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", "1")
+
+    def network_failure(_request, timeout):
+        raise urllib.error.URLError("synthetic-network-detail")
+
+    monkeypatch.setattr(api.urllib.request, "urlopen", network_failure)
+    try:
+        api._generate_gemini_completion(
+            "synthetic test prompt", max_new_tokens=8, temperature=0.2, top_k=1
+        )
+    except api.GeminiProviderError as error:
+        assert error.reason == "provider_network_error"
+        assert error.http_status is None
+        assert "synthetic-network-detail" not in str(error)
+    else:
+        raise AssertionError("Expected a classified Gemini network error")
