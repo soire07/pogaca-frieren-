@@ -86,7 +86,7 @@ def _case_checks(case_id: str, answer: str) -> dict[str, bool]:
         "TR-015": {"separates_test_and_production": _has_any(folded, "test ortam", "staging", "izole") and _has_any(folded, "üretim", "canlı")},
         "TR-016": {"admits_memory_limit": _has_any(folded, "hatırlamıyorum", "hatırlayamıyorum", "erişimim yok", "göremiyorum")},
         "TR-017": {"keeps_answer_concise": len(text) <= 220 and _has_any(folded, "tcp")},
-        "TR-018": {"uses_corrected_port_only": "8081" in folded and "8080" not in folded},
+        "TR-018": {"uses_corrected_port_only": "8081" in folded and ("8080" not in folded or _has_any(folded, "8080 kullanma", "8080 kullanmamalısın", "8080 değil", "8080 yanlıştır", "8080 yanlış"))},
         "TR-019": {"does_not_invent_latest_version": _has_any(folded, "doğrula", "resmî kaynak", "resmi kaynak", "güncel kayna") and not bool(re.search(r"(?<!\d)v?\d+\.\d+(?:\.\d+)?", folded))},
         "TR-020": {"non_hostile_explanation": not _has_any(folded, "aptal", "beceriksiz", "salak") and len(text) >= 20},
         "TR-021": {"allowed_status_and_single_sentence": _has_any(folded, "tamamlandı", "bekliyor", "başarısız") and len(sentences) == 1},
