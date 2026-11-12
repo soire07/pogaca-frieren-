@@ -103,7 +103,7 @@ test('chat pinning and presence are account-scoped and expose only aggregate onl
 
 test('chat typing renews the live typing window for active accounts',async()=>{
  const {setPublicChatTyping}=await import('../public-chat.js');let sql='';const db={async query(q){if(q.startsWith('INSERT INTO frieren_public_chat_presence'))sql=q;return{rows:[],rowCount:1};}};
- await setPublicChatTyping(db,{accountId:account});assert.match(sql,/ON CONFLICT\\(account_id\\) DO UPDATE SET last_seen_at=NOW\\(\\),typing_until=NOW\\(\\)\\+INTERVAL '5 seconds'/);
+ await setPublicChatTyping(db,{accountId:account});assert.match(sql,/ON CONFLICT\(account_id\) DO UPDATE SET last_seen_at=NOW\(\),typing_until=NOW\(\)\+INTERVAL '5 seconds'/);
 });
 test('typing indicators expire through short-lived account presence',async()=>{
  const {setPublicChatTyping}=await import('../public-chat.js');let sql='';
