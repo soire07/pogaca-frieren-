@@ -1266,7 +1266,7 @@ test('Owner Security labels the external GitHub Actions OIDC sender separately f
     }],
     chainStatus: { valid: true, checked: 6, truncated: false, firstInvalidSequence: null }
   });
-  assert.match(html, /GitHub Actions OIDC doğrulandı/);
+  assert.match(html, /Alıcı doğrulaması: GitHub Actions OIDC doğrulandı/);
   assert.match(html, /Frieren Guard \(GitHub Actions OIDC\)/);
   assert.match(html, /Son 30 delil içindeki harici imzalı olay sayısı: 1/);
   assert.match(html, /Ağ IP bilgisi uygulanamaz/);
