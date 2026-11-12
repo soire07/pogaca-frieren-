@@ -756,3 +756,11 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .player-banner--north{background:radial-gradient(ellipse at 78% 16%,#93b8e955,transparent 38%),linear-gradient(115deg,#0b172b,#233d5c 58%,#111a31)}
 .player-banner-content{max-width:760px}.player-banner h2{margin:8px 0;font:clamp(26px,4vw,42px)/1.15 Georgia,serif;color:#f5eaff;text-shadow:0 3px 24px #08061299}.player-banner p{margin:0;color:#e1d8f3}
 @media(max-width:560px){.player-banner{min-height:150px;padding:20px;border-radius:18px}.player-banner h2{font-size:26px}}
+
+/* Community chat composer and emoji picker */
+.public-chat-form textarea[name=message]{display:block;width:100%;min-width:0;min-height:76px;max-height:220px;resize:vertical;padding:13px 14px;border:1px solid #d8c2fa55;border-radius:13px;background:#100e1e;color:#fff;font:inherit;line-height:1.5}
+.public-chat-emoji-tools{position:relative;display:flex;align-items:center;gap:8px}
+.public-chat-emoji-picker{display:flex;flex-wrap:wrap;gap:5px;padding:8px;border:1px solid #d8baff55;border-radius:12px;background:#171326;box-shadow:0 10px 30px #05040d88}
+.public-chat-emoji-picker[hidden]{display:none}
+.public-chat-emoji{width:36px;height:36px;border:0;border-radius:8px;background:#ffffff0c;font-size:19px;cursor:pointer}
+.public-chat-emoji:focus-visible,.public-chat-emoji:hover{outline:2px solid #c4a8ff;background:#9b7bd933}
