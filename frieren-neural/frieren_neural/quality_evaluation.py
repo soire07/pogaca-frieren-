@@ -308,6 +308,7 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
     if scores is None:
         automated = evaluate_outputs(outputs)
         report["automated_quality"] = automated
+        report["review_template"] = {"reviewers": [], "candidate_binding": None, "mode": "automated"}
         report["human_review"] = {
             "completed": False,
             "reviewers_required": 0,
@@ -340,6 +341,8 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
                     == expected_ids
                 and isinstance(baseline_auto.get("case_results"), list)
                 and len(baseline_auto["case_results"]) == len(expected_ids)
+                and isinstance(baseline_auto.get("cases_passed"), int)
+                and not isinstance(baseline_auto.get("cases_passed"), bool)
                 and baseline_report.get("decoding_settings") == DECODING_SETTINGS
                 and baseline_report.get("prompt_set_version") == PROMPT_SET_VERSION
                 and baseline_report.get("baseline_role") == "baseline_candidate"
