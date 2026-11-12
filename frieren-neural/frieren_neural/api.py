@@ -329,6 +329,7 @@ def _generate_groq_completion(
 def _generate_gemini_completion(
     prompt: str, *, max_new_tokens: int, temperature: float, top_k: int,
     thinking_level: str | None = None,
+    timeout_seconds: int = 60,
 ) -> str:
     del temperature, top_k  # Gemini 3.8 Flash does not accept legacy sampling controls.
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
@@ -356,8 +357,9 @@ def _generate_gemini_completion(
         headers={"x-goog-api-key": api_key, "Content-Type": "application/json", "User-Agent": "FrierenNeural/1.0"},
         method="POST",
     )
+    logger.info("Gemini provider request started: model=%s timeout_seconds=%s", GEMINI_MODEL_ID, timeout_seconds)
     try:
-        with urllib.request.urlopen(request, timeout=60) as response:
+        with urllib.request.urlopen(request, timeout=max(5, min(int(timeout_seconds), 60))) as response:
             raw = response.read(GEMINI_MAX_RESPONSE_BYTES + 1)
             if len(raw) > GEMINI_MAX_RESPONSE_BYTES:
                 raise RuntimeError("The inference provider response exceeded the size limit.")
@@ -377,7 +379,7 @@ def _generate_gemini_completion(
         }
         reason = reason_by_status.get(error.code, "provider_temporarily_unavailable" if error.code >= 500 else "provider_http_error")
         raise GeminiProviderError(reason, error.code) from error
-    except urllib.error.URLError as error:
+    except (urllib.error.URLError, TimeoutError, OSError) as error:
         raise GeminiProviderError("provider_network_error") from error
     try:
         result = json.loads(raw.decode("utf-8"))
@@ -400,12 +402,14 @@ def _generate_gemini_completion(
 def _generate_reply(
     prompt: str, *, max_new_tokens: int, temperature: float, top_k: int,
     thinking_level: str | None = None,
+    provider_timeout_seconds: int = 60,
 ):
     backend = _model_backend()
     if backend == "gemini":
         completion = _generate_gemini_completion(
             prompt, max_new_tokens=max_new_tokens, temperature=temperature, top_k=top_k,
             thinking_level=thinking_level,
+            timeout_seconds=provider_timeout_seconds,
         )
         return completion, 0, GEMINI_MODEL_ID
     if backend == "groq":
@@ -441,6 +445,7 @@ def _run_generation_smoke() -> str:
         temperature=0.2,
         top_k=20,
         thinking_level="low",
+        provider_timeout_seconds=12,
     )
     if not isinstance(completion, str) or not completion.strip():
         raise RuntimeError("The model returned an empty health-check completion.")
