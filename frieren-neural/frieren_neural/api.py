@@ -818,7 +818,14 @@ def health():
         reason = _health_failure_reason(error, backend)
         if backend == "gemini":
             logger.warning("Health generation check failed: backend=gemini reason=%s", reason)
-            return JSONResponse(status_code=503, content={"status": "model_unavailable", "reason": reason})
+            content = {"status": "model_unavailable", "reason": reason}
+            if reason == "provider_credentials_missing":
+                api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+                content["diagnostics"] = {
+                    "credential_present": bool(api_key),
+                    "credential_length_valid": len(api_key) >= 20,
+                }
+            return JSONResponse(status_code=503, content=content)
         return JSONResponse(status_code=503, content={"status": "model_unavailable"})
     backend = _model_backend()
     model_name = GEMINI_MODEL_ID if backend == "gemini" else GROQ_MODEL_ID if backend == "groq" else "ufakai/ufakzeka-1" if backend == "ufakzeka" else "frieren-neural-scratch"
