@@ -358,7 +358,7 @@ def test_health_check_does_not_wait_for_generation_capacity(api_client, monkeypa
         assert response.status_code == 200
         assert response.json() == {
             "status": "ready",
-            "model": "gemini-3.8-flash",
+            "model": "gemini-3.5-flash-lite",
             "generation_smoke": "skipped",
         }
     finally:
@@ -1083,7 +1083,7 @@ def test_gemini_backend_is_explicit_and_does_not_load_local_checkpoint(monkeypat
     monkeypatch.setenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", "1")
     monkeypatch.setenv("FRIEREN_CHECKPOINT", str(tmp_path / "missing.pt"))
     assert api._model_backend() == "gemini"
-    assert api._load_active_runtime() == "gemini-3.8-flash"
+    assert api._load_active_runtime() == "gemini-3.5-flash-lite"
 
 
 def test_gemini_generation_uses_pinned_model_and_hides_thought_parts(monkeypatch):
@@ -1113,7 +1113,7 @@ def test_gemini_generation_uses_pinned_model_and_hides_thought_parts(monkeypatch
     )
     assert completion == "204 TL doğru sonuçtur."
     assert step == 0
-    assert model_name == "gemini-3.8-flash"
+    assert model_name == "gemini-3.5-flash-lite"
     assert captured["url"] == api.GEMINI_API_URL
     assert captured["timeout"] == 60
     assert captured["body"]["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "high"
