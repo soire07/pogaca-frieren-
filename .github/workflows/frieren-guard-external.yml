@@ -23,7 +23,7 @@ jobs:
       - name: Check out the exact audited commit
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Set up Node.js
