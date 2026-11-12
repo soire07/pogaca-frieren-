@@ -40,6 +40,9 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Generate a temporary lockfile without changing the repository
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund --legacy-peer-deps
+
       - name: Run npm production dependency audit
         run: |
           set +e
