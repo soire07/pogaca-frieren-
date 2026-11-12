@@ -8,6 +8,7 @@ on:
       - feat/neural-single-core-integration-20261107
     paths:
       - "frieren-neural/benchmarks/qwen3_1_7b_gguf_q4_cpu.py"
+      - "frieren-neural/benchmarks/compare_qwen3_cpu_reports.py"
       - "frieren-neural/tests/test_qwen3_1_7b_gguf_q4.py"
       - ".github/workflows/frieren-neural-qwen3-1-7b-gguf-q4.yml"
 
@@ -49,17 +50,42 @@ jobs:
         run: python -m compileall -q benchmarks/qwen3_1_7b_gguf_q4_cpu.py
       - name: Run Qwen isolation and review-binding regression tests
         run: pytest -q tests/test_qwen3_1_7b_gguf_q4.py
-      - name: Run checksum-verified 24-prompt Q4 benchmark
+      - name: Run checksum-verified 24-prompt Q4 candidate benchmark
         env:
           HF_HUB_DISABLE_TELEMETRY: "1"
         run: python benchmarks/qwen3_1_7b_gguf_q4_cpu.py --output-dir benchmark-results/gguf-q4 --model-path benchmark-cache/Qwen3-1.7B-Q4_K_M.gguf --threads 2
-      - name: Upload Q4 benchmark and human-review template
+      - name: Run matched Qwen3-0.6B Q4 baseline benchmark
+        env:
+          HF_HUB_DISABLE_TELEMETRY: "1"
+        run: >-
+          python benchmarks/qwen3_1_7b_gguf_q4_cpu.py
+          --output-dir benchmark-results/gguf-q4-baseline
+          --model-path benchmark-cache/Qwen3-0.6B-Q4_K_M.gguf
+          --threads 2
+          --model-id Qwen/Qwen3-0.6B-GGUF
+          --model-file Qwen3-0.6B-Q4_K_M.gguf
+          --model-revision 8e42d41f70cb6c571f58c3f31bd9287b372d97cc
+          --model-url https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/8e42d41f70cb6c571f58c3f31bd9287b372d97cc/Qwen3-0.6B-Q4_K_M.gguf
+          --model-sha256 b0638f08417a2d3c8652760462eb5407c6e30173cf9608ad0820757a281eea0e
+          --model-license "Apache-2.0 (upstream declaration)"
+          --candidate-name Qwen3-0.6B-GGUF-Q4_K_M
+          --max-model-size-bytes 524288000
+      - name: Compare identical prompts and inference settings
+        run: >-
+          python benchmarks/compare_qwen3_cpu_reports.py
+          --candidate benchmark-results/gguf-q4/gguf-q4-quality-report.json
+          --baseline benchmark-results/gguf-q4-baseline/gguf-q4-quality-report.json
+          --output benchmark-results/qwen3-matched-comparison.json
+      - name: Upload candidate, baseline, and matched comparison reports
         uses: actions/upload-artifact@v4
         with:
-          name: frieren-neural-qwen3-1.7b-gguf-q4-cpu-benchmark
+          name: frieren-neural-qwen3-matched-cpu-comparison
           path: |
             frieren-neural/benchmark-results/gguf-q4/gguf-q4-quality-report.json
             frieren-neural/benchmark-results/gguf-q4/human-scores.template.json
+            frieren-neural/benchmark-results/gguf-q4-baseline/gguf-q4-quality-report.json
+            frieren-neural/benchmark-results/gguf-q4-baseline/human-scores.template.json
+            frieren-neural/benchmark-results/qwen3-matched-comparison.json
           if-no-files-found: error
           retention-days: 30
 
