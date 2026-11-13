@@ -295,7 +295,7 @@ let schemaPromise = null;
 export async function ensureSiteAccountSchema(db){if(!db||typeof db.query!=='function')throw new Error('SITE_AUTH_DATABASE_INVALID');await schema(db);}
 export function buildDiscordAvatarUrl(discordUserId, avatarHash) {
   const id=String(discordUserId||'');
-  if(!/^\\d{17,20}$/.test(id))return null;
+  if(!/^[0-9]{17,20}$/.test(id))return null;
   const hashValue=String(avatarHash||'');
   if(/^(?:a_)?[a-f0-9]{2,128}$/i.test(hashValue)){
     const extension=hashValue.startsWith('a_')?'gif':'png';
