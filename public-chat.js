@@ -174,7 +174,7 @@ export async function getPublicChatPresence(db){
 
 export async function setPublicChatTyping(db,{accountId}){
  assertAccount(accountId);await ensurePublicChatSchema(db);
- await db.query("INSERT INTO frieren_public_chat_presence(account_id,last_seen_at,typing_until) VALUES($1,NOW(),NOW()+INTERVAL '12 seconds') ON CONFLICT(account_id) DO UPDATE SET last_seen_at=NOW(),typing_until=NOW()+INTERVAL '5 seconds'",[accountId]);
+ await db.query("INSERT INTO frieren_public_chat_presence(account_id,last_seen_at,typing_until) VALUES($1,NOW(),NOW()+INTERVAL '12 seconds') ON CONFLICT(account_id) DO UPDATE SET last_seen_at=NOW(),typing_until=NOW()+INTERVAL '12 seconds'",[accountId]);
  return{status:'typing'};
 }
 
