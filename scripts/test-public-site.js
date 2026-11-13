@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { handlePublicSiteRequest, publicHomeShowcasePage } from '../public-site.js';
 import { createPublicSiteSession, buildPublicSiteSessionCookie } from '../owner-dashboard.js';
 import { createSiteCsrfToken } from '../site-auth.js';
+import { buildExplorationMapContent } from '../exploration-map-content.js';
 
 const secret = 'test-public-site-session-secret-at-least-32-characters';
 process.env.ADMIN_SESSION_SECRET = secret;
@@ -1627,6 +1628,39 @@ test('account notification center renders unread state and neutralizes unsafe st
  assert.doesNotMatch(response.body,/href="javascript:alert\(1\)"/);
  assert.match(response.body,/href="\/profil">Aç/);
  assert.match(response.body,/&lt;img src=x onerror=alert\(1\)&gt;/);
+});
+
+test('exploration map content maps real boss, dungeon, rare loot and player progress to the six canonical regions', () => {
+ const result=buildExplorationMapContent({
+  level:22,
+  regionVisits:[{region_key:'merkez',visits:4},{region_key:'orman',visits:2},{region_key:'kuzey',visits:1}],
+  journalEntries:[{collection_key:'bosses',entry_key:'schattenwolf'},{collection_key:'bosses',entry_key:'northDemon'}],
+  inventory:[{item_key:'🐺 Schattenwolfzahn',quantity:2},{item_key:'Orman Kristali',quantity:1}],
+  bosses:[
+   {key:'level_1',minLevel:1,name:'Schattenwolf',region:'Merkez Topraklar',loot:['🐺 Schattenwolfzahn'],craftingMaterial:'Büyülü Poğaça Kutusu'},
+   {key:'level_20',minLevel:20,name:'Kuzey İblisi',region:'Kuzey Toprakları',loot:['Kuzey İblisinin Kalbi'],craftingMaterial:'Ejderha Pulu'}
+  ],
+  dungeons:[
+   {key:'level_1',minLevel:1,name:'Merkez Mahzeni',loot:'Eski Mahzen Anahtarı'},
+   {key:'level_5',minLevel:5,name:'Orman Zindanı',loot:'Orman Kristali'}
+  ],
+  dungeonWins:3
+ });
+ const merkez=result.regions.find(region=>region.region.key==='merkez');
+ const orman=result.regions.find(region=>region.region.key==='orman');
+ const kuzey=result.regions.find(region=>region.region.key==='kuzey');
+ assert.equal(merkez.discovered,true);
+ assert.equal(merkez.visits,4);
+ assert.equal(merkez.masteryLevel,1);
+ assert.equal(merkez.bosses[0].defeated,true);
+ assert.equal(merkez.dungeon.name,'Merkez Mahzeni');
+ assert.equal(merkez.rareItems.find(item=>item.name==='🐺 Schattenwolfzahn').ownedQuantity,2);
+ assert.equal(orman.rareItems.find(item=>item.name==='Orman Kristali').ownedQuantity,1);
+ assert.equal(kuzey.bosses[0].defeated,true);
+ assert.equal(kuzey.unlocked,true);
+ assert.equal(result.summary.discoveredRegions,3);
+ assert.equal(result.summary.defeatedBosses,2);
+ assert.equal(result.summary.dungeonWins,3);
 });
 
 test('web exploration atlas and Discord /kesif share one region catalog', async () => {
