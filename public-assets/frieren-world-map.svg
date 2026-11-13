@@ -108,7 +108,7 @@
  <path d="M1020 82C1220 70 1470 130 1585 300L1640 470C1515 515 1400 450 1290 465 1150 445 1055 356 1000 240Z" fill="url(#north-ice)" filter="url(#biome-edge)" opacity=".92"/>
  <path d="M1040 120C1210 96 1450 150 1550 305 1500 366 1410 405 1300 380 1185 368 1110 290 1040 230Z" fill="none" stroke="#f2f0e5" stroke-opacity=".58" stroke-width="7"/>
  <path d="M185 330C280 245 430 256 550 322 645 373 690 496 630 596 545 676 390 646 285 579 207 526 175 429 185 330Z" fill="url(#forest-depth)" filter="url(#biome-edge)" opacity=".94"/>
- <path d="M185 330C280 245 430 256 550 322 645 373 690 496 630 596 545 676 390 646 285 579 207 526 175 429 185 330Z" fill="url(#forest-canopy)" filter="url(#biome-edge)" opacity=".84"/>
+ <path d="M185 330C280 245 430 256 550 322 645 373 690 496 630 596 545 676 390 646 285 579 207 526 175 429 185 330Z" fill="url(#forest-canopy)" filter="url(#biome-edge)" opacity=".22"/>
  <g opacity=".24"><use href="#atlas-pine" x="290" y="365"/><use href="#atlas-pine" x="390" y="430"/><use href="#atlas-pine" x="505" y="370"/><use href="#atlas-pine" x="560" y="500"/></g>
  <path d="M230 700C355 590 535 614 665 675 775 731 820 884 720 1010 585 1100 390 1040 280 955 205 890 190 784 230 700Z" fill="url(#central-meadow)" filter="url(#biome-edge)" opacity=".86"/>
  <path d="M675 470C810 390 1000 415 1115 520 1225 622 1190 805 1040 865 900 925 735 842 680 720 640 632 635 540 675 470Z" fill="url(#sandstone)" filter="url(#biome-edge)" opacity=".42"/>
