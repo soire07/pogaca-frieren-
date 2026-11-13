@@ -57,7 +57,7 @@ test('route, history and zoom controls have responsive and reduced-motion stylin
   const client = await readFile(new URL('../public-assets/exploration-atlas.js', import.meta.url), 'utf8');
   const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
   assert.match(css, /\.atlas-route-overlay/);
-  assert.match(css, /\.atlas-route-planner/);
+  assert.match(css, /\.atlas-route-planner/);\n  assert.match(css, /\.atlas-local-detail-overlay/);\n  assert.match(css, /data-atlas-season/);
   assert.match(css, /\.atlas-pin-event \.atlas-pin-glyph/);
   assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-zoom-detail-layer/);
   assert.match(client, /data-atlas-route-submit/);
@@ -155,5 +155,5 @@ test('rendered atlas exposes user-calibrated scale, seasonal ecology and local d
   assert.match(html, /data-atlas-season/);
   assert.match(html, /data-atlas-ecology-summary/);
   assert.match(html, /data-atlas-local-detail-layer/);
-  assert.match(html, /senin ölçek kalibrasyonun|kilometre ölçeği kalibre edilmedi/i);
+  assert.match(html, /kilometre ölçeği belirtilmemiştir/i);
 });
