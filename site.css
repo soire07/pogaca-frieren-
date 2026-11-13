@@ -1576,3 +1576,18 @@ body.atlas-modal-open{overflow:hidden}
 
 .atlas-fog-layer{position:absolute;inset:0;z-index:2;width:100%;height:100%;pointer-events:none}
 .atlas-pin-layer{z-index:3}
+
+
+/* Atlas pin hierarchy: each RPG landmark has its own restrained visual language. */
+.atlas-fog-layer{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
+.atlas-pin-region .atlas-pin-glyph{background:linear-gradient(145deg,#f4e4bd,#c7a76c);color:#4b3a26;border:1px solid #765633;box-shadow:0 2px 5px #201b1680}
+.atlas-pin-city .atlas-pin-glyph{clip-path:none;border-radius:5px 5px 7px 7px;background:linear-gradient(145deg,#f0d8a2,#b78d50);color:#44321f;border:1px solid #765633;box-shadow:0 2px 5px #201b1680}
+.atlas-pin-boss .atlas-pin-glyph{clip-path:polygon(50% 0,91% 25%,82% 78%,50% 100%,18% 78%,9% 25%);background:linear-gradient(145deg,#a95f56,#693b3d);color:#fff0d9;border:1px solid #542e2d;box-shadow:0 2px 6px #21171999}
+.atlas-pin-dungeon .atlas-pin-glyph{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:linear-gradient(145deg,#c6b3dc,#7d6b9e);color:#2e2640;border:1px solid #514064;box-shadow:0 2px 5px #211a2b99}
+.atlas-pin-boss.is-defeated .atlas-pin-glyph{background:linear-gradient(145deg,#d8c18b,#8b744e);color:#302719}
+.atlas-pin-label{max-width:160px;padding:4px 7px;border:1px solid #d6bd8d;border-radius:6px;background:#171d25ed;color:#f2e3c5;font-size:10px;line-height:1.2;white-space:nowrap;box-shadow:0 4px 14px #0008}
+.atlas-pin:focus-visible{z-index:8}
+.atlas-pin:focus-visible .atlas-pin-label{opacity:1}
+.atlas-pin[hidden]{display:none}
+.atlas-map-viewport{background:#294653}
+.atlas-map-art{isolation:isolate}
