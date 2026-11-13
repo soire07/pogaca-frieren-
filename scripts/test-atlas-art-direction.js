@@ -164,7 +164,7 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   for (const layer of ['atlas-waterways', 'atlas-trails', 'atlas-settled-land']) {
     assert.match(atlas, new RegExp('data-atlas-geography-layer="' + layer + '"'));
   }
-  assert.match(atlas, /atlas-geography-overlay/);
+  assert.match(atlas, /atlas-geography-overlay/);\n  assert.match(atlas, /draggable=\\"false\\">'\\+geographyOverlay/);
   assert.match(atlas, /atlas-inline-land-clip/);
   assert.match(atlas, /atlas-river-main/);
   assert.match(atlas, /atlas-lake/);
