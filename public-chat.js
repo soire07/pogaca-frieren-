@@ -189,6 +189,7 @@ export async function markPublicChatMessagesRead(db,{accountId,messageIds=[]}){
   SELECT m.message_id,$1 FROM frieren_public_chat_messages m
   WHERE m.message_id=ANY($2::uuid[]) AND m.hidden=FALSE AND m.account_id<>$1
     AND m.created_at>=NOW()-INTERVAL '30 days'
+    AND NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE b.blocker_account_id=$1 AND b.blocked_account_id=m.account_id)
   ON CONFLICT(message_id,reader_account_id) DO NOTHING RETURNING message_id`,[accountId,messageIds]);
  return{status:'read',count:r.rowCount||0};
 }
