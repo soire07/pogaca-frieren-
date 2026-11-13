@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { createAccountNotification, ensureAccountProfileSchema } from './account-profile.js';
 import { ensurePublicChatSchema } from './public-chat.js';
+import { attachChatMedia, ensureChatMediaSchema, getChatMediaReadUrl } from './chat-media.js';
 
 const ACCOUNT=/^site_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ready=new WeakMap();
@@ -10,6 +11,7 @@ async function tx(db,fn){if(typeof db.connect!=='function')return fn(db);const c
 async function createSchema(db){
  await ensureAccountProfileSchema(db);
  await ensurePublicChatSchema(db);
+ await ensureChatMediaSchema(db);
  await db.query(`CREATE TABLE IF NOT EXISTS frieren_site_direct_messages(
   message_id UUID PRIMARY KEY,sender_account_id TEXT NOT NULL,recipient_account_id TEXT NOT NULL,
   body VARCHAR(1000) NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),read_at TIMESTAMPTZ,
@@ -47,8 +49,9 @@ async function canMessage(db,a,b){
  const blocked=await db.query('SELECT 1 FROM frieren_public_chat_blocks WHERE (blocker_account_id=$1 AND blocked_account_id=$2) OR (blocker_account_id=$2 AND blocked_account_id=$1) LIMIT 1',[a,b]);
  return !blocked.rowCount;
 }
-export async function sendSiteDirectMessage(db,{senderAccountId,recipientAccountId,body}){
- const sender=account(senderAccountId),recipient=account(recipientAccountId),message=text(body,1000);
+export async function sendSiteDirectMessage(db,{senderAccountId,recipientAccountId,body,mediaId=null}){
+ const sender=account(senderAccountId),recipient=account(recipientAccountId),message=String(body??'').normalize('NFC').trim();
+ if((!message&&!mediaId)||Array.from(message).length>1000||/[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(message))throw new Error('SITE_DM_MESSAGE_INVALID');
  if(sender===recipient)throw new Error('SITE_DM_SELF_INVALID');
  await ensureSiteDirectMessageSchema(db);
  return tx(db,async c=>{
@@ -58,6 +61,7 @@ export async function sendSiteDirectMessage(db,{senderAccountId,recipientAccount
   if(Number(rate.rows[0]?.count||0)>=20)return{status:'rate_limited'};
   const id=randomUUID();
   await c.query('INSERT INTO frieren_site_direct_messages(message_id,sender_account_id,recipient_account_id,body) VALUES($1,$2,$3,$4)',[id,sender,recipient,message]);
+  if(mediaId)await attachChatMedia(c,{mediaId,accountId:sender,scope:'dm',scopeKey:'dm:'+[sender,recipient].sort().join(':'),messageId:id});
   await createAccountNotification(c,{accountId:recipient,type:'site_dm',title:'Yeni özel mesaj',body:message.slice(0,120),href:'/kesfet#topluluk-sohbeti',schemaReady:true});
   await c.query(`DELETE FROM frieren_site_direct_messages WHERE message_id IN (
    SELECT message_id FROM frieren_site_direct_messages
@@ -72,8 +76,9 @@ export async function listSiteDirectMessages(db,{accountId,otherAccountId,limit=
  const n=Math.max(1,Math.min(100,Math.floor(Number(limit)||50)));
  await ensureSiteDirectMessageSchema(db);
  if(!await canMessage(db,viewer,other))return{status:'not_allowed',messages:[]};
- const r=await db.query('SELECT message_id,sender_account_id,recipient_account_id,body,created_at,read_at,(sender_account_id=$1) AS is_own FROM frieren_site_direct_messages WHERE (sender_account_id=$1 AND recipient_account_id=$2) OR (sender_account_id=$2 AND recipient_account_id=$1) ORDER BY created_at DESC,message_id DESC LIMIT $3',[viewer,other,n]);
- return{status:'ok',messages:r.rows.reverse()};
+ const scopeKey='dm:'+[viewer,other].sort().join(':');
+ const r=await db.query('SELECT m.message_id,m.sender_account_id,m.recipient_account_id,m.body,m.created_at,m.read_at,(m.sender_account_id=$1) AS is_own,cm.media_id,cm.mime_type AS media_mime_type,cm.size_bytes AS media_size_bytes,cm.object_key AS media_object_key FROM frieren_site_direct_messages m LEFT JOIN frieren_site_chat_media cm ON cm.message_id=m.message_id AND cm.scope_type=\'dm\' AND cm.scope_key=$4 WHERE (m.sender_account_id=$1 AND m.recipient_account_id=$2) OR (m.sender_account_id=$2 AND m.recipient_account_id=$1) ORDER BY m.created_at DESC,m.message_id DESC LIMIT $3',[viewer,other,n,scopeKey]);
+ return{status:'ok',messages:r.rows.reverse().map(({media_object_key,...row})=>({...row,media_url:media_object_key?getChatMediaReadUrl({object_key:media_object_key,mime_type:row.media_mime_type}):null}))};
 }
 export async function markSiteDirectMessagesRead(db,{accountId,otherAccountId}){
  const viewer=account(accountId),other=account(otherAccountId);if(viewer===other)throw new Error('SITE_DM_SELF_INVALID');
@@ -110,8 +115,9 @@ export async function listSiteDmGroups(db,accountId){
   WHERE mine.account_id=$1 ORDER BY g.created_at DESC LIMIT 50`,[viewer]);
  return r.rows;
 }
-export async function sendSiteDmGroupMessage(db,{senderAccountId,groupId,body}){
- const sender=account(senderAccountId),message=text(body,1000);
+export async function sendSiteDmGroupMessage(db,{senderAccountId,groupId,body,mediaId=null}){
+ const sender=account(senderAccountId),message=String(body??'').normalize('NFC').trim();
+ if((!message&&!mediaId)||Array.from(message).length>1000||/[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(message))throw new Error('SITE_DM_MESSAGE_INVALID');
  if(!/^[0-9a-f-]{36}$/i.test(String(groupId||'')))throw new Error('SITE_DM_GROUP_INVALID');
  await ensureSiteDirectMessageSchema(db);
  return tx(db,async client=>{
@@ -123,6 +129,7 @@ export async function sendSiteDmGroupMessage(db,{senderAccountId,groupId,body}){
    (SELECT COUNT(*) FROM frieren_site_dm_group_messages WHERE sender_account_id=$1 AND created_at>NOW()-INTERVAL '10 minutes') AS count`,[sender]);
   if(Number(rate.rows[0]?.count||0)>=20)return{status:'rate_limited'};
   const id=randomUUID();await client.query('INSERT INTO frieren_site_dm_group_messages(message_id,group_id,sender_account_id,body) VALUES($1,$2,$3,$4)',[id,groupId,sender,message]);
+  if(mediaId)await attachChatMedia(client,{mediaId,accountId:sender,scope:'group',scopeKey:'group:'+groupId,messageId:id});
   await client.query('DELETE FROM frieren_site_dm_group_messages WHERE message_id IN (SELECT message_id FROM frieren_site_dm_group_messages WHERE group_id=$1 ORDER BY created_at DESC,message_id DESC OFFSET 500)',[groupId]);
   const recipients=await client.query('SELECT gm.account_id FROM frieren_site_dm_group_members gm WHERE gm.group_id=$1 AND gm.account_id<>$2 AND NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE (b.blocker_account_id=gm.account_id AND b.blocked_account_id=$2) OR (b.blocker_account_id=$2 AND b.blocked_account_id=gm.account_id))',[groupId,sender]);
   for(const recipient of recipients.rows)await createAccountNotification(client,{accountId:recipient.account_id,type:'site_dm_group',title:'Grup sohbetinde yeni mesaj',body:message.slice(0,120),href:'/kesfet#topluluk-sohbeti',schemaReady:true});
@@ -135,11 +142,12 @@ export async function listSiteDmGroupMessages(db,{accountId,groupId,limit=60}){
  const member=await db.query('SELECT 1 FROM frieren_site_dm_group_members WHERE group_id=$1 AND account_id=$2',[groupId,viewer]);
  if(!member.rowCount)return{status:'not_allowed',messages:[]};
  const r=await db.query(`SELECT m.message_id,m.sender_account_id,COALESCE(NULLIF(ap.display_name,''),'Gezgin') AS username,ap.profile_slug,m.body,m.created_at,(m.sender_account_id=$2) AS is_own,
-  EXISTS(SELECT 1 FROM frieren_site_dm_group_reads rd WHERE rd.message_id=m.message_id AND rd.reader_account_id=$2) AS is_read
-  FROM frieren_site_dm_group_messages m LEFT JOIN frieren_account_profiles ap ON ap.account_id=m.sender_account_id WHERE m.group_id=$1
+  EXISTS(SELECT 1 FROM frieren_site_dm_group_reads rd WHERE rd.message_id=m.message_id AND rd.reader_account_id=$2) AS is_read,
+  cm.media_id,cm.mime_type AS media_mime_type,cm.size_bytes AS media_size_bytes,cm.object_key AS media_object_key
+  FROM frieren_site_dm_group_messages m LEFT JOIN frieren_site_chat_media cm ON cm.message_id=m.message_id AND cm.scope_type='group' AND cm.scope_key='group:'||m.group_id LEFT JOIN frieren_account_profiles ap ON ap.account_id=m.sender_account_id WHERE m.group_id=$1
   AND NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE (b.blocker_account_id=$2 AND b.blocked_account_id=m.sender_account_id) OR (b.blocker_account_id=m.sender_account_id AND b.blocked_account_id=$2))
   ORDER BY m.created_at DESC,m.message_id DESC LIMIT $3`,[groupId,viewer,n]);
- return{status:'ok',messages:r.rows.reverse()};
+ return{status:'ok',messages:r.rows.reverse().map(({media_object_key,...row})=>({...row,media_url:media_object_key?getChatMediaReadUrl({object_key:media_object_key,mime_type:row.media_mime_type}):null}))};
 }
 export async function markSiteDmGroupMessagesRead(db,{accountId,groupId}){
  const viewer=account(accountId);if(!/^[0-9a-f-]{36}$/i.test(String(groupId||'')))throw new Error('SITE_DM_GROUP_INVALID');
