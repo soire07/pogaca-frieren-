@@ -142,3 +142,15 @@ test('Frieren atlas adds subtle northern snowfall and forest mist without changi
   assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-atmosphere-layer::before/);
   assert.match(site, /site\.css\?v=atlas-360-1/);
 });
+
+
+test('Frieren atlas terrain uses organic mountain ridgelines and fine terrain grain rather than repeated cartoon peaks', async () => {
+  const artwork = await readFile(new URL('../public-assets/frieren-world-map.svg', import.meta.url), 'utf8');
+  assert.match(artwork, /id="terrain-grain"/);
+  assert.match(artwork, /M700 347 748 294 780 319 820 232/);
+  assert.match(artwork, /stroke-opacity=".72" stroke-width="4"/);
+  assert.match(artwork, /fill="url\(#terrain-grain\)" opacity=".42"/);
+  assert.doesNotMatch(artwork, /<use href="#ridge" x="710"/);
+  assert.match(artwork, /GRÖSSE ORMANI/);
+  assert.match(artwork, /KUZEY PLATOSU/);
+});
