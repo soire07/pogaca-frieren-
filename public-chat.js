@@ -75,7 +75,7 @@ export async function listPublicChatMessages(db,{limit=100,viewerAccountId=null,
    AND ($6::boolean=FALSE OR m.pinned_at IS NOT NULL)
    AND ($4::text='' OR m.username ILIKE '%'||$4||'%' OR ap.display_name ILIKE '%'||$4||'%' OR m.body ILIKE '%'||$4||'%')
   ORDER BY CASE WHEN $6::boolean THEN m.pinned_at ELSE m.created_at END DESC,m.created_at DESC,m.message_id DESC LIMIT $1`,[count,viewer,cursor,term,owners,Boolean(pinnedOnly)]);
- return result.rows.reverse().map(({discord_user_id,discord_avatar_hash,media_object_key,...row})=>({...row,avatar_url:row.avatar_url||buildDiscordAvatarUrl(discord_user_id,discord_avatar_hash)||'/site-avatar.webp',media_url:media_object_key?getChatMediaReadUrl({object_key:media_object_key,mime_type:row.media_mime_type}):null}));
+ return result.rows.reverse().map(({discord_user_id,discord_avatar_hash,media_object_key,...row})=>({...row,avatar_url:row.avatar_url||(discord_avatar_hash?buildDiscordAvatarUrl(discord_user_id,discord_avatar_hash):'/site-avatar.webp'),media_url:media_object_key?getChatMediaReadUrl({object_key:media_object_key,mime_type:row.media_mime_type}):null}));
 }
 
 export async function sendPublicChatMessage(db,{accountId,username,body,replyToMessageId=null,mediaId=null}){
