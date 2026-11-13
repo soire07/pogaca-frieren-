@@ -51,7 +51,7 @@ async function ensureSiteSocialSchema(db){let pending=siteSocialSchemaReady.get(
 const SITE_ACCOUNT_ID = /^site_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const OWNER_ID = '1553794496234262641';
 const assets = new Map([
-  ...['animequiz.gif','buyusavasi.gif','buyusavasi_kazandi.gif','buyusavasi_vurus.gif','eisen.gif','envanter.gif','fern.gif','frieren.gif','heiter.gif','himmel.gif','macera.gif','profil.gif','quizdogru.gif','quizyanlis.gif','stark.gif','yardim.gif','site-avatar.svg','site-avatar.webp','site-shortcut.svg','site-banner.svg','site-banner.webp','site-profile-banner.svg','site.css','owner.css'].map(file => ['/assets/' + file, file])
+  ...['animequiz.gif','buyusavasi.gif','buyusavasi_kazandi.gif','buyusavasi_vurus.gif','eisen.gif','envanter.gif','fern.gif','frieren.gif','heiter.gif','himmel.gif','macera.gif','profil.gif','quizdogru.gif','quizyanlis.gif','stark.gif','yardim.gif','site-avatar.svg','site-avatar.webp','site-shortcut.svg','site-banner.svg','site-banner.webp','site-profile-banner.svg','frieren-world-map.svg','site.css','owner.css'].map(file => ['/assets/' + file, file])
 ]);
 assets.set('/assets/embed-preview.js', 'public-assets/embed-preview.js');
 assets.set('/assets/market-preview.js', 'public-assets/market-preview.js');
