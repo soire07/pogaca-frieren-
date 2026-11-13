@@ -27,8 +27,9 @@ import { getNotificationPreferences, setNotificationPreference } from './news-bi
 import { levelForXp, xpForNextLevel } from './utils.js';
 import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks, deletePublicChatMessage, deleteOwnPublicChatMessage, updatePublicChatMessage, togglePublicChatPin, touchPublicChatPresence, getPublicChatPresence, setPublicChatTyping, markPublicChatMessagesRead, reportPublicChatMessage, listPublicChatReports, resolvePublicChatReport, getPublicChatControl, setPublicChatPaused } from './public-chat.js';
 import { getAccountProfile, updateAccountProfile, followAccount, unfollowAccount, recordAccountProfileVisit, listAccountProfileActivity, sendAccountFriendRequest, respondAccountFriendRequest, listAccountFriends, getAccountIdByProfileSlug, listAccountNotifications, markAccountNotificationsRead } from './account-profile.js';
-import { sendSiteDirectMessage, listSiteDirectMessages, markSiteDirectMessagesRead, createSiteDmGroup, listSiteDmGroups, sendSiteDmGroupMessage, listSiteDmGroupMessages, markSiteDmGroupMessagesRead, leaveSiteDmGroup } from './site-direct-messages.js';
+import { sendSiteDirectMessage, listSiteDirectMessages, markSiteDirectMessagesRead, createSiteDmGroup, listSiteDmGroups, sendSiteDmGroupMessage, listSiteDmGroupMessages, markSiteDmGroupMessagesRead, leaveSiteDmGroup, canSiteDmAccountsMessage, isSiteDmGroupMember } from './site-direct-messages.js';
 import { subscribeChatEvents, publishChatEvent } from './chat-realtime.js';
+import { uploadChatMedia } from './chat-media.js';
 import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, markDirectMessagesRead, sendDirectMessage, listGuestbookEntries, addGuestbookEntry, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers, setCloseFriend, removeCloseFriend, listCloseFriends, recordProfileVisit, listProfileVisits } from './personal-center.js';
 import { achievements as RPG_ACHIEVEMENTS } from './basarimlar.js';
 import { listCardVariants } from './card-variants.js';
@@ -717,6 +718,34 @@ function publicSeoLandingPage() {
 export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   if (await handleGuildDashboardRequest(req, res, { client, db })) return true;
   const url = new URL(req.url, 'http://localhost');
+  if(req.method==='POST'&&url.pathname==='/api/chat-media/upload'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'media_unavailable'}));return true;}
+    const mimeType=String(req.headers['content-type']||'').toLowerCase().split(';')[0].trim();
+    if(!verifySiteCsrfToken(req.headers['x-csrf-token'],process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
+    const scope=String(req.headers['x-chat-scope']||''),target=String(req.headers['x-chat-target']||'');
+    let scopeKey='';
+    if(scope==='public')scopeKey='public';
+    else if(scope==='dm'){
+      if(!SITE_ACCOUNT_ID.test(target)||!await canSiteDmAccountsMessage(db,session.id,target)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'media_scope_denied'}));return true;}
+      scopeKey='dm:'+[session.id,target].sort().join(':');
+    }else if(scope==='group'){
+      if(!/^[0-9a-f-]{36}$/i.test(target)||!await isSiteDmGroupMember(db,session.id,target)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'media_scope_denied'}));return true;}
+      scopeKey='group:'+target;
+    }else{res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'media_scope_invalid'}));return true;}
+    const chunks=[];let size=0;const max=24*1024*1024;
+    for await(const chunk of req){size+=chunk.length;if(size>max){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'media_too_large'}));return true;}chunks.push(chunk);}
+    try{
+      const result=await uploadChatMedia(db,{accountId:session.id,scope,scopeKey,mimeType,buffer:Buffer.concat(chunks)});
+      res.writeHead(201,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
+    }catch(error){
+      const code=String(error?.message||'');
+      const status=code==='CHAT_MEDIA_STORAGE_NOT_CONFIGURED'?503:code==='CHAT_MEDIA_DAILY_QUOTA'?429:code.includes('SCOPE')?403:400;
+      const message=code==='CHAT_MEDIA_STORAGE_NOT_CONFIGURED'?'media_storage_not_configured':code==='CHAT_MEDIA_DAILY_QUOTA'?'media_daily_quota':code==='CHAT_MEDIA_SIZE_INVALID'?'media_size_invalid':code==='CHAT_MEDIA_TYPE_INVALID'||code==='CHAT_MEDIA_SIGNATURE_INVALID'?'media_type_invalid':'media_upload_failed';
+      res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify({error:message}));return true;
+    }
+  }
   if(req.method==='GET'&&url.pathname==='/api/chat-events'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
