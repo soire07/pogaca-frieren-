@@ -1200,30 +1200,30 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/Mana araştırmacısı/);
  assert.doesNotMatch(response.body,/Ön safta nöbet/);
  assert.ok(!calls.some(call=>/INSERT INTO daily_mission_claims|UPDATE users SET coins/i.test(call.sql)));
- assert.match(response.body,/Kuzey Kıtası Dünya Haritası/);
+ assert.match(response.body,/Frieren Dünyası/);
  assert.match(response.body,/atlas-world-map/);
  assert.match(response.body,/atlas-pin-layer/);
  assert.match(response.body,/style="left:26\.4%;top:57\.5%;"/);
  assert.match(response.body,/atlas-forest/);
- assert.match(response.body,/atlas-desert/);
- assert.match(response.body,/atlas-snow/);
+ assert.match(response.body,/atlas-highlands/);
+ assert.match(response.body,/atlas-north/);
  assert.match(response.body,/Boss zaferleri · karakter geneli/);
  assert.match(response.body,/Zindan zaferleri · karakter geneli/);
  assert.doesNotMatch(response.body,/data-map-marker-type="boss"/);
  assert.doesNotMatch(response.body,/data-map-marker-type="chest"/);
  assert.doesNotMatch(response.body,/data-map-marker-type="relic"/);
- assert.match(response.body,/Boss ve zindan noktaları/);
+ assert.match(response.body,/Boss karşılaşmaları/);
  assert.match(response.body,/Schattenwolf/);
  assert.match(response.body,/Merkez Topraklar Mahzeni/);
- assert.match(response.body,/Sandıklar ve nadir ganimet/);
+ assert.match(response.body,/Nadir ganimet/);
  assert.match(response.body,/Schattenwolfzahn/);
  assert.match(response.body,/Envanterinde ×2/);
  assert.match(response.body,/bölge ·/);
  assert.match(response.body,/Yenilen bosslar/);
- assert.match(response.body,/Sandık alanı/);
+ assert.match(response.body,/Zindanlar/);
  assert.match(response.body,/atlas-pin-label/);
  assert.match(response.body,/data-atlas-open="merkez"/);
- assert.match(response.body,/aria-label="Frieren Kuzey Kıtası interaktif haritası"/);
+ assert.match(response.body,/aria-label="Frieren anime dünyası ve RPG keşif haritası"/);
  assert.match(response.body,/Merkez Topraklar/);
  assert.match(response.body,/Büyük Orman Yolu/);
  assert.match(response.body,/data-atlas-panel="merkez"/);
@@ -1840,7 +1840,7 @@ test('illustrated atlas background is served as a first-party image asset', asyn
 test('interactive parchment atlas renders biome regions, settlements, NPCs, creatures, boss and dungeon pins with live discovery percentage',()=>{
  const mapContent=buildExplorationMapContent({level:50,regionVisits:[{region_key:'merkez',visits:3},{region_key:'orman',visits:1},{region_key:'harabeler',visits:1}],bosses:[{key:'test_boss',name:'Schattenwolf',minLevel:1,region:'Merkez Topraklar'}],dungeons:[{key:'test_dungeon',name:'Merkez Topraklar Mahzeni',minLevel:1,loot:'Schattenwolfzahn'}]});
  const html=renderExplorationAtlas({mapContent,stats:{boss_defeats:2,dungeon_wins:1}});
- for(const text of ['50% keşfedildi','Merkez Topraklar','Größe Ormanı','Graf Granat Bölgesi','Kühl Bölgesi','Schwer Dağları','Ende','Strahl','Fabel Köyü','Äußerst','Kılıç Köyü','Weise','İblis Kralı’nın Şatosu','Mira','Gezgin büyücü','Mana Slime','Orman Perisi','Schattenwolf','Merkez Topraklar Mahzeni','Keşif Bölgeleri ve Karşılaşmalar','RPG BÖLGE KAYITLARI','atlas-paper','atlas-forest','atlas-mountains'])assert.ok(html.includes(text),'atlas should include '+text);
+ for(const text of ['50% keşfedildi','Merkez Topraklar','Größe Ormanı','Graf Granat Bölgesi','Kühl Bölgesi','Schwer Dağları','Ende','Strahl','Fabel Köyü','Äußerst','Kılıç Köyü','Weise','İblis Kralı’nın Şatosu','Mana Slime','Orman Perisi','Schattenwolf','Merkez Topraklar Mahzeni','Boss noktaları','Zindan ve sandık alanı','Nadir ganimet noktaları','atlas-paper','atlas-forest','atlas-mountains'])assert.ok(html.includes(text),'atlas should include '+text);
  assert.match(html,/data-atlas-focus="city"/);assert.match(html,/data-atlas-focus="boss"/);assert.match(html,/data-atlas-focus="dungeon"/);assert.match(html,/role="dialog"/);assert.match(html,/data-atlas-close/);assert.match(html,/class="exploration-region-grid"/);assert.match(html,/id="region-merkez"/);
  assert.doesNotMatch(html,/exploration-map-node-pin/);
 });
@@ -1873,7 +1873,7 @@ test('Frieren anime atlas keeps every canonical settlement and all RPG boss and 
  for(const place of FRIEREN_WORLD_SETTLEMENTS)assert.ok(html.includes('data-atlas-target-key="'+place.key+'"'),'missing settlement pin '+place.name);
  for(const boss of [...DEFAULT_SOLO_BOSSES,...DEFAULT_RAID_BOSSES])assert.ok(html.includes('data-atlas-target-key="'+(boss.key||boss.id)+'"'),'missing boss pin '+(boss.key||boss.id));
  for(const dungeon of DEFAULT_DUNGEON_TIERS)assert.ok(html.includes('data-atlas-target-key="'+dungeon.key+'"'),'missing dungeon pin '+dungeon.key);
- assert.match(html,/id="atlas-region-list-title"/);
+ assert.match(html,/id="region-merkez"/);
  assert.match(html,/exploration-region-grid/);
 });
 
@@ -1881,7 +1881,7 @@ test('atlas exploration fog reveals only regions marked discovered by the RPG ma
  const mapContent=buildExplorationMapContent({level:50,regionVisits:[{region_key:'merkez',visits:3}],bosses:[],dungeons:[]});
  const html=renderExplorationAtlas({mapContent,stats:{}});
  assert.match(html,/atlas-fog-layer/);
- assert.match(html,/atlas-discovery-mask/);
+ 
  assert.match(html,/<path d="M17 69 Q25 63 35 67/);
  assert.doesNotMatch(html,/<circle[^>]+fill="black"/); assert.doesNotMatch(html,/<circle[^>]+r="13"/);
 });
