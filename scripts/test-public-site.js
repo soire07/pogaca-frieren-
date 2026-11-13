@@ -1137,6 +1137,8 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
    {board:'achievements',players:[{user_id:userId,character_name:'Fern',achievements:2}]}
   ],rowCount:6};
   if(sql.includes('FROM adventure_history'))return{rows:[{activity_type:'adventure',activity_label:'Buzlu Orman',activity_at:'2026-01-04T00:00:00.000Z',xp_awarded:50}],rowCount:1};
+  if(sql.includes('FROM adventure_journal_entries'))return{rows:[{collection_key:'spells',entry_key:'alev_kuresi'},{collection_key:'discoveries',entry_key:'ancient-elf-sanctuary'}],rowCount:2};
+  if(sql.includes('FROM adventure_journal_collection_claims'))return{rows:[{collection_key:'spells'}],rowCount:1};
   if(sql.includes('FROM anime_character_collection'))return{rows:[{anime_cards:14,anime_copies:22,journal_entries:9}],rowCount:1};
   if(sql.includes('FROM arena_seasons'))return{rows:[{season_name:'Kuzey Sezonu',rating:1420,wins:5,losses:2,matches:7}],rowCount:1};
   if(sql.includes('FROM player_profile_settings'))return{rows:[{show_stats:false,show_achievements:true,show_collections:false,show_activity:false,show_cosmetics:true,active_title:'Kıdemli Maceracı'}],rowCount:1};
@@ -1148,6 +1150,10 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.equal(await handlePublicSiteRequest(request('/maceraci/profil?guildId='+guildId,{id:accountId,username:'Gezgin'}),response,{db}),true);
  assert.equal(response.status,200);
  assert.match(response.body,/Maceracı Profili/);
+ assert.match(response.body,/Keşif ve Büyü Günlüğü/);
+ assert.match(response.body,/Büyü arşivi/);
+ assert.match(response.body,/1\/7 kayıt/);
+ assert.match(response.body,/Ödül alındı/);
  assert.match(response.body,/Seviye 20/);
  assert.match(response.body,/1\.950/);
  assert.match(response.body,/Kıdemli Maceracı/);
