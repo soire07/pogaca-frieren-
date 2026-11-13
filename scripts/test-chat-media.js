@@ -2,9 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {validateChatMedia,signChatMediaUrl,isChatMediaConfigured,getChatMediaReadUrl} from '../chat-media.js';
 
-const envKeys=['CHAT_MEDIA_R2_ACCOUNT_ID','CHAT_MEDIA_R2_BUCKET','CHAT_MEDIA_R2_ACCESS_KEY_ID','CHAT_MEDIA_R2_SECRET_ACCESS_KEY'];
+const envKeys=['CHAT_MEDIA_SUPABASE_ENDPOINT','CHAT_MEDIA_SUPABASE_REGION','CHAT_MEDIA_SUPABASE_BUCKET','CHAT_MEDIA_SUPABASE_ACCESS_KEY_ID','CHAT_MEDIA_SUPABASE_SECRET_ACCESS_KEY'];
 const original=Object.fromEntries(envKeys.map(key=>[key,process.env[key]]));
-function setTestConfig(){process.env.CHAT_MEDIA_R2_ACCOUNT_ID='1234567890abcdef1234567890abcdef';process.env.CHAT_MEDIA_R2_BUCKET='frieren-chat-test';process.env.CHAT_MEDIA_R2_ACCESS_KEY_ID='test-access-key';process.env.CHAT_MEDIA_R2_SECRET_ACCESS_KEY='test-secret-key';}
+function setTestConfig(){
+ process.env.CHAT_MEDIA_SUPABASE_ENDPOINT='https://projectref.storage.supabase.co/storage/v1/s3';
+ process.env.CHAT_MEDIA_SUPABASE_REGION='eu-central-1';
+ process.env.CHAT_MEDIA_SUPABASE_BUCKET='frieren-chat-media';
+ process.env.CHAT_MEDIA_SUPABASE_ACCESS_KEY_ID='test-access-key';
+ process.env.CHAT_MEDIA_SUPABASE_SECRET_ACCESS_KEY='test-secret-key';
+}
 function restore(){for(const key of envKeys){if(original[key]===undefined)delete process.env[key];else process.env[key]=original[key];}}
 
 test('chat media accepts supported file signatures and enforces type and size',()=>{
@@ -16,16 +22,18 @@ test('chat media accepts supported file signatures and enforces type and size',(
  assert.throws(()=>validateChatMedia(Buffer.alloc(8*1024*1024+1).fill(0xff),'image/jpeg'),/CHAT_MEDIA_SIZE_INVALID/);
 });
 
-test('R2 signing creates bounded presigned PUT, GET and DELETE requests without exposing secrets',()=>{
+test('Supabase S3 signing creates bounded private PUT, GET and DELETE requests',()=>{
  setTestConfig();
  try{
   assert.equal(isChatMediaConfigured(),true);
   const key='chat/public/123e4567-e89b-42d3-a456-426614174000.jpg';
   const put=new URL(signChatMediaUrl('PUT',key,'image/jpeg',600));
-  assert.equal(put.hostname,'1234567890abcdef1234567890abcdef.r2.cloudflarestorage.com');
+  assert.equal(put.hostname,'projectref.storage.supabase.co');
+  assert.equal(put.pathname,'/storage/v1/s3/frieren-chat-media/chat/public/123e4567-e89b-42d3-a456-426614174000.jpg');
   assert.equal(put.searchParams.get('X-Amz-Expires'),'600');
   assert.equal(put.searchParams.get('X-Amz-Content-Sha256'),'UNSIGNED-PAYLOAD');
   assert.equal(put.searchParams.get('X-Amz-SignedHeaders'),'content-type;host');
+  assert.match(put.searchParams.get('X-Amz-Credential'),/\/eu-central-1\/s3\/aws4_request$/);
   assert.match(put.searchParams.get('X-Amz-Signature'),/^[a-f0-9]{64}$/);
   assert.ok(!put.href.includes('test-secret-key'));
   const get=new URL(signChatMediaUrl('GET',key,'image/jpeg',9000));
@@ -33,7 +41,8 @@ test('R2 signing creates bounded presigned PUT, GET and DELETE requests without 
   assert.equal(get.searchParams.get('response-content-type'),'image/jpeg');
   assert.equal(get.searchParams.get('response-content-disposition'),'inline');
   assert.equal(get.searchParams.get('response-cache-control'),'private, max-age=3600');
-  const hour=new Date('2026-11-13T05:00:00.000Z');assert.equal(signChatMediaUrl('GET',key,'image/jpeg',7200,hour),signChatMediaUrl('GET',key,'image/jpeg',7200,hour),'hour-bucketed signed URLs should remain cache-stable');
+  const hour=new Date('2026-11-13T05:00:00.000Z');
+  assert.equal(signChatMediaUrl('GET',key,'image/jpeg',7200,hour),signChatMediaUrl('GET',key,'image/jpeg',7200,hour),'hour-bucketed signed URLs should remain cache-stable');
   assert.match(signChatMediaUrl('DELETE',key,null),/X-Amz-Signature=[a-f0-9]{64}/);
   assert.match(getChatMediaReadUrl({object_key:key,mime_type:'image/jpeg'}),/^https:\/\//);
   assert.throws(()=>signChatMediaUrl('POST',key,'image/jpeg'),/CHAT_MEDIA_METHOD_INVALID/);
@@ -41,8 +50,19 @@ test('R2 signing creates bounded presigned PUT, GET and DELETE requests without 
  }finally{restore();}
 });
 
-test('chat media remains disabled when R2 credentials are absent',()=>{
+test('media config rejects non-Supabase endpoints',()=>{
+ setTestConfig();
+ try{
+  process.env.CHAT_MEDIA_SUPABASE_ENDPOINT='https://evil.example/storage/v1/s3';
+  assert.equal(isChatMediaConfigured(),false);
+ }finally{restore();}
+});
+
+test('chat media remains disabled when Supabase credentials are absent',()=>{
  for(const key of envKeys)delete process.env[key];
- try{assert.equal(isChatMediaConfigured(),false);assert.equal(getChatMediaReadUrl({object_key:'chat/public/123e4567-e89b-42d3-a456-426614174000.jpg',mime_type:'image/jpeg'}),null);assert.throws(()=>signChatMediaUrl('GET','chat/public/123e4567-e89b-42d3-a456-426614174000.jpg','image/jpeg'),/CHAT_MEDIA_STORAGE_NOT_CONFIGURED/);}
- finally{restore();}
+ try{
+  assert.equal(isChatMediaConfigured(),false);
+  assert.equal(getChatMediaReadUrl({object_key:'chat/public/123e4567-e89b-42d3-a456-426614174000.jpg',mime_type:'image/jpeg'}),null);
+  assert.throws(()=>signChatMediaUrl('GET','chat/public/123e4567-e89b-42d3-a456-426614174000.jpg','image/jpeg'),/CHAT_MEDIA_STORAGE_NOT_CONFIGURED/);
+ }finally{restore();}
 });
