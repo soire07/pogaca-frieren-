@@ -6,7 +6,7 @@
  let last=null,scale=1,x=0,y=0,pointers=new Map(),drag=null,pinchDistance=0;
  const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
  const paint=()=>{camera.style.transform='translate3d('+x+'px,'+y+'px,0) scale('+scale+')';const output=root.querySelector('[data-atlas-zoom-value]');if(output)output.value=Math.round(scale*100)+'%';};
- const bounds=()=>{const rect=viewport.getBoundingClientRect();return {x:(rect.width*(scale-1))/2,y:(rect.height*(scale-1))/2};};
+ const bounds=()=>{const rect=viewport.getBoundingClientRect();return {x:Math.max(0,(rect.width*(scale-1))/2),y:Math.max(0,(rect.height*(scale-1))/2)};};
  const constrain=()=>{const limit=bounds();x=clamp(x,-limit.x,limit.x);y=clamp(y,-limit.y,limit.y);};
  const zoom=delta=>{scale=clamp(scale*delta,.85,3.2);constrain();paint();};
  const reset=()=>{scale=1;x=0;y=0;paint();};
@@ -35,6 +35,6 @@
  const release=event=>{pointers.delete(event.pointerId);if(pointers.size<2)pinchDistance=0;if(!pointers.size)drag=null;};
  viewport.addEventListener('pointerup',release);viewport.addEventListener('pointercancel',release);viewport.addEventListener('lostpointercapture',release);
  viewport.addEventListener('keydown',event=>{if(event.target!==viewport)return;if(event.key==='+'||event.key==='='){event.preventDefault();zoom(1.25);}else if(event.key==='-'){event.preventDefault();zoom(.8);}else if(event.key==='0'){event.preventDefault();reset();}});
- document.addEventListener('keydown',event=>{if(modal.hidden)return;if(event.key==='Escape'){close();return;}if(event.key==='Tab'){const focusable=[...modal.querySelectorAll('button:not([disabled]),[tabindex="-1"]')];if(!focusable.length)return;const first=focusable[0],lastItem=focusable[focusable.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();lastItem.focus();}else if(!event.shiftKey&&document.activeElement===lastItem){event.preventDefault();first.focus();}}});
+ document.addEventListener('keydown',event=>{if(modal.hidden)return;if(event.key==='Escape'){close();return;}if(event.key==='Tab'){const focusable=[...modal.querySelectorAll('button:not([disabled])')];if(!focusable.length)return;const first=focusable[0],lastItem=focusable[focusable.length-1],heading=modal.querySelector('.atlas-hero h3');if(event.shiftKey&&(document.activeElement===first||document.activeElement===heading)){event.preventDefault();lastItem.focus();}else if(!event.shiftKey&&(document.activeElement===lastItem||document.activeElement===heading)){event.preventDefault();first.focus();}}});
  paint();
 })();

@@ -1842,6 +1842,7 @@ test('interactive atlas exposes accessible zoom, pan and independent map-layer c
  for(const token of ['data-atlas-viewport','data-atlas-camera','data-atlas-zoom="1"','data-atlas-zoom="-1"','data-atlas-reset','data-atlas-layer="region"','data-atlas-layer="city"','data-atlas-layer="boss"','data-atlas-layer="dungeon"','aria-pressed="true"'])assert.ok(html.includes(token),'atlas navigation should include '+token);
  const script=await readFile(new URL('../public-assets/exploration-atlas.js',import.meta.url),'utf8');
  for(const behavior of ["addEventListener('wheel'","addEventListener('pointerdown'","addEventListener('pointermove'","pointers.size===2","data-atlas-layer-item","Escape"])assert.ok(script.includes(behavior),'atlas interaction should include '+behavior);
+ assert.ok(script.includes('Math.max(0,(rect.width*(scale-1))/2)'),'zooming below 100% must not create negative pan bounds');assert.ok(script.includes("modal.querySelectorAll('button:not([disabled])')"),'modal focus trap must include only sequentially focusable controls');assert.ok(script.includes('document.activeElement===heading'),'modal heading focus must remain inside the focus trap');assert.ok(script.includes('document.activeElement===lastItem'),'tabbing from the final modal control must wrap to the first');
 });
 
 
