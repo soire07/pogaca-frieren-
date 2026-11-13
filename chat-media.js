@@ -54,8 +54,8 @@ export function signChatMediaUrl(method,objectKey,mimeType,expiresIn=300,issuedA
  const cfg=config();if(!cfg)throw new Error('CHAT_MEDIA_STORAGE_NOT_CONFIGURED');
  const verb=String(method||'GET').toUpperCase();if(!['GET','PUT','DELETE'].includes(verb))throw new Error('CHAT_MEDIA_METHOD_INVALID');
  const key=String(objectKey||'');if(!/^chat\/(public|dm|group)\/[0-9a-f-]{36}\.[a-z0-9]+$/i.test(key))throw new Error('CHAT_MEDIA_KEY_INVALID');
- const expires=Math.max(1,Math.min(3600,Math.floor(Number(expiresIn)||300)));
- const now=new Date(),amzDate=now.toISOString().replace(/[:-]|\.\d{3}/g,''),date=amzDate.slice(0,8);
+ const expires=Math.max(1,Math.min(7200,Math.floor(Number(expiresIn)||300)));
+ const now=issuedAt instanceof Date?issuedAt:new Date(),amzDate=now.toISOString().replace(/[:-]|\.\d{3}/g,''),date=amzDate.slice(0,8);
  const credentialScope=date+'/auto/s3/aws4_request',credential=cfg.accessKey+'/'+credentialScope;
  const uri='/'+[cfg.bucket,...key.split('/')].map(encode).join('/');
  const headers=verb==='PUT'?'content-type;host':'host';
