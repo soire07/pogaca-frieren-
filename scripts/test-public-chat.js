@@ -124,3 +124,9 @@ test('chat reports validate ownership, reason and prevent duplicate reports',asy
  assert.equal(inserted,1);
  await assert.rejects(()=>reportPublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',reason:'unknown'}),/PUBLIC_CHAT_REPORT_INVALID/);
 });
+
+
+test('community chat uses accessible in-page dialogs instead of native prompt and confirm popups',async()=>{
+ const {readFile}=await import('node:fs/promises');const script=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');
+ assert.match(script,/askChatDialog/);assert.match(script,/askChatReport/);assert.doesNotMatch(script,/window\.(?:prompt|confirm)\s*\(/);
+});
