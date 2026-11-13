@@ -78,7 +78,6 @@ test('site private messages enforce accepted friendships, block rules, receipts 
   await scoped.query('INSERT INTO frieren_public_chat_blocks(blocker_account_id,blocked_account_id,blocked_username) VALUES($1,$2,$3)',[b,a,'Gezgin']);
   assert.equal((await listSiteDmGroupMessages(scoped,{accountId:b,groupId:group.groupId})).messages.length,0);
   assert.equal((await leaveSiteDmGroup(scoped,{accountId:a,groupId:group.groupId})).status,'left');
-  await scoped.query('INSERT INTO frieren_public_chat_blocks(blocker_account_id,blocked_account_id,blocked_username) VALUES($1,$2,$3)',[b,a,'Fern']);
   assert.equal((await sendSiteDirectMessage(scoped,{senderAccountId:a,recipientAccountId:b,body:'Engel sonrası'})).status,'not_allowed');
   assert.deepEqual((await listSiteDirectMessages(scoped,{accountId:a,otherAccountId:b})),{status:'not_allowed',messages:[]});
  }finally{
