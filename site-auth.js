@@ -293,6 +293,23 @@ async function mailReset(email,token) {
 }
 let schemaPromise = null;
 export async function ensureSiteAccountSchema(db){if(!db||typeof db.query!=='function')throw new Error('SITE_AUTH_DATABASE_INVALID');await schema(db);}
+export function buildDiscordAvatarUrl(discordUserId, avatarHash) {
+  const id=String(discordUserId||'');
+  if(!/^\\d{17,20}$/.test(id))return null;
+  const hashValue=String(avatarHash||'');
+  if(/^(?:a_)?[a-f0-9]{2,128}$/i.test(hashValue)){
+    const extension=hashValue.startsWith('a_')?'gif':'png';
+    return 'https://cdn.discordapp.com/avatars/'+id+'/'+hashValue+'.'+extension+'?size=128';
+  }
+  const index=Number((BigInt(id)>>22n)%6n);
+  return 'https://cdn.discordapp.com/embed/avatars/'+index+'.png';
+}
+export async function ensureSiteDiscordAccountSchema(db) {
+  if(!db||typeof db.query!=='function')throw new Error('SITE_AUTH_DATABASE_INVALID');
+  await ensureSiteAccountSchema(db);
+  await db.query('CREATE TABLE IF NOT EXISTS frieren_site_discord_accounts (discord_user_id VARCHAR(32) PRIMARY KEY, account_id UUID NOT NULL UNIQUE REFERENCES frieren_site_accounts(id) ON DELETE CASCADE, discord_username VARCHAR(64) NOT NULL, discord_avatar_hash TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
+  await db.query('ALTER TABLE frieren_site_discord_accounts ADD COLUMN IF NOT EXISTS discord_avatar_hash TEXT');
+}
 async function schema(db) {
   if (!schemaPromise) schemaPromise = (async () => {
     await db.query("CREATE TABLE IF NOT EXISTS frieren_site_accounts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), username VARCHAR(24) NOT NULL, email VARCHAR(254) NOT NULL, password_hash TEXT NOT NULL, email_verified_at TIMESTAMPTZ, verification_token_hash TEXT, verification_expires_at TIMESTAMPTZ, reset_token_hash TEXT, reset_expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
@@ -399,7 +416,7 @@ async function getOrCreateDiscordSiteAccount(db, discordUser) {
   try {
     await client.query('BEGIN');
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [String(discordUser.id)]);
-    await client.query('CREATE TABLE IF NOT EXISTS frieren_site_discord_accounts (discord_user_id VARCHAR(32) PRIMARY KEY, account_id UUID NOT NULL UNIQUE REFERENCES frieren_site_accounts(id) ON DELETE CASCADE, discord_username VARCHAR(64) NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
+    await ensureSiteDiscordAccountSchema(client);
     const linked = await client.query('SELECT account_id FROM frieren_site_discord_accounts WHERE discord_user_id=$1 LIMIT 1', [String(discordUser.id)]);
     let accountId = linked.rows?.[0]?.account_id;
     if (!accountId) {
@@ -427,13 +444,13 @@ async function getOrCreateDiscordSiteAccount(db, discordUser) {
       if (!accountId) throw new Error('SITE_DISCORD_ACCOUNT_CREATE_FAILED');
       }
       await client.query(
-        'INSERT INTO frieren_site_discord_accounts(discord_user_id,account_id,discord_username) VALUES($1,$2,$3)',
-        [discordId, accountId, String(discordUser.username || 'Discord user').slice(0, 64)]
+        'INSERT INTO frieren_site_discord_accounts(discord_user_id,account_id,discord_username,discord_avatar_hash) VALUES($1,$2,$3,$4)',
+        [discordId, accountId, String(discordUser.username || 'Discord user').slice(0, 64), typeof discordUser.avatar === 'string' ? discordUser.avatar.slice(0, 128) : null]
       );
     } else {
       await client.query(
-        'UPDATE frieren_site_discord_accounts SET discord_username=$2,updated_at=NOW() WHERE discord_user_id=$1',
-        [String(discordUser.id), String(discordUser.username || 'Discord user').slice(0, 64)]
+        'UPDATE frieren_site_discord_accounts SET discord_username=$2,discord_avatar_hash=$3,updated_at=NOW() WHERE discord_user_id=$1',
+        [String(discordUser.id), String(discordUser.username || 'Discord user').slice(0, 64), typeof discordUser.avatar === 'string' ? discordUser.avatar.slice(0, 128) : null]
       );
     }
     await client.query('COMMIT');
