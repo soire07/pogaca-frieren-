@@ -1853,3 +1853,9 @@ test('atlas exploration fog reveals only regions marked discovered by the RPG ma
  assert.match(html,/<circle cx="26\.4" cy="57\.5" r="13" fill="black"\/>/);
  assert.doesNotMatch(html,/<circle cx="37\.2" cy="32\.1" r="13" fill="black"\/>/);
 });
+
+
+test('fantasy atlas artwork includes detailed terrain relief and layered landscape features',async()=>{
+ const asset=await readFile(new URL('../public-assets/frieren-world-map.svg',import.meta.url),'utf8');
+ for(const feature of ['fine-contours','atlas-pine','atlas-hill','highland tarns','weathered ruins','coastal islets'])assert.ok(asset.includes(feature),'map artwork should include '+feature);
+});
