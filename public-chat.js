@@ -6,6 +6,13 @@ import { attachChatMedia, ensureChatMediaSchema, getChatMediaReadUrl, deleteChat
 
 const publicChatSchemaReady=new WeakMap();
 const ACCOUNT_ID=/^site_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export function isValidPublicChatReactionEmoji(value){
+ const emoji=String(value??'').normalize('NFC');
+ if(!emoji||Array.from(emoji).length>16||/\\s/u.test(emoji)||/[\\u0000-\\u001f\\u007f]/u.test(emoji))return false;
+ if(typeof Intl.Segmenter!=='function')return false;
+ const segments=[...new Intl.Segmenter('en',{granularity:'grapheme'}).segment(emoji)];
+ return segments.length===1&&(/[\\p{Extended_Pictographic}\\p{Regional_Indicator}]/u.test(emoji)||/^[#*0-9]\\uFE0F?\\u20E3$/u.test(emoji));
+}
 const clean=(value,max,code,{optional=false}={})=>{const text=String(value??'').normalize('NFC').trim();if(!text&&optional)return '';if(!text||Array.from(text).length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text))throw new Error(code);return text;};
 function assertAccount(accountId){if(!ACCOUNT_ID.test(String(accountId||'')))throw new Error('PUBLIC_CHAT_ACCOUNT_INVALID');}
 async function transaction(db,fn){if(typeof db.connect!=='function')return fn(db);const client=await db.connect();try{await client.query('BEGIN');const result=await fn(client);await client.query('COMMIT');return result;}catch(error){await client.query('ROLLBACK').catch(()=>{});throw error;}finally{client.release();}}
@@ -28,14 +35,14 @@ async function createPublicChatSchema(db){
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_presence(account_id TEXT PRIMARY KEY,last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),typing_until TIMESTAMPTZ)');
  await db.query('ALTER TABLE frieren_public_chat_presence ADD COLUMN IF NOT EXISTS typing_until TIMESTAMPTZ');
  await ensureChatMediaSchema(db);
- await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_reactions(message_id UUID NOT NULL REFERENCES frieren_public_chat_messages(message_id) ON DELETE CASCADE,account_id TEXT NOT NULL,emoji VARCHAR(16) NOT NULL CHECK(emoji IN (\'❤️\',\'✨\',\'😂\')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(message_id,account_id,emoji))');
- await db.query(`DO $$ BEGIN
+ await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_reactions(message_id UUID NOT NULL REFERENCES frieren_public_chat_messages(message_id) ON DELETE CASCADE,account_id TEXT NOT NULL,emoji VARCHAR(16) NOT NULL CHECK(char_length(emoji) BETWEEN 1 AND 16),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(message_id,account_id,emoji))');
+ await db.query(`DO $ BEGIN
   PERFORM pg_advisory_xact_lock(hashtext('frieren_public_chat_schema'));
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='frieren_public_chat_reactions'::regclass AND conname='frieren_public_chat_reactions_emoji_check' AND pg_get_constraintdef(oid) LIKE '%😍%') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='frieren_public_chat_reactions'::regclass AND conname='frieren_public_chat_reactions_emoji_check' AND pg_get_constraintdef(oid) LIKE '%char_length%') THEN
    ALTER TABLE frieren_public_chat_reactions DROP CONSTRAINT IF EXISTS frieren_public_chat_reactions_emoji_check;
-   ALTER TABLE frieren_public_chat_reactions ADD CONSTRAINT frieren_public_chat_reactions_emoji_check CHECK (emoji IN ('❤️','✨','😂','😍','🥰','😭','👀','🎉','🙌','💜','🍪','🌸'));
+   ALTER TABLE frieren_public_chat_reactions ADD CONSTRAINT frieren_public_chat_reactions_emoji_check CHECK (char_length(emoji) BETWEEN 1 AND 16);
   END IF;
- END; $$`);
+ END; $`);
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_blocks(blocker_account_id TEXT NOT NULL,blocked_account_id TEXT NOT NULL,blocked_username VARCHAR(24) NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(blocker_account_id,blocked_account_id),CHECK(blocker_account_id<>blocked_account_id))');
  await db.query('CREATE INDEX IF NOT EXISTS frieren_public_chat_recent_idx ON frieren_public_chat_messages(created_at DESC) WHERE hidden=FALSE');
  await db.query('CREATE INDEX IF NOT EXISTS frieren_public_chat_account_idx ON frieren_public_chat_messages(account_id,created_at DESC)');
@@ -100,7 +107,7 @@ export async function sendPublicChatMessage(db,{accountId,username,body,replyToM
 
 export async function togglePublicChatReaction(db,{accountId,messageId,emoji}){
  assertAccount(accountId);
- if(!/^[0-9a-f-]{36}$/i.test(String(messageId||''))||!['❤️','✨','😂','😍','🥰','😭','👀','🎉','🙌','💜','🍪','🌸'].includes(String(emoji||'')))throw new Error('PUBLIC_CHAT_REACTION_INVALID');
+ if(!/^[0-9a-f-]{36}$/i.test(String(messageId||''))||!isValidPublicChatReactionEmoji(emoji))throw new Error('PUBLIC_CHAT_REACTION_INVALID');
  await ensurePublicChatSchema(db);
  await ensureAccountProfileSchema(db);
  return transaction(db,async client=>{
