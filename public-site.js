@@ -1422,7 +1422,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const profile=await getLinkedAdventurer(db,user.id,guildId);
     if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter web hesabına bağlı değil.');return true;}
     const settings=await getPlayerProfileSettings(db,{guildId,userId:profile.user_id});
-    const [stats,titles,earned,activity,collections,arena,rankings,home,loadout,xpHistory]=await Promise.all([
+    const [stats,titles,earned,activity,collections,arena,rankings,home,loadout,xpHistory,journalEntries,claimedJournalCollections]=await Promise.all([
       db.query('SELECT created_at,boss_defeats,dungeon_wins,exploration_count,items_used_count,daily_streak,best_daily_streak FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,profile.user_id]),
       db.query('SELECT title,unlocked_at FROM user_titles WHERE guild_id=$1 AND user_id=$2 ORDER BY unlocked_at DESC,title',[guildId,profile.user_id]),
       db.query('SELECT a.achievement_key,a.claimed_at,h.display_slot FROM achievement_claims a LEFT JOIN player_home_trophies h ON h.guild_id=a.guild_id AND h.user_id=a.user_id AND h.achievement_key=a.achievement_key WHERE a.guild_id=$1 AND a.user_id=$2 ORDER BY a.claimed_at DESC,a.achievement_key',[guildId,profile.user_id]),
