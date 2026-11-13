@@ -1,3 +1,4 @@
+import { deleteChatMediaForAccount } from './chat-media.js';
 import { randomUUID } from 'node:crypto';
 
 const ACCOUNT_ID = /^site_([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
@@ -486,6 +487,7 @@ export async function exportSiteAccountData(db, accountId) {
 export async function deleteSiteAccount(db, accountId, confirmation) {
   if (confirmation !== 'HESABIMI SIL') return { status: 'confirmation_required' };
   const id = accountUuid(accountId);
+  await deleteChatMediaForAccount(db,accountId);
   const client = await db.connect();
   try {
     await client.query('BEGIN');
