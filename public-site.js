@@ -29,7 +29,7 @@ import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction
 import { getAccountProfile, updateAccountProfile, followAccount, unfollowAccount, recordAccountProfileVisit, listAccountProfileActivity, sendAccountFriendRequest, respondAccountFriendRequest, listAccountFriends, getAccountIdByProfileSlug, listAccountNotifications, markAccountNotificationsRead } from './account-profile.js';
 import { sendSiteDirectMessage, listSiteDirectMessages, markSiteDirectMessagesRead, createSiteDmGroup, listSiteDmGroups, sendSiteDmGroupMessage, listSiteDmGroupMessages, markSiteDmGroupMessagesRead, leaveSiteDmGroup, canSiteDmAccountsMessage, isSiteDmGroupMember } from './site-direct-messages.js';
 import { subscribeChatEvents, publishChatEvent } from './chat-realtime.js';
-import { uploadChatMedia } from './chat-media.js';
+import { uploadChatMedia, discardChatMedia } from './chat-media.js';
 import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, markDirectMessagesRead, sendDirectMessage, listGuestbookEntries, addGuestbookEntry, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers, setCloseFriend, removeCloseFriend, listCloseFriends, recordProfileVisit, listProfileVisits } from './personal-center.js';
 import { achievements as RPG_ACHIEVEMENTS } from './basarimlar.js';
 import { listCardVariants } from './card-variants.js';
@@ -745,6 +745,16 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       const message=code==='CHAT_MEDIA_STORAGE_NOT_CONFIGURED'?'media_storage_not_configured':code==='CHAT_MEDIA_DAILY_QUOTA'?'media_daily_quota':code==='CHAT_MEDIA_STORAGE_QUOTA'?'media_storage_quota':code==='CHAT_MEDIA_SIZE_INVALID'?'media_size_invalid':code==='CHAT_MEDIA_TYPE_INVALID'||code==='CHAT_MEDIA_SIGNATURE_INVALID'?'media_type_invalid':'media_upload_failed';
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify({error:message}));return true;
     }
+  }
+  if(req.method==='POST'&&url.pathname==='/api/chat-media/discard'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
+    let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>2048){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'message_too_large'}));return true;}chunks.push(chunk);}
+    const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
+    if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
+    try{const result=await discardChatMedia(db,{mediaId:form.get('mediaId'),accountId:session.id});res.writeHead(result.status==='deleted'?200:404,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(result));return true;}
+    catch(error){if(String(error?.message||'').startsWith('CHAT_MEDIA_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'media_discard_failed'}));return true;}throw error;}
   }
   if(req.method==='GET'&&url.pathname==='/api/chat-events'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
