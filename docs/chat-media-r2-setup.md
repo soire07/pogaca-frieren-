@@ -28,6 +28,7 @@ Until all four variables are present, the chat upload route deliberately returns
 - Per-account upload ceiling: 150 MiB per rolling 24 hours.
 - Application-wide metadata ceiling: 8.5 GB, leaving headroom below R2's 10 GB-month free storage allowance.
 - Files are not stored as BYTEA in Neon PostgreSQL. PostgreSQL stores only metadata and the message relationship.
+- Signed download URLs are bearer links valid for up to two hours and use a one-hour private browser cache. Account exports include temporary download links when R2 is configured; do not share those links publicly.
 - The 8.5 GB cap applies to this app's metadata table and dedicated bucket; Cloudflare's free allowance is shared across the entire Cloudflare account, including any other R2 buckets. Existing account usage can therefore reduce the remaining free allowance.
 - No automatic billing or paid upgrade is configured by this code. R2 usage beyond the free allowance is billable at Cloudflare's published rates, so monitor storage and operation usage in the Cloudflare dashboard.
 
