@@ -833,7 +833,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       const status=result.status==='sent'?201:result.status==='rate_limited'?429:result.status==='not_allowed'?403:result.status==='thread_limit'?409:400;
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
     }catch(error){
-      if(String(error?.message||'').startsWith('SITE_DM_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_message'}));return true;}
+      if(String(error?.message||'').startsWith('SITE_DM_')||String(error?.message||'').startsWith('CHAT_MEDIA_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_message'}));return true;}
       throw error;
     }
   }
@@ -860,7 +860,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       else result=await leaveSiteDmGroup(db,{accountId:session.id,groupId:form.get('groupId')});
       const status=result.status==='created'||result.status==='sent'?201:result.status==='rate_limited'?429:result.status==='not_allowed'?403:result.status==='not_found'?404:200;
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
-    }catch(error){if(String(error?.message||'').startsWith('SITE_DM_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_group_message'}));return true;}throw error;}
+    }catch(error){if(String(error?.message||'').startsWith('SITE_DM_')||String(error?.message||'').startsWith('CHAT_MEDIA_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_group_message'}));return true;}throw error;}
   }
   if(url.pathname==='/api/public-chat/reports'&&req.method==='GET'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
@@ -894,7 +894,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
     }catch(error){
       const code=String(error?.message||'');
-      if(code.startsWith('PUBLIC_CHAT_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_message'}));return true;}
+      if(code.startsWith('PUBLIC_CHAT_')||code.startsWith('CHAT_MEDIA_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_message'}));return true;}
       throw error;
     }
   }
