@@ -458,6 +458,15 @@ export async function exportSiteAccountData(db, accountId) {
   const siteDirectMessageGroups = groupTable.rows?.[0]?.table_name ? await db.query('SELECT g.group_id,g.title,g.created_by,g.created_at FROM frieren_site_dm_groups g JOIN frieren_site_dm_group_members gm ON gm.group_id=g.group_id WHERE gm.account_id=$1 ORDER BY g.created_at DESC',[accountId]) : { rows: [] };
   const siteDirectGroupMessages = groupTable.rows?.[0]?.table_name ? await db.query('SELECT m.message_id,m.group_id,m.sender_account_id,m.body,m.created_at FROM frieren_site_dm_group_messages m JOIN frieren_site_dm_group_members gm ON gm.group_id=m.group_id WHERE gm.account_id=$1 ORDER BY m.created_at,m.message_id',[accountId]) : { rows: [] };
   const siteDirectGroupReads = groupTable.rows?.[0]?.table_name ? await db.query('SELECT rd.message_id,rd.read_at,gm.group_id,gm.sender_account_id FROM frieren_site_dm_group_reads rd JOIN frieren_site_dm_group_messages gm ON gm.message_id=rd.message_id WHERE rd.reader_account_id=$1 ORDER BY rd.read_at,rd.message_id',[accountId]) : { rows: [] };
+  const chatMediaTable=await db.query("SELECT to_regclass('frieren_site_chat_media') AS table_name");
+  const mediaPredicates=['cm.owner_account_id=$1'];
+  const publicChatTable=await db.query("SELECT to_regclass('frieren_public_chat_messages') AS table_name");
+  if(publicChatTable.rows?.[0]?.table_name)mediaPredicates.push("EXISTS(SELECT 1 FROM frieren_public_chat_messages pm WHERE pm.message_id=cm.message_id AND pm.account_id=$1)");
+  if(dmTable.rows?.[0]?.table_name)mediaPredicates.push("EXISTS(SELECT 1 FROM frieren_site_direct_messages dm WHERE dm.message_id=cm.message_id AND (dm.sender_account_id=$1 OR dm.recipient_account_id=$1))");
+  if(groupTable.rows?.[0]?.table_name)mediaPredicates.push("EXISTS(SELECT 1 FROM frieren_site_dm_group_messages gm JOIN frieren_site_dm_group_members mine ON mine.group_id=gm.group_id WHERE gm.message_id=cm.message_id AND mine.account_id=$1)");
+  const siteChatMedia=chatMediaTable.rows?.[0]?.table_name
+    ?await db.query('SELECT cm.media_id,cm.scope_type,cm.scope_key,cm.mime_type,cm.size_bytes,cm.message_id,cm.created_at,cm.attached_at FROM frieren_site_chat_media cm WHERE '+mediaPredicates.join(' OR ')+' ORDER BY cm.created_at,cm.media_id',[accountId])
+    :{rows:[]};
   const ticketsResult = await db.query(
     'SELECT ticket_id,category,subject,message,status,created_at,updated_at FROM frieren_support_tickets WHERE account_id=$1 ORDER BY created_at,ticket_id',
     [id]
@@ -479,6 +488,7 @@ export async function exportSiteAccountData(db, accountId) {
     siteDirectMessageGroups: siteDirectMessageGroups.rows,
     siteDirectGroupMessages: siteDirectGroupMessages.rows,
     siteDirectGroupReads: siteDirectGroupReads.rows,
+    siteChatMedia: siteChatMedia.rows,
     supportTickets: tickets,
     deletionScope: 'Deleting the site account removes this portal identity and its Discord links. Discord-owned RPG profiles and guild game records remain intact.'
   };
