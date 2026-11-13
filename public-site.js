@@ -25,8 +25,11 @@ import { getGuildFeatureEnabled } from './guild-feature-settings.js';
 import { createSupportTicket, listSupportTickets, listSupportTicketMessages, replySupportTicket, exportSiteAccountData, deleteSiteAccount } from './account-center.js';
 import { getNotificationPreferences, setNotificationPreference } from './news-birds.js';
 import { levelForXp, xpForNextLevel } from './utils.js';
-import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks, deletePublicChatMessage, updatePublicChatMessage, togglePublicChatPin, touchPublicChatPresence, getPublicChatPresence, setPublicChatTyping, markPublicChatMessagesRead, reportPublicChatMessage, listPublicChatReports, resolvePublicChatReport, getPublicChatControl, setPublicChatPaused } from './public-chat.js';
+import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks, deletePublicChatMessage, deleteOwnPublicChatMessage, updatePublicChatMessage, togglePublicChatPin, touchPublicChatPresence, getPublicChatPresence, setPublicChatTyping, markPublicChatMessagesRead, reportPublicChatMessage, listPublicChatReports, resolvePublicChatReport, getPublicChatControl, setPublicChatPaused } from './public-chat.js';
 import { getAccountProfile, updateAccountProfile, followAccount, unfollowAccount, recordAccountProfileVisit, listAccountProfileActivity, sendAccountFriendRequest, respondAccountFriendRequest, listAccountFriends, getAccountIdByProfileSlug, listAccountNotifications, markAccountNotificationsRead } from './account-profile.js';
+import { sendSiteDirectMessage, listSiteDirectMessages, markSiteDirectMessagesRead, createSiteDmGroup, listSiteDmGroups, sendSiteDmGroupMessage, listSiteDmGroupMessages, markSiteDmGroupMessagesRead, leaveSiteDmGroup, canSiteDmAccountsMessage, isSiteDmGroupMember } from './site-direct-messages.js';
+import { subscribeChatEvents, publishChatEvent } from './chat-realtime.js';
+import { uploadChatMedia, discardChatMedia } from './chat-media.js';
 import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, markDirectMessagesRead, sendDirectMessage, listGuestbookEntries, addGuestbookEntry, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers, setCloseFriend, removeCloseFriend, listCloseFriends, recordProfileVisit, listProfileVisits } from './personal-center.js';
 import { achievements as RPG_ACHIEVEMENTS } from './basarimlar.js';
 import { listCardVariants } from './card-variants.js';
@@ -192,7 +195,7 @@ function page(title, content, user, seo = {}) {
         ]) +
         (ownerLink ? navGroup('yonetim', 'SAHİP ALANI', [navLink('/owner', '♛', 'Owner Panel', 'Platform yönetimi')]) : '') +
       '</nav><div class="site-sidebar-foot"><span>✧ Bir yolculuk, bin yıllık bir hikâye.</span></div></aside>';
-  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><meta name="description" content="' + esc(description) + '"><meta name="robots" content="' + robots + '">' + '<meta name="google-site-verification" content="zQvll4lo6fEkpcbHjwSdQeMbJggVxdAviEDKvLC0Ebc">' + seoTags + structuredData + '<link rel="icon" type="image/svg+xml" href="/assets/site-avatar.svg"><link rel="alternate icon" href="/assets/site-avatar.webp" type="image/webp"><link rel="manifest" href="/site.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css?v=public-profile-redesign-273"></head><body><a class="skip-link" href="#main-content">Ana içeriğe geç</a>' + sidebar + '<header class="topbar"><a class="brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><div class="user-chip"><img src="' + esc(avatar) + '" alt=""><span>' + esc(user.username || 'Gezgin') + '</span>' + (user.id ? '<a href="/logout" title="Çıkış yap">↗</a>' : '<a href="/login" title="Giriş yap">↗</a>') + '</div></header>' + mainContent + '<footer><div><strong>✧ FRIEREN</strong><span>Bir yolculuk, bin yıllık bir hikâye.</span></div><nav aria-label="Alt gezinme"><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><small>© Frieren Platform · Developed by Soiree</small></footer><script src="/assets/site-navigation.js?v=menu-241-2" defer></script><script src="/assets/site-actions.js?v=actions-261-1" defer></script><script src="/assets/profile-interactions.js?v=profile-261-1" defer></script></body></html>';
+  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152c"><meta name="description" content="' + esc(description) + '"><meta name="robots" content="' + robots + '">' + '<meta name="google-site-verification" content="zQvll4lo6fEkpcbHjwSdQeMbJggVxdAviEDKvLC0Ebc">' + seoTags + structuredData + '<link rel="icon" type="image/svg+xml" href="/assets/site-avatar.svg"><link rel="alternate icon" href="/assets/site-avatar.webp" type="image/webp"><link rel="manifest" href="/site.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><title>' + esc(title) + ' · Frieren</title><link rel="stylesheet" href="/assets/site.css?v=community-chat-277"></head><body><a class="skip-link" href="#main-content">Ana içeriğe geç</a>' + sidebar + '<header class="topbar"><a class="brand" href="/"><span class="brand-mark">✧</span><span>FRIEREN<small>THE ARCANE JOURNEY</small></span></a><div class="user-chip"><img src="' + esc(avatar) + '" alt=""><span>' + esc(user.username || 'Gezgin') + '</span>' + (user.id ? '<a href="/logout" title="Çıkış yap">↗</a>' : '<a href="/login" title="Giriş yap">↗</a>') + '</div></header>' + mainContent + '<footer><div><strong>✧ FRIEREN</strong><span>Bir yolculuk, bin yıllık bir hikâye.</span></div><nav aria-label="Alt gezinme"><a href="/pogaca">Poğaça Frieren</a><a href="/komutlar">Komutlar</a><a href="/frieren-ai">Frieren AI</a><a href="/pazar">Kuzey Pazarı</a>' + guildLink + ownerLink + '</nav><small>© Frieren Platform · Developed by Soiree</small></footer><script src="/assets/site-navigation.js?v=menu-241-2" defer></script><script src="/assets/site-actions.js?v=actions-261-1" defer></script><script src="/assets/profile-interactions.js?v=profile-261-1" defer></script></body></html>';
 }
 function publicPlayerProfilePage(user,showcase,personal,guestbook,csrf,canSign){
  const profile=showcase.profile;
@@ -242,10 +245,10 @@ function personalCenterPage(user,profile,data,csrf,status){
 function injectPublicChat(html,user,csrfToken,isOwnerOverride=null){
  const canSend=SITE_ACCOUNT_ID.test(String(user?.id||'')),isOwner=isOwnerOverride===null?isOwnerSiteAccount(user):isOwnerOverride===true;
  const ownerControls=isOwner?'<div class="public-chat-owner-controls"><strong>Owner sohbet yönetimi</strong><span data-chat-control-status>Durum yükleniyor…</span><button class="public-chat-action" type="button" data-chat-toggle-pause disabled>Sohbeti durdur</button><button class="public-chat-action" type="button" data-chat-reports-refresh>Bekleyen bildirimleri yükle</button><div class="public-chat-reports" data-chat-reports hidden></div></div>':'';
- const section='<section class="section public-chat-section" id="topluluk-sohbeti"><div class="wrap"><div class="section-head public-chat-intro"><div class="eyebrow">✧ FRIEREN TOPLULUĞU · YOL ARKADAŞLARI</div><h2>Yol arkadaşlarınla sohbet et</h2><p>Genel sohbet. Mesajları herkes okuyabilir; mesaj göndermek ve etkileşim kurmak için hesabınla giriş yap.</p></div><div class="public-chat-panel" data-public-chat data-can-send="'+(canSend?'true':'false')+'" data-chat-owner="'+(isOwner?'true':'false')+'"><div class="public-chat-head"><span><i></i> Büyülü Genel Sohbet</span><small data-chat-presence>Çevrimiçi durumu yükleniyor</small></div>'+ownerControls+'<div class="public-chat-tools"><label class="public-chat-search-label" for="public-chat-search">Sohbette ara</label><input id="public-chat-search" type="search" data-chat-search maxlength="80" placeholder="Mesaj veya kullanıcı ara…"><span data-chat-count aria-live="polite">Mesajlar yükleniyor…</span></div><ol class="public-chat-messages" data-chat-messages aria-live="polite"><li class="public-chat-empty">Sohbet yükleniyor…</li></ol>'+(canSend?'<form class="public-chat-form" data-chat-form><input type="hidden" name="csrf" value="'+esc(csrfToken)+'"><input type="hidden" name="replyToMessageId" value=""><div class="public-chat-reply-preview" data-chat-reply-preview hidden><span data-chat-reply-label></span><button class="public-chat-action" type="button" data-chat-reply-clear>Yanıtı iptal et</button></div><label class="sr-only" for="public-chat-message">Mesajın</label><input id="public-chat-message" name="message" maxlength="500" autocomplete="off" placeholder="Bir büyücü selamı bırak… (en fazla 500 karakter)" required><div class="public-chat-compose-meta"><small data-chat-counter>0 / 500</small><button class="btn" type="submit">Mesajı gönder ✧</button></div></form>':'<div class="public-chat-login"><a class="btn" href="/login">Giriş yap ve sohbete katıl</a></div>')+'<button class="public-chat-action public-chat-load-older" type="button" data-chat-load-older hidden>Eski mesajları yükle</button><div class="public-chat-blocks" data-chat-blocks></div><p class="public-chat-feedback" data-chat-feedback role="status"></p></div></div></section>';
+ const section='<section id="topluluk-sohbeti" class="section public-chat-section"><div class="wrap"><div class="section-head public-chat-intro"><div class="eyebrow">✧ FRIEREN TOPLULUĞU · YOL ARKADAŞLARI</div><h2>Yol arkadaşlarınla sohbet et</h2><p>Genel sohbet. Mesajları herkes okuyabilir; mesaj göndermek ve etkileşim kurmak için hesabınla giriş yap.</p></div><div class="public-chat-panel" data-public-chat data-can-send="'+(canSend?'true':'false')+'" data-chat-owner="'+(isOwner?'true':'false')+'"><div class="public-chat-head"><span><i></i> Büyülü Genel Sohbet</span><small data-chat-presence>Çevrimiçi durumu yükleniyor</small></div>'+ownerControls+'<div class="public-chat-tools"><label class="public-chat-search-label" for="public-chat-search">Sohbette ara</label><input id="public-chat-search" type="search" data-chat-search maxlength="80" placeholder="Mesaj veya kullanıcı ara…"><span data-chat-count aria-live="polite">Mesajlar yükleniyor…</span></div><button class="public-chat-action public-chat-new-messages" type="button" data-chat-new-messages hidden>Yeni mesajlar var · en alta git</button><ol class="public-chat-messages" data-chat-messages aria-live="polite"><li class="public-chat-empty">Sohbet yükleniyor…</li></ol>'+(canSend?'<form class="public-chat-form" data-chat-form><input type="hidden" name="csrf" value="'+esc(csrfToken)+'"><input type="hidden" name="replyToMessageId" value=""><div class="public-chat-reply-preview" data-chat-reply-preview hidden><span data-chat-reply-label></span><button class="public-chat-action" type="button" data-chat-reply-clear>Yanıtı iptal et</button></div><label class="sr-only" for="public-chat-message">Mesajın</label><textarea id="public-chat-message" name="message" maxlength="500" rows="2" autocomplete="off" placeholder="Bir büyücü selamı bırak… (en fazla 500 karakter)"></textarea><label class="chat-media-picker">Görsel, video veya ses ekle<input type="file" data-chat-media accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mpeg,audio/ogg,audio/wav,audio/flac,audio/webm"></label><small data-chat-media-status role="status"></small><div class="public-chat-emoji-tools"><button class="public-chat-action" type="button" data-chat-emoji-toggle aria-expanded="false">Emoji ekle ✧</button><div class="public-chat-emoji-picker" data-chat-emoji-picker hidden aria-label="Emoji seçici"><button class="public-chat-emoji" type="button" data-chat-emoji="❤️" aria-label="❤️">❤️</button><button class="public-chat-emoji" type="button" data-chat-emoji="✨" aria-label="✨">✨</button><button class="public-chat-emoji" type="button" data-chat-emoji="😂" aria-label="😂">😂</button><button class="public-chat-emoji" type="button" data-chat-emoji="😍" aria-label="😍">😍</button><button class="public-chat-emoji" type="button" data-chat-emoji="🥰" aria-label="🥰">🥰</button><button class="public-chat-emoji" type="button" data-chat-emoji="😭" aria-label="😭">😭</button><button class="public-chat-emoji" type="button" data-chat-emoji="👀" aria-label="👀">👀</button><button class="public-chat-emoji" type="button" data-chat-emoji="🎉" aria-label="🎉">🎉</button><button class="public-chat-emoji" type="button" data-chat-emoji="🙌" aria-label="🙌">🙌</button><button class="public-chat-emoji" type="button" data-chat-emoji="💜" aria-label="💜">💜</button><button class="public-chat-emoji" type="button" data-chat-emoji="🍪" aria-label="🍪">🍪</button><button class="public-chat-emoji" type="button" data-chat-emoji="🌸" aria-label="🌸">🌸</button></div></div><div class="public-chat-compose-meta"><small data-chat-counter>0 / 500</small><button class="btn" type="submit">Mesajı gönder ✧</button></div></form>':'<div class="public-chat-login"><a class="btn" href="/login">Giriş yap ve sohbete katıl</a></div>')+(canSend?'<section class="public-chat-dm-hub" data-site-dm-hub><div class="public-chat-dm-tabs"><button class="public-chat-action is-active" type="button" data-site-dm-tab="direct" aria-pressed="true">Özel mesajlar</button><button class="public-chat-action" type="button" data-site-dm-tab="group" aria-pressed="false">Grup sohbetleri</button></div><section class="public-chat-dm" data-site-dm><div class="public-chat-dm-head"><strong>Özel mesajlar</strong><span>Yalnızca kabul ettiğin arkadaşlarınla</span></div><label for="site-dm-friend">Arkadaş seç</label><select id="site-dm-friend" data-site-dm-friend><option value="">Arkadaşların yükleniyor…</option></select><a class="public-chat-profile-link" data-site-dm-profile href="/profil" hidden>Profili aç</a><ol class="public-chat-dm-messages" data-site-dm-messages aria-live="polite"><li>Bir arkadaş seçerek sohbete başla.</li></ol><form data-site-dm-form><input type="hidden" name="csrf" value="'+esc(csrfToken)+'"><label class="sr-only" for="site-dm-message">Özel mesajın</label><textarea id="site-dm-message" name="message" maxlength="1000" rows="2" placeholder="Arkadaşına özel mesaj yaz…"></textarea><label class="chat-media-picker">Dosya ekle<input type="file" data-chat-media accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mpeg,audio/ogg,audio/wav,audio/flac,audio/webm"></label><small data-chat-media-status role="status"></small><button class="btn" type="submit">Özel mesaj gönder</button></form><p data-site-dm-feedback role="status"></p></section><section class="public-chat-dm-group" data-site-dm-group hidden><div class="public-chat-dm-head"><strong>Grup sohbetleri</strong><span>En fazla 8 kişi · yalnızca davet edilen üyeler</span></div><form data-site-dm-group-create><input type="hidden" name="csrf" value="'+esc(csrfToken)+'"><label for="site-dm-group-title">Grup adı</label><input id="site-dm-group-title" name="title" maxlength="40" placeholder="Örn. Büyü akademisi" required><label for="site-dm-group-friends">Arkadaşlarını seç (en az 2)</label><select id="site-dm-group-friends" data-site-dm-group-friends multiple size="4"></select><button class="public-chat-action" type="submit">Grup oluştur</button></form><label for="site-dm-group-select">Grubun</label><select id="site-dm-group-select" data-site-dm-group-select><option value="">Henüz grup yok</option></select><ol class="public-chat-dm-messages" data-site-dm-group-messages aria-live="polite"><li>Bir grup oluştur veya davet edildiğin grubu seç.</li></ol><form data-site-dm-group-form><input type="hidden" name="csrf" value="'+esc(csrfToken)+'"><label class="sr-only" for="site-dm-group-message">Grup mesajın</label><textarea id="site-dm-group-message" name="message" maxlength="1000" rows="2" placeholder="Gruba mesaj yaz…"></textarea><label class="chat-media-picker">Dosya ekle<input type="file" data-chat-media accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mpeg,audio/ogg,audio/wav,audio/flac,audio/webm"></label><small data-chat-media-status role="status"></small><button class="btn" type="submit">Gruba gönder</button></form><button class="public-chat-action" type="button" data-site-dm-group-leave>Gruptan ayrıl</button><p data-site-dm-group-feedback role="status"></p></section></section>':'')+'<button class="public-chat-action public-chat-load-older" type="button" data-chat-load-older hidden>Eski mesajları yükle</button><div class="public-chat-blocks" data-chat-blocks></div><p class="public-chat-feedback" data-chat-feedback role="status"></p></div></div></section>';
  const source=String(html);const mainStart=source.indexOf('<main id="main-content"');const firstSectionEnd=mainStart>=0?source.indexOf('</section>',mainStart):-1;
  const positioned=firstSectionEnd>=0?source.slice(0,firstSectionEnd+10)+section+source.slice(firstSectionEnd+10):source.replace('</main>',section+'</main>');
- return positioned.replace('</body>','<script src="/assets/public-chat.js?v=chat-272-1" defer></script></body>');
+ return positioned.replace('</body>','<script src="/assets/public-chat.js?v=chat-279-1" defer></script></body>');
 }
 function home(client, user, csrfToken) {
   const ready = client?.isReady?.() === true;
@@ -715,6 +718,61 @@ function publicSeoLandingPage() {
 export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
   if (await handleGuildDashboardRequest(req, res, { client, db })) return true;
   const url = new URL(req.url, 'http://localhost');
+  if(req.method==='POST'&&url.pathname==='/api/chat-media/upload'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'media_unavailable'}));return true;}
+    const mimeType=String(req.headers['content-type']||'').toLowerCase().split(';')[0].trim();
+    if(!verifySiteCsrfToken(req.headers['x-csrf-token'],process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
+    const scope=String(req.headers['x-chat-scope']||''),target=String(req.headers['x-chat-target']||'');
+    let scopeKey='';
+    if(scope==='public')scopeKey='public';
+    else if(scope==='dm'){
+      if(!SITE_ACCOUNT_ID.test(target)||!await canSiteDmAccountsMessage(db,session.id,target)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'media_scope_denied'}));return true;}
+      scopeKey='dm:'+[session.id,target].sort().join(':');
+    }else if(scope==='group'){
+      if(!/^[0-9a-f-]{36}$/i.test(target)||!await isSiteDmGroupMember(db,session.id,target)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'media_scope_denied'}));return true;}
+      scopeKey='group:'+target;
+    }else{res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'media_scope_invalid'}));return true;}
+    const chunks=[];let size=0;const max=24*1024*1024;
+    for await(const chunk of req){size+=chunk.length;if(size>max){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'media_too_large'}));return true;}chunks.push(chunk);}
+    try{
+      const result=await uploadChatMedia(db,{accountId:session.id,scope,scopeKey,mimeType,buffer:Buffer.concat(chunks)});
+      res.writeHead(201,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
+    }catch(error){
+      const code=String(error?.message||'');
+      const status=code==='CHAT_MEDIA_STORAGE_NOT_CONFIGURED'?503:code==='CHAT_MEDIA_DAILY_QUOTA'||code==='CHAT_MEDIA_STORAGE_QUOTA'?429:code.includes('SCOPE')?403:400;
+      const message=code==='CHAT_MEDIA_STORAGE_NOT_CONFIGURED'?'media_storage_not_configured':code==='CHAT_MEDIA_DAILY_QUOTA'?'media_daily_quota':code==='CHAT_MEDIA_STORAGE_QUOTA'?'media_storage_quota':code==='CHAT_MEDIA_SIZE_INVALID'?'media_size_invalid':code==='CHAT_MEDIA_TYPE_INVALID'||code==='CHAT_MEDIA_SIGNATURE_INVALID'?'media_type_invalid':'media_upload_failed';
+      res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify({error:message}));return true;
+    }
+  }
+  if(req.method==='POST'&&url.pathname==='/api/chat-media/discard'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
+    let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>2048){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'message_too_large'}));return true;}chunks.push(chunk);}
+    const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
+    if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
+    try{const result=await discardChatMedia(db,{mediaId:form.get('mediaId'),accountId:session.id});res.writeHead(result.status==='deleted'?200:404,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(result));return true;}
+    catch(error){if(String(error?.message||'').startsWith('CHAT_MEDIA_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'media_discard_failed'}));return true;}throw error;}
+  }
+  if(req.method==='GET'&&url.pathname==='/api/chat-events'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    const unsubscribe=subscribeChatEvents(session.id,event=>{
+      if(!res.writableEnded)res.write('event: chat-update\\ndata: '+JSON.stringify(event)+'\\n\\n');
+    });
+    if(!unsubscribe){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'realtime_capacity'}));return true;}
+    res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform','Connection':'keep-alive','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'});
+    res.write('retry: 3000\\n: connected\\n\\n');
+    const heartbeat=setInterval(()=>{if(!res.writableEnded)res.write(': keep-alive\\n\\n');},20000);
+    let maxLifetime=null;
+    const cleanup=()=>{clearInterval(heartbeat);if(maxLifetime)clearTimeout(maxLifetime);unsubscribe();};
+    maxLifetime=setTimeout(()=>{cleanup();if(!res.writableEnded)res.end();},90000);
+    res.on('close',cleanup);
+    res.on('error',cleanup);
+    return true;
+  }
   if (req.method === 'GET' && url.pathname === '/google1941de4c3bd5e8ea.html') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public,max-age=3600', 'X-Content-Type-Options': 'nosniff' });
     res.end('google-site-verification: google1941de4c3bd5e8ea.html\n');
@@ -736,6 +794,75 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public,max-age=300', 'X-Robots-Tag': 'index, follow', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin' });
     res.end(publicSeoLandingPage());
     return true;
+  }
+  if(url.pathname==='/api/site-dm/friends'&&req.method==='GET'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'messages_unavailable'}));return true;}
+    const friends=await listAccountFriends(db,session.id);
+    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify({friends:friends.friends||[]}));return true;
+  }
+  if(url.pathname==='/api/site-dm/messages'&&req.method==='GET'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'messages_unavailable'}));return true;}
+    const other=String(url.searchParams.get('with')||'');
+    if(!SITE_ACCOUNT_ID.test(other)){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_recipient'}));return true;}
+    const result=await listSiteDirectMessages(db,{accountId:session.id,otherAccountId:other,limit:60});
+    res.writeHead(result.status==='ok'?200:403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
+  }
+  if(url.pathname==='/api/site-dm/read'&&req.method==='POST'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'messages_unavailable'}));return true;}
+    if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
+    let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>2048){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'message_too_large'}));return true;}chunks.push(chunk);}
+    const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
+    if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
+    try{const result=await markSiteDirectMessagesRead(db,{accountId:session.id,otherAccountId:form.get('recipientAccountId')});res.writeHead(result.status==='read'?200:403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(result));return true;}catch(error){if(String(error?.message||'').startsWith('SITE_DM_')||String(error?.message||'').startsWith('CHAT_MEDIA_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_recipient'}));return true;}throw error;}
+  }
+  if(url.pathname==='/api/site-dm/messages'&&req.method==='POST'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'messages_unavailable'}));return true;}
+    if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
+    let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>4096){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'message_too_large'}));return true;}chunks.push(chunk);}
+    const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
+    if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
+    try{
+      const result=await sendSiteDirectMessage(db,{senderAccountId:session.id,recipientAccountId:form.get('recipientAccountId'),body:form.get('message'),mediaId:form.get('mediaId')||null});
+      if(result.status==='sent'){const recipient=String(form.get('recipientAccountId')||'');publishChatEvent({scope:'dm',conversationId:[session.id,recipient].sort().join(':'),accountIds:[session.id,recipient]});}
+      const status=result.status==='sent'?201:result.status==='rate_limited'?429:result.status==='not_allowed'?403:result.status==='thread_limit'?409:400;
+      res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
+    }catch(error){
+      if(String(error?.message||'').startsWith('SITE_DM_')||String(error?.message||'').startsWith('CHAT_MEDIA_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_message'}));return true;}
+      throw error;
+    }
+  }
+  if(url.pathname==='/api/site-dm/groups'&&req.method==='GET'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'messages_unavailable'}));return true;}
+    const groups=await listSiteDmGroups(db,session.id);res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({groups}));return true;
+  }
+  if(url.pathname==='/api/site-dm/group-messages'&&req.method==='GET'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'messages_unavailable'}));return true;}
+    const groupId=String(url.searchParams.get('groupId')||'');if(!/^[0-9a-f-]{36}$/i.test(groupId)){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_group'}));return true;}
+    const result=await listSiteDmGroupMessages(db,{accountId:session.id,groupId,limit:60});res.writeHead(result.status==='ok'?200:403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(result));return true;
+  }
+  if(['/api/site-dm/groups','/api/site-dm/group-messages','/api/site-dm/group-read','/api/site-dm/group-leave'].includes(url.pathname)&&req.method==='POST'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'messages_unavailable'}));return true;}
+    if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
+    let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>4096){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'message_too_large'}));return true;}chunks.push(chunk);}
+    const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
+    try{let result;if(url.pathname==='/api/site-dm/groups'){let members=[];try{members=JSON.parse(form.get('memberAccountIds')||'[]');}catch{}result=await createSiteDmGroup(db,{creatorAccountId:session.id,memberAccountIds:members,title:form.get('title')});}
+      else if(url.pathname==='/api/site-dm/group-messages'){result=await sendSiteDmGroupMessage(db,{senderAccountId:session.id,groupId:form.get('groupId'),body:form.get('message'),mediaId:form.get('mediaId')||null});if(result.status==='sent'){const members=await db.query('SELECT gm.account_id FROM frieren_site_dm_group_members gm WHERE gm.group_id=$1 AND gm.account_id<>$2 AND NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE (b.blocker_account_id=gm.account_id AND b.blocked_account_id=$2) OR (b.blocker_account_id=$2 AND b.blocked_account_id=gm.account_id))',[form.get('groupId'),session.id]);publishChatEvent({scope:'group',conversationId:form.get('groupId'),accountIds:[session.id,...members.rows.map(row=>row.account_id)]});}}
+      else if(url.pathname==='/api/site-dm/group-read')result=await markSiteDmGroupMessagesRead(db,{accountId:session.id,groupId:form.get('groupId')});
+      else result=await leaveSiteDmGroup(db,{accountId:session.id,groupId:form.get('groupId')});
+      const status=result.status==='created'||result.status==='sent'?201:result.status==='rate_limited'?429:result.status==='not_allowed'?403:result.status==='not_found'?404:200;
+      res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
+    }catch(error){if(String(error?.message||'').startsWith('SITE_DM_')||String(error?.message||'').startsWith('CHAT_MEDIA_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_group_message'}));return true;}throw error;}
   }
   if(url.pathname==='/api/public-chat/reports'&&req.method==='GET'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
@@ -763,12 +890,13 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
     if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
     try{
-      const result=await sendPublicChatMessage(db,{accountId:session.id,username:session.username,body:form.get('message'),replyToMessageId:form.get('replyToMessageId')||null});
+      const result=await sendPublicChatMessage(db,{accountId:session.id,username:session.username,body:form.get('message'),replyToMessageId:form.get('replyToMessageId')||null,mediaId:form.get('mediaId')||null});
+      if(result.status==='sent')publishChatEvent({scope:'public'});
       const status=result.status==='sent'?201:result.status==='rate_limited'?429:result.status==='chat_paused'?423:400;
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
     }catch(error){
       const code=String(error?.message||'');
-      if(code.startsWith('PUBLIC_CHAT_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_message'}));return true;}
+      if(code.startsWith('PUBLIC_CHAT_')||code.startsWith('CHAT_MEDIA_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_message'}));return true;}
       throw error;
     }
   }
@@ -781,14 +909,14 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
     if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
     const owner=await isLinkedOwnerSiteAccount(db,session);
-    if(['/api/public-chat/messages/delete','/api/public-chat/pins','/api/public-chat/control','/api/public-chat/reports/review'].includes(url.pathname)&&!owner){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
+    if(['/api/public-chat/pins','/api/public-chat/control','/api/public-chat/reports/review'].includes(url.pathname)&&!owner){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'owner_only'}));return true;}
     try{
       let result;
       if(url.pathname==='/api/public-chat/reactions')result=await togglePublicChatReaction(db,{accountId:session.id,messageId:form.get('messageId'),emoji:form.get('emoji')});
       else if(url.pathname==='/api/public-chat/blocks')result=await blockPublicChatUser(db,{accountId:session.id,messageId:form.get('messageId')});
       else if(url.pathname==='/api/public-chat/blocks/unblock')result=await unblockPublicChatUser(db,{accountId:session.id,targetAccountId:form.get('targetAccountId')});
       else if(url.pathname==='/api/public-chat/messages/edit')result=await updatePublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId'),body:form.get('body')});
-      else if(url.pathname==='/api/public-chat/messages/delete')result=await deletePublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId'),isOwner:owner});
+      else if(url.pathname==='/api/public-chat/messages/delete')result=owner?await deletePublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId'),isOwner:true}):await deleteOwnPublicChatMessage(db,{accountId:session.id,messageId:form.get('messageId')});
       else if(url.pathname==='/api/public-chat/pins')result=await togglePublicChatPin(db,{accountId:session.id,messageId:form.get('messageId'),isOwner:owner});
       else if(url.pathname==='/api/public-chat/control')result=await setPublicChatPaused(db,{accountId:session.id,paused:form.get('paused')==='true',isOwner:owner});
       else if(url.pathname==='/api/public-chat/typing')result=await setPublicChatTyping(db,{accountId:session.id});
@@ -797,9 +925,10 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       else if(url.pathname==='/api/public-chat/reports/review')result=await resolvePublicChatReport(db,{accountId:session.id,reportId:form.get('reportId'),status:form.get('status'),isOwner:owner});
       else result=await touchPublicChatPresence(db,{accountId:session.id});
       const status=result.status==='not_found'?404:['self_block','self_report'].includes(result.status)?400:['added','removed','blocked','already_blocked','unblocked','updated','deleted','pinned','unpinned','online','typing','read','reported','already_reported','reviewed','dismissed'].includes(result.status)?200:400;
+      if(status===200&&url.pathname!=='/api/public-chat/presence')publishChatEvent({scope:'public'});
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
     }catch(error){
-      if(String(error?.message||'').startsWith('PUBLIC_CHAT_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_chat_action'}));return true;}
+      if(String(error?.message||'').startsWith('PUBLIC_CHAT_')||String(error?.message||'').startsWith('CHAT_MEDIA_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_chat_action'}));return true;}
       throw error;
     }
   }

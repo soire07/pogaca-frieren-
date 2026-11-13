@@ -756,3 +756,57 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .player-banner--north{background:radial-gradient(ellipse at 78% 16%,#93b8e955,transparent 38%),linear-gradient(115deg,#0b172b,#233d5c 58%,#111a31)}
 .player-banner-content{max-width:760px}.player-banner h2{margin:8px 0;font:clamp(26px,4vw,42px)/1.15 Georgia,serif;color:#f5eaff;text-shadow:0 3px 24px #08061299}.player-banner p{margin:0;color:#e1d8f3}
 @media(max-width:560px){.player-banner{min-height:150px;padding:20px;border-radius:18px}.player-banner h2{font-size:26px}}
+
+/* Community chat composer and emoji picker */
+.public-chat-form textarea[name=message]{display:block;width:100%;min-width:0;min-height:76px;max-height:220px;resize:vertical;padding:13px 14px;border:1px solid #d8c2fa55;border-radius:13px;background:#100e1e;color:#fff;font:inherit;line-height:1.5}
+.public-chat-emoji-tools{position:relative;display:flex;align-items:center;gap:8px}
+.public-chat-emoji-picker{display:flex;flex-wrap:wrap;gap:5px;padding:8px;border:1px solid #d8baff55;border-radius:12px;background:#171326;box-shadow:0 10px 30px #05040d88}
+.public-chat-emoji-picker[hidden]{display:none}
+.public-chat-emoji{width:36px;height:36px;border:0;border-radius:8px;background:#ffffff0c;font-size:19px;cursor:pointer}
+.public-chat-emoji:focus-visible,.public-chat-emoji:hover{outline:2px solid #c4a8ff;background:#9b7bd933}
+
+.public-chat-new-messages{display:block;width:100%;margin:8px 0;border-color:#bca2ee;background:#34264e;color:#f3eaff}.public-chat-new-messages[hidden]{display:none}
+
+
+.public-chat-dm{display:grid;gap:10px;margin-top:18px;padding:16px;border:1px solid #bca2ee44;border-radius:16px;background:#120f20}
+.public-chat-dm-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.public-chat-dm-head strong{color:#eadcff}.public-chat-dm-head span,.public-chat-dm label{color:#bfb2d2;font-size:12px}
+.public-chat-dm select,.public-chat-dm textarea{width:100%;min-width:0;padding:11px 12px;border:1px solid #d8c2fa55;border-radius:11px;background:#100e1e;color:#fff;font:inherit}
+.public-chat-dm-messages{display:grid;gap:8px;max-height:260px;overflow:auto;list-style:none;margin:0;padding:10px;border-radius:12px;background:#0b0914}
+.public-chat-dm-messages li{max-width:88%;padding:9px 11px;border:1px solid #d8c2fa22;border-radius:12px;background:#201a31;overflow-wrap:anywhere}
+.public-chat-dm-messages li.is-own{justify-self:end;background:#35264e;border-color:#bca2ee55}
+.public-chat-dm-messages p{margin:0;color:#f5efff;white-space:pre-wrap}.public-chat-dm-messages small{display:block;margin-top:5px;color:#bdb0d2;font-size:10px}
+.public-chat-dm form{display:grid;gap:8px}.public-chat-dm form .btn{justify-self:end}
+.public-chat-dm [data-site-dm-feedback]{margin:0;color:#d9c9f6;font-size:12px}
+@media(max-width:620px){.public-chat-dm{padding:12px}.public-chat-dm-head{align-items:flex-start;flex-direction:column}.public-chat-dm form .btn{width:100%}}
+
+
+.public-chat-dm-group{display:grid;gap:10px;margin-top:14px;padding:16px;border:1px solid #bca2ee33;border-radius:16px;background:#100d1b}
+.public-chat-dm-group form{display:grid;gap:8px}.public-chat-dm-group label{color:#bfb2d2;font-size:12px}
+.public-chat-dm-group input,.public-chat-dm-group select,.public-chat-dm-group textarea{width:100%;min-width:0;padding:10px 12px;border:1px solid #d8c2fa55;border-radius:10px;background:#100e1e;color:#fff;font:inherit}
+.public-chat-dm-group select[multiple]{min-height:96px}.public-chat-dm-group [data-site-dm-group-feedback]{margin:0;color:#d9c9f6;font-size:12px}
+.public-chat-dm-group [data-site-dm-group-leave]{justify-self:end}
+@media(max-width:620px){.public-chat-dm-group{padding:12px}.public-chat-dm-group [data-site-dm-group-leave]{width:100%}}
+
+
+.public-chat-dialog{width:min(92vw,480px);max-height:85vh;padding:0;border:1px solid #bca2ee88;border-radius:18px;background:#171326;color:#f4effb;box-shadow:0 24px 80px #000b}
+.public-chat-dialog::backdrop{background:#05030bcc;backdrop-filter:blur(4px)}
+.public-chat-dialog form{display:grid;gap:12px;padding:20px}
+.public-chat-dialog h3{margin:0;color:#eadcff;font-size:18px}
+.public-chat-dialog p{margin:0;color:#c7bad9;line-height:1.5}
+.public-chat-dialog input,.public-chat-dialog textarea,.public-chat-dialog select{width:100%;min-width:0;padding:11px 12px;border:1px solid #d8c2fa66;border-radius:10px;background:#0d0a17;color:#fff;font:inherit}
+.public-chat-dialog textarea{min-height:120px;resize:vertical}
+.public-chat-dialog-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.public-chat-dialog-actions button{min-height:42px}
+@media(max-width:620px){.public-chat-dialog form{padding:14px}.public-chat-dialog-actions button{flex:1}}
+
+
+.public-chat-dm-hub{display:grid;gap:10px;margin-top:18px}
+.public-chat-dm-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.public-chat-dm-tabs .public-chat-action{flex:1;min-height:42px}
+.public-chat-dm-tabs .is-active{background:#3a2b54;border-color:#d7b9ff;color:#fff}
+.public-chat-dm[hidden],.public-chat-dm-group[hidden]{display:none!important}
+
+.public-chat-avatar-link{display:inline-flex;align-self:flex-start;border-radius:50%;text-decoration:none;outline-offset:3px}.public-chat-avatar-link:focus-visible{outline:2px solid #c4a8ff}.public-chat-dm [data-site-dm-profile]{display:inline-flex;width:max-content;max-width:100%;color:#d9c9f6;text-decoration:underline;text-underline-offset:3px}.public-chat-dm [data-site-dm-profile][hidden]{display:none}
+
+.chat-media-picker{display:grid;gap:6px;width:max-content;max-width:100%;color:#cdbbe8;font-size:12px}.chat-media-picker input{max-width:100%;color:#eee;font:inherit}.public-chat-media{display:block;max-width:min(100%,560px);max-height:360px;margin:9px 0;border:1px solid #bca2ee44;border-radius:12px;object-fit:contain;background:#090711}.public-chat-dm .public-chat-media{max-width:100%;max-height:280px}.public-chat-dm audio.public-chat-media{width:min(100%,420px);height:40px}.public-chat-media:focus-visible{outline:2px solid #c4a8ff;outline-offset:3px}[data-chat-media-status]{display:block;min-height:16px;color:#cdbbe8;font-size:11px}

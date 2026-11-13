@@ -6,6 +6,7 @@ import { ensureAdventurerPlatformTables, ensureActiveArenaSeason } from '../adve
 import { ensureArenaTables } from '../arena-queue.js';
 import { ensurePlayerMarketTables } from '../player-market.js';
 import { ensureSocialPlatformTables } from '../social-platform.js';
+import { ensureSiteDirectMessageSchema } from '../site-direct-messages.js';
 import {
   ensureAccountCenterSchema, createSupportTicket, replySupportTicketFromOwner,
   updateSupportTicketStatusFromOwner, exportSiteAccountData, deleteSiteAccount
@@ -30,13 +31,14 @@ test('account export includes linked game and support data while excluding secre
   await ensurePlayerMarketTables(pool);
   await ensureSocialPlatformTables(pool);
   await ensureAccountCenterSchema(pool);
+  await ensureSiteDirectMessageSchema(pool);
 
   const guildId=makeIds('99000000000000000',1)[0];
   const users=makeIds('74000000000000000',2);
   const [ownerUser,buyerUser]=users;
   const accountUuid=randomUUID();
   const accountId='site_'+accountUuid;
-  let listingId,ticketId,noteId,matchId,eventId,seasonId;
+  let listingId,ticketId,noteId,matchId,eventId,seasonId,dmMessageId,dmGroupId,dmGroupMessageId,dmOtherAccountId;
   try {
     for(const userId of users) await ensureUser(guildId,userId);
     await pool.query(`
@@ -81,6 +83,12 @@ test('account export includes linked game and support data while excluding secre
       "INSERT INTO frieren_site_accounts(id,username,email,password_hash,email_verified_at) VALUES($1,$2,$3,'test-hash',NOW())",
       [accountUuid,'audit_'+accountUuid.slice(0,8),accountUuid.slice(0,8)+'@example.invalid']
     );
+    dmMessageId=randomUUID();dmGroupId=randomUUID();dmGroupMessageId=randomUUID();dmOtherAccountId='site_'+randomUUID();
+    await pool.query('INSERT INTO frieren_site_direct_messages(message_id,sender_account_id,recipient_account_id,body) VALUES($1,$2,$3,$4)',[dmMessageId,accountId,dmOtherAccountId,'Özel dışa aktarım mesajı']);
+    await pool.query('INSERT INTO frieren_site_dm_groups(group_id,created_by,title) VALUES($1,$2,$3)',[dmGroupId,accountId,'Hesap silme deneyi']);
+    await pool.query('INSERT INTO frieren_site_dm_group_members(group_id,account_id) VALUES($1,$2),($1,$3)',[dmGroupId,accountId,dmOtherAccountId]);
+    await pool.query('INSERT INTO frieren_site_dm_group_messages(message_id,group_id,sender_account_id,body) VALUES($1,$2,$3,$4)',[dmGroupMessageId,dmGroupId,dmOtherAccountId,'Grup dışa aktarım mesajı']);
+    await pool.query('INSERT INTO frieren_site_dm_group_reads(message_id,reader_account_id) VALUES($1,$2)',[dmGroupMessageId,accountId]);
     await pool.query("INSERT INTO site_discord_links(account_id,guild_id,user_id) VALUES($1,$2,$3)",[accountUuid,guildId,ownerUser]);
     await pool.query("INSERT INTO site_profile_preferences(account_id,theme,profile_visibility,access_token_hash) VALUES($1,'night','public','must-not-export')",[accountUuid]);
     await pool.query("INSERT INTO site_profile_preference_details(detail_id,preference_id,detail) VALUES($1,$2,'linked account preference detail')",[randomUUID(),accountUuid]);
@@ -182,7 +190,14 @@ test('account export includes linked game and support data while excluding secre
     assert.equal(exported.accountData.site_profile_preference_details.length,1,'foreign-key descendants of account-owned rows must be exported');
     assert.equal(exported.accountData.site_profile_preferences[0].theme,'night');
     assert.equal(Object.hasOwn(exported.accountData.site_profile_preferences[0],'access_token_hash'),false);
-    assert.equal(exported.supportTickets.length,1);
+    assert.equal(exported.siteDirectMessages.length,1,'direct messages must be included in account export');
+    assert.equal(exported.siteDirectMessages[0].message_id,dmMessageId);
+    assert.equal(exported.siteDirectMessageGroups.length,1,'joined groups must be included in account export');
+    assert.equal(exported.siteDirectGroupMessages.length,1,'group messages must be included in account export');
+    assert.equal(exported.siteDirectGroupReads.length,1,'the account\'s group read receipts must be included in account export');
+    assert.equal(exported.siteDirectGroupReads[0].message_id,dmGroupMessageId);
+    assert.deepEqual(exported.siteChatMedia,[],'chat media export must be present even when the account has no attachments');
+        assert.equal(exported.supportTickets.length,1);
     assert.equal(exported.supportTickets[0].replies.length,1);
     assert.equal(exported.supportTickets[0].statusHistory.length,3);
     assert.match(exported.deletionScope,/Discord-owned RPG profiles and guild game records remain intact/);
@@ -197,7 +212,12 @@ test('account export includes linked game and support data while excluding secre
     assert.equal((await pool.query('SELECT 1 FROM site_profile_preferences WHERE account_id=$1',[accountUuid])).rowCount,0);
     assert.equal((await pool.query('SELECT 1 FROM site_profile_preference_details WHERE preference_id=$1',[accountUuid])).rowCount,0,'account-owned descendants must cascade with the account preference');
     assert.equal((await pool.query('SELECT 1 FROM account_export_fk_player_notes WHERE note_id=$1',[noteId])).rowCount,1,'Discord-owned RPG records must remain after portal account deletion');
-    assert.equal((await pool.query('SELECT 1 FROM frieren_support_tickets WHERE account_id=$1',[accountUuid])).rowCount,0);
+    assert.equal((await pool.query('SELECT 1 FROM frieren_site_direct_messages WHERE message_id=$1',[dmMessageId])).rowCount,0,'account deletion must remove direct messages involving the account');
+    assert.equal((await pool.query('SELECT 1 FROM frieren_site_dm_group_reads WHERE reader_account_id=$1',[accountId])).rowCount,0,'account deletion must remove that account\'s group read receipts');
+    assert.equal((await pool.query('SELECT 1 FROM frieren_site_dm_group_members WHERE group_id=$1 AND account_id=$2',[dmGroupId,accountId])).rowCount,0);
+    assert.equal((await pool.query('SELECT created_by FROM frieren_site_dm_groups WHERE group_id=$1',[dmGroupId])).rows[0]?.created_by,dmOtherAccountId,'group ownership must be handed to a remaining member');
+    assert.equal((await pool.query('SELECT 1 FROM frieren_site_dm_group_messages WHERE message_id=$1',[dmGroupMessageId])).rowCount,1,'other members\' group messages must remain available');
+        assert.equal((await pool.query('SELECT 1 FROM frieren_support_tickets WHERE account_id=$1',[accountUuid])).rowCount,0);
     assert.equal((await pool.query('SELECT 1 FROM frieren_support_ticket_messages WHERE ticket_id=$1',[ticketId])).rowCount,0);
     assert.equal((await pool.query('SELECT 1 FROM frieren_support_ticket_events WHERE ticket_id=$1',[ticketId])).rowCount,0);
     assert.equal((await pool.query('SELECT 1 FROM owner_audit_records WHERE account_id=$1',[accountUuid])).rowCount,1);
@@ -207,6 +227,8 @@ test('account export includes linked game and support data while excluding secre
     assert.equal((await pool.query("SELECT 1 FROM achievement_claims WHERE guild_id=$1 AND user_id=$2 AND achievement_key='export_test_achievement'",[guildId,ownerUser])).rowCount,1);
     assert.equal((await pool.query('SELECT 1 FROM player_market_listings WHERE listing_id=$1',[listingId])).rowCount,1);
   } finally {
+    if(dmGroupId) await pool.query('DELETE FROM frieren_site_dm_groups WHERE group_id=$1',[dmGroupId]);
+    if(dmMessageId) await pool.query('DELETE FROM frieren_site_direct_messages WHERE message_id=$1',[dmMessageId]);
     if(matchId) await pool.query('DELETE FROM arena_matches WHERE match_id=$1',[matchId]);
     if(eventId) await pool.query('DELETE FROM guild_events WHERE event_id=$1',[eventId]);
     if(seasonId) await pool.query('DELETE FROM arena_seasons WHERE season_id=$1',[seasonId]);

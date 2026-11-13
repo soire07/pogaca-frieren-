@@ -1,3 +1,4 @@
+import { deleteChatMediaForAccount, getChatMediaReadUrl } from './chat-media.js';
 import { randomUUID } from 'node:crypto';
 
 const ACCOUNT_ID = /^site_([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
@@ -449,6 +450,23 @@ export async function exportSiteAccountData(db, accountId) {
     accountData[table] = rows.rows;
   }
   await includeForeignKeyDescendants(db, accountData);
+  const dmTable = await db.query("SELECT to_regclass('frieren_site_direct_messages') AS table_name");
+  const siteDirectMessages = dmTable.rows?.[0]?.table_name
+    ? await db.query('SELECT message_id,sender_account_id,recipient_account_id,body,created_at,read_at FROM frieren_site_direct_messages WHERE sender_account_id=$1 OR recipient_account_id=$1 ORDER BY created_at,message_id',[accountId])
+    : { rows: [] };
+  const groupTable = await db.query("SELECT to_regclass('frieren_site_dm_groups') AS table_name");
+  const siteDirectMessageGroups = groupTable.rows?.[0]?.table_name ? await db.query('SELECT g.group_id,g.title,g.created_by,g.created_at FROM frieren_site_dm_groups g JOIN frieren_site_dm_group_members gm ON gm.group_id=g.group_id WHERE gm.account_id=$1 ORDER BY g.created_at DESC',[accountId]) : { rows: [] };
+  const siteDirectGroupMessages = groupTable.rows?.[0]?.table_name ? await db.query('SELECT m.message_id,m.group_id,m.sender_account_id,m.body,m.created_at FROM frieren_site_dm_group_messages m JOIN frieren_site_dm_group_members gm ON gm.group_id=m.group_id WHERE gm.account_id=$1 ORDER BY m.created_at,m.message_id',[accountId]) : { rows: [] };
+  const siteDirectGroupReads = groupTable.rows?.[0]?.table_name ? await db.query('SELECT rd.message_id,rd.read_at,gm.group_id,gm.sender_account_id FROM frieren_site_dm_group_reads rd JOIN frieren_site_dm_group_messages gm ON gm.message_id=rd.message_id WHERE rd.reader_account_id=$1 ORDER BY rd.read_at,rd.message_id',[accountId]) : { rows: [] };
+  const chatMediaTable=await db.query("SELECT to_regclass('frieren_site_chat_media') AS table_name");
+  const mediaPredicates=['cm.owner_account_id=$1'];
+  const publicChatTable=await db.query("SELECT to_regclass('frieren_public_chat_messages') AS table_name");
+  if(publicChatTable.rows?.[0]?.table_name)mediaPredicates.push("EXISTS(SELECT 1 FROM frieren_public_chat_messages pm WHERE pm.message_id=cm.message_id AND pm.account_id=$1)");
+  if(dmTable.rows?.[0]?.table_name)mediaPredicates.push("EXISTS(SELECT 1 FROM frieren_site_direct_messages dm WHERE dm.message_id=cm.message_id AND (dm.sender_account_id=$1 OR dm.recipient_account_id=$1))");
+  if(groupTable.rows?.[0]?.table_name)mediaPredicates.push("EXISTS(SELECT 1 FROM frieren_site_dm_group_messages gm JOIN frieren_site_dm_group_members mine ON mine.group_id=gm.group_id WHERE gm.message_id=cm.message_id AND mine.account_id=$1)");
+  const siteChatMedia=chatMediaTable.rows?.[0]?.table_name
+    ?await db.query('SELECT cm.media_id,cm.scope_type,cm.scope_key,cm.mime_type,cm.size_bytes,cm.message_id,cm.created_at,cm.attached_at,cm.object_key FROM frieren_site_chat_media cm WHERE '+mediaPredicates.join(' OR ')+' ORDER BY cm.created_at,cm.media_id',[accountId])
+    :{rows:[]};
   const ticketsResult = await db.query(
     'SELECT ticket_id,category,subject,message,status,created_at,updated_at FROM frieren_support_tickets WHERE account_id=$1 ORDER BY created_at,ticket_id',
     [id]
@@ -461,11 +479,16 @@ export async function exportSiteAccountData(db, accountId) {
     return { ...ticket, replies:messages.rows, statusHistory:events.rows };
   }));
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     exportedAt: new Date().toISOString(),
     account: accountResult.rows[0],
     accountData,
     linkedProfiles,
+    siteDirectMessages: siteDirectMessages.rows,
+    siteDirectMessageGroups: siteDirectMessageGroups.rows,
+    siteDirectGroupMessages: siteDirectGroupMessages.rows,
+    siteDirectGroupReads: siteDirectGroupReads.rows,
+    siteChatMedia: siteChatMedia.rows.map(({object_key,...media})=>({...media,download_url:getChatMediaReadUrl({object_key,mime_type:media.mime_type})})),
     supportTickets: tickets,
     deletionScope: 'Deleting the site account removes this portal identity and its Discord links. Discord-owned RPG profiles and guild game records remain intact.'
   };
@@ -476,11 +499,24 @@ export async function deleteSiteAccount(db, accountId, confirmation) {
   const id = accountUuid(accountId);
   const client = await db.connect();
   try {
+    await deleteChatMediaForAccount(client,accountId);
     await client.query('BEGIN');
     const account = await client.query('SELECT id FROM frieren_site_accounts WHERE id=$1 FOR UPDATE', [id]);
     if (!account.rowCount) {
       await client.query('ROLLBACK');
       return { status: 'not_found' };
+    }
+    const dmTable = await client.query("SELECT to_regclass('frieren_site_direct_messages') AS table_name");
+    if (dmTable.rows?.[0]?.table_name) {
+      await client.query('DELETE FROM frieren_site_direct_messages WHERE sender_account_id=$1 OR recipient_account_id=$1',[accountId]);
+    }
+    const groupTable = await client.query("SELECT to_regclass('frieren_site_dm_groups') AS table_name");
+    if (groupTable.rows?.[0]?.table_name) {
+      await client.query('DELETE FROM frieren_site_dm_group_messages WHERE sender_account_id=$1',[accountId]);
+      await client.query('DELETE FROM frieren_site_dm_group_reads WHERE reader_account_id=$1',[accountId]);
+      await client.query('DELETE FROM frieren_site_dm_group_members WHERE account_id=$1',[accountId]);
+      await client.query('UPDATE frieren_site_dm_groups g SET created_by=(SELECT gm.account_id FROM frieren_site_dm_group_members gm WHERE gm.group_id=g.group_id ORDER BY gm.joined_at,gm.account_id LIMIT 1) WHERE g.created_by=$1 AND EXISTS(SELECT 1 FROM frieren_site_dm_group_members gm WHERE gm.group_id=g.group_id)',[accountId]);
+      await client.query('DELETE FROM frieren_site_dm_groups g WHERE NOT EXISTS(SELECT 1 FROM frieren_site_dm_group_members gm WHERE gm.group_id=g.group_id)');
     }
     const accountTables = await client.query("SELECT table_name,data_type FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='account_id'");
     for (const table of accountTables.rows || []) {

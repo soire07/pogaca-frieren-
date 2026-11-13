@@ -66,6 +66,8 @@ test('support center is account-scoped and exposes data export and deletion cont
 test('account data export is authenticated and delivered as a no-store JSON attachment',async()=>{
  const accountId='site_123e4567-e89b-12d3-a456-426614174000';
  const db={async query(sql){
+  if(sql.includes("to_regclass('frieren_site_chat_media')"))return{rows:[{table_name:null}],rowCount:1};if(sql.includes("to_regclass('frieren_public_chat_messages')"))return{rows:[{table_name:null}],rowCount:1};
+  if(sql.includes("to_regclass('frieren_site_direct_messages')"))return{rows:[{table_name:null}],rowCount:1};if(sql.includes("to_regclass('frieren_site_dm_groups')"))return{rows:[{table_name:null}],rowCount:1};
   if(sql.includes('FROM frieren_site_accounts'))return{rows:[{id:accountId.slice(5),username:'Gezgin',email:'member@example.com'}],rowCount:1};
   if(sql.includes('FROM site_discord_links'))return{rows:[],rowCount:0};
   if(sql.includes('FROM frieren_support_tickets'))return{rows:[],rowCount:0};
@@ -1478,7 +1480,7 @@ test('dedicated user center pages expose the new account, social and life naviga
  assert.match(source,/inventory-center-page/);
  assert.match(source,/notification-center-page/);
  assert.match(source,/public-assets\/user-center\.js', 'public-assets\/public-chat\.js'].includes/);
- assert.match(source,/site\.css\?v=public-profile-redesign-273/);
+ assert.match(source,/site\.css\?v=community-chat-277/);
  assert.match(styles,/\.social-center-page/);
  assert.match(styles,/\.user-center-tabs/);
 });
