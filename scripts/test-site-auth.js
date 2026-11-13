@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  validateSiteUsername, validateSiteEmail, validateSiteLoginIdentifier, hashSitePassword, verifySitePassword,
+  validateSiteUsername, validateSiteEmail, validateSiteLoginIdentifier, hashSitePassword, verifySitePassword, buildDiscordAvatarUrl, ensureSiteDiscordAccountSchema,
   createSiteCsrfToken, verifySiteCsrfToken, consumeSmtpBuffer, smtpFailureDetails, sendGmailApi, handleSiteAuthRequest, isSameOriginRequest
 } from '../site-auth.js';
 import { createPublicSiteSession, readPublicSiteSession } from '../owner-dashboard.js';
@@ -334,4 +334,22 @@ test('password and registration POST endpoints are disabled without database acc
     assert.ok([303,405].includes(res.status), path);
     assert.equal(db.calls.length, 0, path);
   }
+});
+
+
+test('Discord avatar URLs use the current custom hash or the account snowflake default without accepting unsafe IDs', () => {
+  assert.equal(buildDiscordAvatarUrl('123456789012345678', 'a_abcdef123'), 'https://cdn.discordapp.com/avatars/123456789012345678/a_abcdef123.gif?size=128');
+  assert.equal(buildDiscordAvatarUrl('123456789012345678', 'abcdef123'), 'https://cdn.discordapp.com/avatars/123456789012345678/abcdef123.png?size=128');
+  const index = Number((BigInt('123456789012345678') >> 22n) % 6n);
+  assert.equal(buildDiscordAvatarUrl('123456789012345678', null), 'https://cdn.discordapp.com/embed/avatars/' + index + '.png');
+  assert.equal(buildDiscordAvatarUrl('not-a-discord-id', 'abcdef123'), null);
+  assert.equal(buildDiscordAvatarUrl('123456789012345678', 'https://evil.example/x.png'), 'https://cdn.discordapp.com/embed/avatars/' + index + '.png');
+});
+
+test('Discord account avatar schema upgrades existing links additively', async () => {
+  const db = fakeDb();
+  await ensureSiteDiscordAccountSchema(db);
+  assert.ok(db.calls.some(call => call.sql.includes('CREATE TABLE IF NOT EXISTS frieren_site_discord_accounts')));
+  assert.ok(db.calls.some(call => call.sql.includes('ADD COLUMN IF NOT EXISTS discord_avatar_hash TEXT')));
+  assert.ok(db.calls.every(call => !/DROP TABLE|TRUNCATE|DELETE FROM/i.test(call.sql)));
 });
