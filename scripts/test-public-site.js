@@ -1882,8 +1882,8 @@ test('atlas exploration fog reveals only regions marked discovered by the RPG ma
  const html=renderExplorationAtlas({mapContent,stats:{}});
  assert.match(html,/atlas-fog-layer/);
  
- assert.match(html,/<path d="M17 69 Q25 63 35 67/);
- assert.doesNotMatch(html,/<circle[^>]+fill="black"/); assert.doesNotMatch(html,/<circle[^>]+r="13"/);
+ assert.match(html,/<path d="M19 38 Q25 31 35 36/);
+ assert.doesNotMatch(html,/<path d="M17 69 Q25 63 35 67/); assert.doesNotMatch(html,/<circle[^>]+fill="black"/);
 });
 
 
