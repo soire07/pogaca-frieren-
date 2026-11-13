@@ -122,7 +122,7 @@ export async function sendSiteDmGroupMessage(db,{senderAccountId,groupId,body}){
   if(Number(rate.rows[0]?.count||0)>=20)return{status:'rate_limited'};
   const id=randomUUID();await client.query('INSERT INTO frieren_site_dm_group_messages(message_id,group_id,sender_account_id,body) VALUES($1,$2,$3,$4)',[id,groupId,sender,message]);
   await client.query('DELETE FROM frieren_site_dm_group_messages WHERE message_id IN (SELECT message_id FROM frieren_site_dm_group_messages WHERE group_id=$1 ORDER BY created_at DESC,message_id DESC OFFSET 500)',[groupId]);
-  const recipients=await client.query('SELECT account_id FROM frieren_site_dm_group_members WHERE group_id=$1 AND account_id<>$2',[groupId,sender]);
+  const recipients=await client.query('SELECT gm.account_id FROM frieren_site_dm_group_members gm WHERE gm.group_id=$1 AND gm.account_id<>$2 AND NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE (b.blocker_account_id=gm.account_id AND b.blocked_account_id=$2) OR (b.blocker_account_id=$2 AND b.blocked_account_id=gm.account_id))',[groupId,sender]);
   for(const recipient of recipients.rows)await createAccountNotification(client,{accountId:recipient.account_id,type:'site_dm_group',title:'Grup sohbetinde yeni mesaj',body:message.slice(0,120),href:'/kesfet#topluluk-sohbeti',schemaReady:true});
   return{status:'sent',messageId:id};
  });
