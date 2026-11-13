@@ -4,6 +4,7 @@ import {randomUUID} from 'node:crypto';
 import pg from 'pg';
 import {assertIsolatedAuditDatabase} from './isolated-audit-db-guard.js';
 import {ensurePublicChatSchema,deleteOwnPublicChatMessage,updatePublicChatMessage,togglePublicChatReaction,sendPublicChatMessage} from '../public-chat.js';
+import {sendSiteDirectMessage,listSiteDirectMessages,markSiteDirectMessagesRead,ensureSiteDirectMessageSchema} from '../site-direct-messages.js';
 
 const {Pool}=pg;
 const account=()=> 'site_'+randomUUID();
@@ -36,6 +37,37 @@ test('legacy three-reaction PostgreSQL constraint upgrades safely and deleted me
   assert.equal((await togglePublicChatReaction(scoped,{accountId:account(),messageId,emoji:'💜'})).status,'not_found');
   const reply=await sendPublicChatMessage(scoped,{accountId:account(),username:'Stark',body:'Yanıt',replyToMessageId:messageId});
   assert.equal(reply.status,'reply_not_found');
+ }finally{
+  await pool.query('DROP SCHEMA IF EXISTS "'+schema+'" CASCADE').catch(()=>{});
+  await pool.end();
+ }
+});
+
+
+test('site private messages enforce accepted friendships, block rules, receipts and bounded persistence on PostgreSQL',async()=>{
+ assertIsolatedAuditDatabase();
+ const pool=new Pool({connectionString:process.env.DATABASE_URL,max:3});
+ const schema='site_dm_rehearsal_'+randomUUID().replaceAll('-','');
+ try{
+  await pool.query('CREATE SCHEMA "'+schema+'"');
+  const scoped={
+   async connect(){const client=await pool.connect();try{await client.query('SET search_path TO "'+schema+'"');return client;}catch(error){client.release();throw error;}},
+   async query(sql,params){const client=await this.connect();try{return await client.query(sql,params);}finally{client.release();}}
+  };
+  await ensureSiteDirectMessageSchema(scoped);
+  const a=account(),b=account();
+  await scoped.query("INSERT INTO frieren_account_friend_requests(request_id,requester_account_id,recipient_account_id,status) VALUES($1,$2,$3,'accepted')",[randomUUID(),a,b]);
+  const sent=await sendSiteDirectMessage(scoped,{senderAccountId:a,recipientAccountId:b,body:'Özel selam'});
+  assert.equal(sent.status,'sent');
+  const inbox=await listSiteDirectMessages(scoped,{accountId:b,otherAccountId:a});
+  assert.equal(inbox.status,'ok');assert.equal(inbox.messages.length,1);assert.equal(inbox.messages[0].body,'Özel selam');assert.equal(inbox.messages[0].is_own,false);
+  const receipt=await markSiteDirectMessagesRead(scoped,{accountId:b,otherAccountId:a});
+  assert.equal(receipt.status,'read');assert.equal(receipt.count,1);
+  const read=await listSiteDirectMessages(scoped,{accountId:a,otherAccountId:b});
+  assert.ok(read.messages[0].read_at);
+  await scoped.query('INSERT INTO frieren_public_chat_blocks(blocker_account_id,blocked_account_id,blocked_username) VALUES($1,$2,$3)',[b,a,'Fern']);
+  assert.equal((await sendSiteDirectMessage(scoped,{senderAccountId:a,recipientAccountId:b,body:'Engel sonrası'})).status,'not_allowed');
+  assert.deepEqual((await listSiteDirectMessages(scoped,{accountId:a,otherAccountId:b})),{status:'not_allowed',messages:[]});
  }finally{
   await pool.query('DROP SCHEMA IF EXISTS "'+schema+'" CASCADE').catch(()=>{});
   await pool.end();
