@@ -1,12 +1,14 @@
 import { EXPLORATION_REGION_CATALOG } from './exploration-regions.js';
 
-const BOSS_JOURNAL_KEYS = Object.freeze({
-  level_1: 'schattenwolf',
-  level_10: 'ruinGuardian',
-  level_20: 'northDemon',
-  level_35: 'demonCommander',
-  level_50: 'ausserstLord'
-});
+function bossJournalKey(boss) {
+  const name = String(boss?.name || '');
+  if (name.includes('Schattenwolf')) return 'schattenwolf';
+  if (name.includes('Harabe Muhafızı')) return 'ruinGuardian';
+  if (name.includes('Kuzey İblisi')) return 'northDemon';
+  if (name.includes('Komutanı')) return 'demonCommander';
+  if (name.includes('Äußerst') || name.includes('Außerst') || name.includes('Ausserst')) return 'ausserstLord';
+  return '';
+}
 
 const BOSS_REGION_KEYS = Object.freeze({
   'Merkez Topraklar': 'merkez',
@@ -69,7 +71,7 @@ export function buildExplorationMapContent({
     const regionBosses = (bosses || [])
       .filter(boss => bossRegionKey(boss) === region.key)
       .map(boss => {
-        const journalKey = BOSS_JOURNAL_KEYS[String(boss.key || '')] || String(boss.journalKey || '');
+        const journalKey = bossJournalKey(boss);
         return {
           key: String(boss.key || ''),
           name: String(boss.name || 'Bölge bossu'),
