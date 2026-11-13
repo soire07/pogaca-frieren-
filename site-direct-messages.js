@@ -37,10 +37,13 @@ export async function sendSiteDirectMessage(db,{senderAccountId,recipientAccount
   if(!await canMessage(c,sender,recipient))return{status:'not_allowed'};
   const rate=await c.query("SELECT COUNT(*)::int AS count FROM frieren_site_direct_messages WHERE sender_account_id=$1 AND created_at>NOW()-INTERVAL '10 minutes'",[sender]);
   if(Number(rate.rows[0]?.count||0)>=20)return{status:'rate_limited'};
-  const recent=await c.query("SELECT COUNT(*)::int AS count FROM frieren_site_direct_messages WHERE (sender_account_id=$1 AND recipient_account_id=$2) OR (sender_account_id=$2 AND recipient_account_id=$1)",[sender,recipient]);
-  if(Number(recent.rows[0]?.count||0)>=500)return{status:'thread_limit'};
   const id=randomUUID();
   await c.query('INSERT INTO frieren_site_direct_messages(message_id,sender_account_id,recipient_account_id,body) VALUES($1,$2,$3,$4)',[id,sender,recipient,message]);
+  await c.query(`DELETE FROM frieren_site_direct_messages WHERE message_id IN (
+   SELECT message_id FROM frieren_site_direct_messages
+   WHERE (sender_account_id=$1 AND recipient_account_id=$2) OR (sender_account_id=$2 AND recipient_account_id=$1)
+   ORDER BY created_at DESC,message_id DESC OFFSET 500
+  )`,[sender,recipient]);
   return{status:'sent',messageId:id};
  });
 }
