@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { ATLAS_HISTORICAL_EVENTS } from '../atlas-navigation.js';
 import { readFile } from 'node:fs/promises';
 
 test('Frieren atlas uses layered cartographic relief instead of flat decorative shapes', async () => {
@@ -118,6 +119,7 @@ test('current canon and RPG map coordinates are collision-adjusted as one visual
     ...FRIEREN_WORLD_SETTLEMENTS.map(place=>({id:'city:'+place.key,type:'city',x:place.x,y:place.y})),
     ...Object.entries(FRIEREN_WORLD_BOSS_LOCATIONS).map(([key,point])=>({id:'boss:'+key,type:'boss',x:point.x,y:point.y})),
     ...Object.entries(FRIEREN_WORLD_DUNGEON_LOCATIONS).map(([key,point])=>({id:'dungeon:'+key,type:'dungeon',x:point.x,y:point.y}))
+    ,...ATLAS_HISTORICAL_EVENTS.map(event=>({id:'event:'+event.id,type:'event',x:event.x,y:event.y}))
   ];
   const arranged = declutterAtlasPins(markers);
   for (let i = 0; i < arranged.length; i++) {
