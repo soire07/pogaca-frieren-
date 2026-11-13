@@ -41,7 +41,7 @@ test('homepage chat is inserted immediately after the hero and includes Frieren 
  const pageRes=response();assert.equal(await handlePublicSiteRequest(get('/kesfet',{id:accountId,username:'Gezgin'}),pageRes,{db}),true);
  assert.ok(pageRes.body.indexOf('public-chat-section')>pageRes.body.toLocaleLowerCase('tr-TR').indexOf('fantastik bir'));
  assert.ok(pageRes.body.indexOf('public-chat-section')<pageRes.body.indexOf('YOL ARKADAŞLARIN'));
- assert.match(pageRes.body,/data-chat-search/);assert.match(pageRes.body,/data-site-dm/);assert.match(pageRes.body,/Arkadaş seç/);assert.match(pageRes.body,/data-chat-new-messages/);assert.match(pageRes.body,/data-chat-counter/);assert.match(pageRes.body,/chat-273-1/);assert.match(pageRes.body,/data-chat-owner="true"/);assert.match(pageRes.body,/data-chat-reports-refresh/);
+ assert.match(pageRes.body,/data-chat-search/);assert.match(pageRes.body,/data-site-dm/);assert.match(pageRes.body,/Arkadaş seç/);assert.match(pageRes.body,/data-site-dm-group/);assert.match(pageRes.body,/Grup sohbetleri/);assert.match(pageRes.body,/data-chat-new-messages/);assert.match(pageRes.body,/data-chat-counter/);assert.match(pageRes.body,/chat-273-1/);assert.match(pageRes.body,/data-chat-owner="true"/);assert.match(pageRes.body,/data-chat-reports-refresh/);
 });
 
 test('chat delete, pin and pause endpoints reject non-owner even with a valid session and CSRF',async()=>{
@@ -104,4 +104,16 @@ test('site direct-message sends require CSRF and an accepted unblocked friendshi
  const form=new URLSearchParams({csrf:createSiteCsrfToken(secret),recipientAccountId:other,message:'Merhaba'});
  const req=Readable.from([Buffer.from(form.toString())]);Object.assign(req,{method:'POST',url:'/api/site-dm/messages',headers:{cookie:cookieFor(account),'content-type':'application/x-www-form-urlencoded'}});
  const res=response();await handlePublicSiteRequest(req,res,{db});assert.equal(res.status,201);assert.match(res.body,/"status":"sent"/);assert.equal(inserted,1);
+});
+
+
+test('site group chat endpoints reject anonymous access and CSRF-less writes',async()=>{
+ const paths=['/api/site-dm/groups','/api/site-dm/group-messages','/api/site-dm/group-read','/api/site-dm/group-leave'];
+ const db={async query(){throw new Error('unauthenticated and CSRF-invalid requests must not reach the database');}};
+ for(const path of paths){
+  const anonymous=Readable.from([Buffer.from('csrf=bad')]);Object.assign(anonymous,{method:'POST',url:path,headers:{'content-type':'application/x-www-form-urlencoded'}});
+  const denied=response();await handlePublicSiteRequest(anonymous,denied,{db});assert.equal(denied.status,302,path);
+  const authenticated=Readable.from([Buffer.from('csrf=bad')]);Object.assign(authenticated,{method:'POST',url:path,headers:{cookie:cookieFor(account),'content-type':'application/x-www-form-urlencoded'}});
+  const csrfDenied=response();await handlePublicSiteRequest(authenticated,csrfDenied,{db});assert.equal(csrfDenied.status,403,path);
+ }
 });
