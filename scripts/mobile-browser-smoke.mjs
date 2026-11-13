@@ -71,6 +71,7 @@ for (const scenario of scenarios) {
     const encyclopediaPage = await page.goto(baseUrl + '/ansiklopedi', { waitUntil: 'domcontentloaded', timeout: 45000 });
     if (!encyclopediaPage || encyclopediaPage.status() !== 200) throw new Error(scenario.name + ' character encyclopedia HTTP ' + (encyclopediaPage?.status() || 'no response'));
     await page.waitForLoadState('networkidle', { timeout: 15000 });
+    await page.waitForFunction(() => document.querySelector('[data-character-encyclopedia]')?.dataset.characterEncyclopediaReady === 'true', null, { timeout: 10000 });
     await page.locator('[data-character-search]').fill('frieren');
     const frierenAnimeOption = await page.locator('[data-character-anime] option').evaluateAll(options => options.map(option => option.value).find(value => value.includes('Frieren')));
     if (!frierenAnimeOption) throw new Error(scenario.name + ' character encyclopedia is missing the Frieren series filter');
