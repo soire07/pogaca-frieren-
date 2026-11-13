@@ -1809,3 +1809,18 @@ test('spellbook search and mastery filters update visible entries and empty stat
  assert.deepEqual(entries.map(entry=>entry.hidden),[true,true,false]);
  assert.equal(empty.hidden,true);
 });
+
+
+test('exploration map uses a responsive game layout with separated map and region cards', async () => {
+ const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
+ const site=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+ const refined=css.slice(css.lastIndexOf('/* Refined Frieren exploration map UI */'));
+ assert.ok(refined.length>0,'refined map styles must be present');
+ assert.match(refined,/\.exploration-map-scroll\s*\{[^}]*overflow-x:\s*auto/s);
+ assert.match(refined,/\.exploration-map-svg\s*\{[^}]*min-width:\s*0/s);
+ assert.match(refined,/\.exploration-region-grid\s*\{[^}]*grid-template-columns/s);
+ assert.match(refined,/@media\s*\(max-width:\s*560px\)/);
+ assert.match(refined,/prefers-reduced-motion/);
+ assert.match(site,/class="exploration-region-grid"/);
+ assert.match(refined,/exploration-map-marker/);
+});
