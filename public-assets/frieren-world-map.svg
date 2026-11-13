@@ -56,6 +56,61 @@
 <path d="M1030 315Q1160 480 1370 650"/>
 </g>
 <g fill="none" stroke="#f2e4c4" stroke-width="2" opacity=".5"><path d="M180 285Q380 160 560 205T940 165T1330 190T1610 340"/><path d="M190 900Q400 1050 600 990T920 1010T1240 970T1540 870"/></g>
+<!-- layered terrain detail: topographic relief, forest belts, mountain foothills, lakes and ruins -->
+<defs>
+ <clipPath id="continent-clip"><path d="M142 270Q235 150 420 185Q555 94 745 165Q860 88 1018 150Q1150 84 1320 165Q1510 150 1634 330Q1710 455 1622 590Q1705 755 1550 900Q1435 1055 1240 1015Q1100 1120 920 1035Q755 1120 600 1015Q405 1070 275 930Q125 825 182 670Q78 525 142 270Z"/></clipPath>
+ <pattern id="fine-contours" width="230" height="170" patternUnits="userSpaceOnUse">
+  <path d="M-25 55Q35 4 105 42T250 30M-20 95Q45 42 115 82T250 70M-30 137Q45 82 120 124T255 110" fill="none" stroke="#6f654e" stroke-opacity=".16" stroke-width="2"/>
+  <path d="M10 160Q65 110 135 148T245 138" fill="none" stroke="#f4e6c6" stroke-opacity=".2" stroke-width="2"/>
+ </pattern>
+ <g id="atlas-pine">
+  <path d="M0 0l13-30 13 30h-8l12 20H-4L8 0z" fill="#294b39" stroke="#d2c49d" stroke-width="1.5"/>
+  <path d="M13-25v38" stroke="#ddc99b" stroke-opacity=".65" stroke-width="1.4"/>
+ </g>
+ <g id="atlas-hill">
+  <path d="M0 28Q32-20 68 28Q34 12 0 28Z" fill="#9b9b70" stroke="#e4d2aa" stroke-width="2"/>
+  <path d="M13 24Q34 2 55 24" fill="none" stroke="#e7d8b8" stroke-opacity=".8" stroke-width="2"/>
+ </g>
+</defs>
+<g clip-path="url(#continent-clip)">
+ <rect x="100" y="80" width="1600" height="1030" fill="url(#fine-contours)" opacity=".8"/>
+ <!-- layered woodland canopies -->
+ <g opacity=".92">
+  <use href="#atlas-pine" x="420" y="365"/><use href="#atlas-pine" x="465" y="325"/><use href="#atlas-pine" x="520" y="345"/><use href="#atlas-pine" x="570" y="390"/><use href="#atlas-pine" x="625" y="340"/><use href="#atlas-pine" x="680" y="365"/><use href="#atlas-pine" x="735" y="330"/><use href="#atlas-pine" x="790" y="370"/>
+  <use href="#atlas-pine" x="450" y="440"/><use href="#atlas-pine" x="505" y="465"/><use href="#atlas-pine" x="565" y="445"/><use href="#atlas-pine" x="625" y="485"/><use href="#atlas-pine" x="690" y="455"/><use href="#atlas-pine" x="755" y="475"/><use href="#atlas-pine" x="820" y="430"/>
+  <use href="#atlas-pine" x="350" y="395"/><use href="#atlas-pine" x="390" y="470"/><use href="#atlas-pine" x="850" y="475"/>
+ </g>
+ <!-- mountain foothills and ridgelines -->
+ <g opacity=".72"><use href="#atlas-hill" x="780" y="250"/><use href="#atlas-hill" x="880" y="285"/><use href="#atlas-hill" x="1010" y="260"/><use href="#atlas-hill" x="1135" y="300"/><use href="#atlas-hill" x="1210" y="350"/><use href="#atlas-hill" x="1290" y="420"/><use href="#atlas-hill" x="1370" y="515"/><use href="#atlas-hill" x="1450" y="575"/></g>
+ <g fill="none" stroke="#f1ead8" stroke-width="4" stroke-opacity=".58">
+  <path d="M790 410Q900 330 1000 420T1210 390"/><path d="M830 450Q950 370 1060 460T1280 430"/>
+  <path d="M1190 540Q1300 475 1405 550T1570 520"/><path d="M1160 590Q1285 525 1390 600T1550 575"/>
+ </g>
+ <!-- highland tarns and small river tributaries -->
+ <g fill="#5f8f91" stroke="#d5dfc9" stroke-width="3" opacity=".86">
+  <path d="M900 505q42-24 78 4-18 32-62 25-26-7-16-29z"/><path d="M1090 645q48-26 82 7-24 31-65 20-29-9-17-27z"/>
+  <path d="M1300 760q35-21 64 4-18 26-52 20-24-6-12-24z"/><path d="M580 790q34-22 65 2-17 27-52 21-24-7-13-23z"/>
+ </g>
+ <g fill="none" stroke="#79a3a0" stroke-width="8" stroke-linecap="round" opacity=".68">
+  <path d="M920 510Q870 565 900 620T850 720"/><path d="M1120 650Q1080 700 1110 745T1070 820"/><path d="M1325 765Q1280 810 1305 850"/>
+ </g>
+ <!-- weathered ruins and old watchtowers -->
+ <g fill="#a68c69" stroke="#725c43" stroke-width="4" opacity=".86">
+  <path d="M920 835l16-54 16 54zM946 835l14-42 14 42zM967 835l18-61 18 61z"/>
+  <path d="M300 560l13-42 13 42zM326 560l12-32 12 32zM350 560l14-47 14 47z"/>
+  <path d="M1460 735l16-51 16 51zM1485 735l12-34 12 34z"/>
+ </g>
+ <g fill="none" stroke="#f2e2bf" stroke-width="3" stroke-opacity=".65">
+  <path d="M880 850h125M285 575h100M1445 750h85"/>
+ </g>
+</g>
+<!-- tiny coastal islets and shoals -->
+<g fill="#cbb88f" stroke="#806342" stroke-width="4" opacity=".9">
+ <path d="M250 130q34-34 68-5-18 31-54 27z"/><path d="M520 115q27-27 55-4-14 25-43 21z"/>
+ <path d="M1665 405q40-22 60 18-26 26-55 7z"/><path d="M1600 975q36-26 65 6-23 27-55 14z"/>
+ <path d="M360 1035q38-25 65 10-27 24-57 11z"/>
+</g>
+
 <!-- map title cartouche and compass -->
 <g transform="translate(95 90)"><path d="M0 0h370v92H0z" fill="#e8d7b5" fill-opacity=".82" stroke="#806342" stroke-width="5"/><path d="M14 14h342v64H14z" fill="none" stroke="#aa8b5e" stroke-width="2"/><text x="185" y="40" text-anchor="middle" font-family="Georgia,serif" font-size="17" letter-spacing="5" fill="#735637">KUZEY KITASI</text><text x="185" y="67" text-anchor="middle" font-family="Georgia,serif" font-size="13" letter-spacing="3" fill="#92744c">FRIEREN · MACERA ATLASI</text></g>
 <g transform="translate(1600 1020)"><circle r="74" fill="#e6d4ad" fill-opacity=".78" stroke="#82613e" stroke-width="5"/><circle r="60" fill="none" stroke="#a88a5d" stroke-width="2"/><path d="M0-53L13-8 0 0-13-8zM53 0L8 13 0 0 8-13zM0 53L-13 8 0 0 13 8zM-53 0L-8-13 0 0-8 13z" fill="#8b6841"/><text y="-88" text-anchor="middle" fill="#745538" font-family="Georgia,serif" font-size="20">N</text></g>
