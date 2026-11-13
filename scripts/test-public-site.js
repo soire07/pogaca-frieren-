@@ -1834,3 +1834,12 @@ test('interactive parchment atlas renders biome regions, settlements, NPCs, crea
  assert.match(html,/data-atlas-focus="city"/);assert.match(html,/data-atlas-focus="boss"/);assert.match(html,/data-atlas-focus="dungeon"/);assert.match(html,/role="dialog"/);assert.match(html,/data-atlas-close/);
  assert.doesNotMatch(html,/exploration-map-node-pin/);
 });
+
+
+test('interactive atlas exposes accessible zoom, pan and independent map-layer controls',async()=>{
+ const mapContent=buildExplorationMapContent({level:50,regionVisits:[{region_key:'merkez',visits:3}],bosses:[{key:'test_boss',name:'Schattenwolf',minLevel:1,region:'Merkez Topraklar'}],dungeons:[{key:'test_dungeon',name:'Merkez Topraklar Mahzeni',minLevel:1,loot:'Schattenwolfzahn'}]});
+ const html=renderExplorationAtlas({mapContent,stats:{}});
+ for(const token of ['data-atlas-viewport','data-atlas-camera','data-atlas-zoom="1"','data-atlas-zoom="-1"','data-atlas-reset','data-atlas-layer="region"','data-atlas-layer="city"','data-atlas-layer="boss"','data-atlas-layer="dungeon"','aria-pressed="true"'])assert.ok(html.includes(token),'atlas navigation should include '+token);
+ const script=await readFile(new URL('../public-assets/exploration-atlas.js',import.meta.url),'utf8');
+ for(const behavior of ["addEventListener('wheel'","addEventListener('pointerdown'","addEventListener('pointermove'","pointers.size===2","data-atlas-layer-item","Escape"])assert.ok(script.includes(behavior),'atlas interaction should include '+behavior);
+});
