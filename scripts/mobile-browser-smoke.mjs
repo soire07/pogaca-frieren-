@@ -1,5 +1,6 @@
 import { chromium, webkit, request } from 'playwright';
 import { createPublicSiteSession } from '../owner-dashboard.js';
+import { renderExplorationAtlas } from '../exploration-atlas.js';
 
 const configuredBaseUrl = String(process.env.MOBILE_SMOKE_BASE_URL || '').trim();
 const allowLocal = process.env.MOBILE_SMOKE_ALLOW_LOCAL === '1';
@@ -74,6 +75,105 @@ for (const scenario of scenarios) {
     }
     const playerPage = await page.goto(baseUrl + '/kesfet', { waitUntil: 'domcontentloaded', timeout: 45000 });
     if (!playerPage || playerPage.status() !== 200) throw new Error(scenario.name + ' authenticated site page HTTP ' + (playerPage?.status() || 'no response'));
+    const atlasKeys = [
+      ['merkez', 'Merkez Topraklar', 1], ['orman', 'Größe Ormanı', 1],
+      ['harabeler', 'Harabeler', 10], ['kuzey', 'Kuzey Toprakları', 20],
+      ['yayla', 'Kuzey Yaylaları', 35], ['aus', 'Ende', 50]
+    ];
+    const atlasRegions = atlasKeys.map(([key, name, minLevel]) => ({
+      region: { key, name, minLevel, emoji: '✧' },
+      visits: 1, discovered: true, unlocked: true, state: 'discovered',
+      masteryLevel: 0, visitsToNextMastery: 1, masteryProgressPercent: 33,
+      bosses: [], dungeons: [], rareItems: [], dungeonWins: 0
+    }));
+    const atlasMarkup = renderExplorationAtlas({
+      mapContent: {
+        regions: atlasRegions,
+        summary: { discoveredRegions: 1, totalRegions: 6, defeatedBosses: 0, totalBosses: 0, totalDungeons: 0 }
+      },
+      stats: {}
+    });
+    await page.setContent('<!doctype html><html lang="tr"><head><link rel="stylesheet" href="' + baseUrl + '/assets/site.css?v=atlas-370-1"></head><body>' + atlasMarkup + '</body></html>');
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-371-1' });
+    const routeFrom = page.locator('[data-atlas-route-from]');
+    const routeTo = page.locator('[data-atlas-route-to]');
+    await routeFrom.selectOption('royal-capital');
+    await routeTo.selectOption('ende');
+    await page.locator('[data-atlas-route-submit]').click();
+    const routePath = page.locator('[data-atlas-route-path]');
+    if (await page.locator('.atlas-route-overlay').isHidden() || !(await routePath.getAttribute('d'))?.startsWith('M')) throw new Error(scenario.name + ' atlas route did not render its calculated path');
+    const routeSummary = await page.locator('[data-atlas-route-summary]').textContent();
+    if (!routeSummary.includes('harita birimi') || !routeSummary.includes('Kraliyet Başkenti') || !routeSummary.includes('Ende')) throw new Error(scenario.name + ' atlas route summary is incomplete or implies unsupported scale: ' + routeSummary);
+    await page.locator('[data-atlas-route-clear]').click();
+    if (!(await page.locator('.atlas-route-overlay').isHidden())) throw new Error(scenario.name + ' atlas route clear did not hide the route');
+    await routeFrom.selectOption('strahl');
+    await routeTo.selectOption('strahl');
+    await page.locator('[data-atlas-route-submit]').click();
+    if (!(await page.locator('[data-atlas-route-summary]').textContent()).includes('0.0 harita birimi')) throw new Error(scenario.name + ' atlas same-stop route should report zero distance');
+    await page.locator('[data-atlas-route-clear]').click();
+    const routeControlHeights = await page.locator('.atlas-route-planner select, .atlas-route-planner button').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
+    if (routeControlHeights.some(height => height < 44)) throw new Error(scenario.name + ' atlas route controls are below the 44px touch target: ' + JSON.stringify(routeControlHeights));
+    await page.locator('[data-atlas-zoom="1"]').click();
+    await page.locator('[data-atlas-zoom="1"]').click();
+    if (await page.locator('.atlas-map-art').getAttribute('data-atlas-zoom-detail') !== 'regional') throw new Error(scenario.name + ' atlas regional detail level did not activate on zoom');
+    await page.locator('[data-atlas-zoom="1"]').click();
+    await page.locator('[data-atlas-zoom="1"]').click();
+    if (await page.locator('.atlas-map-art').getAttribute('data-atlas-zoom-detail') !== 'local') throw new Error(scenario.name + ' atlas local detail level did not activate on zoom');
+    await page.locator('[data-atlas-reset]').click();
+    if (await page.locator('.atlas-map-art').getAttribute('data-atlas-zoom-detail') !== 'overview') throw new Error(scenario.name + ' atlas reset did not restore overview detail');
+    const eventPin = page.locator('[data-atlas-layer-item="event"][data-atlas-open]').first();
+    if (await eventPin.count() === 0) throw new Error(scenario.name + ' atlas historical event markers are missing');
+    await eventPin.click();
+    if (await page.locator('[data-atlas-modal]').isHidden() || await page.locator('.atlas-event-row.is-highlighted').count() !== 1) throw new Error(scenario.name + ' atlas historical event did not open and highlight its sourced detail');
+    await page.locator('[data-atlas-close]').last().click();
+    const terrainLayer = page.locator('[data-atlas-geography-layer="terrain-details"]');
+    const terrainToggle = page.locator('[data-atlas-geography="terrain-details"]');
+    if (await terrainLayer.count() !== 1 || await terrainLayer.getAttribute('hidden') !== null) {
+      throw new Error(scenario.name + ' atlas terrain detail layer did not render visibly');
+    }
+    await terrainToggle.click();
+    if (await terrainLayer.getAttribute('hidden') === null) throw new Error(scenario.name + ' atlas terrain detail toggle did not hide the SVG layer');
+    await terrainToggle.click();
+    if (await terrainLayer.getAttribute('hidden') !== null) throw new Error(scenario.name + ' atlas terrain detail toggle did not restore the SVG layer');
+    const localDetail = page.locator('[data-atlas-local-detail-layer]');
+    await page.locator('[data-atlas-zoom="1"]').click();
+    await page.locator('[data-atlas-zoom="1"]').click();
+    await page.locator('[data-atlas-zoom="1"]').click();
+    await page.locator('[data-atlas-zoom="1"]').click();
+    const localZoomLevel = await page.locator('.atlas-map-art').getAttribute('data-atlas-zoom-detail');
+    if (await localDetail.count() !== 1 || localZoomLevel !== 'local') throw new Error(scenario.name + ' atlas settlement-level detail layer did not activate at local zoom: ' + localZoomLevel);
+    await page.waitForFunction(() => { const node = document.querySelector('[data-atlas-local-detail-layer]'); return Boolean(node && Number(getComputedStyle(node).opacity) > 0.5); }, null, { timeout: 3000 });
+    await page.locator('[data-atlas-reset]').click();
+    await page.locator('select[data-atlas-season]').selectOption('winter');
+    if (await page.locator('.atlas-map-art').getAttribute('data-atlas-season') !== 'winter' || !(await page.locator('[data-atlas-ecology-profile="aus"]').textContent()).includes('Yoğun kar')) throw new Error(scenario.name + ' atlas winter ecology profile did not update');
+    const calibration = page.locator('[data-atlas-reference-km]');
+    await calibration.fill('8');
+    await calibration.dispatchEvent('change');
+    await routeFrom.selectOption('royal-capital');
+    await routeTo.selectOption('ende');
+    await page.locator('[data-atlas-route-submit]').click();
+    if (!(await page.locator('[data-atlas-route-summary]').textContent()).includes('yaklaşık') || !(await page.locator('[data-atlas-route-summary]').textContent()).includes('senin ölçek kalibrasyonun')) throw new Error(scenario.name + ' atlas calibrated kilometre estimate did not appear');
+    await page.locator('[data-atlas-route-clear]').click();
+    await page.locator('select[data-atlas-weather]').selectOption('snow');
+    const snowMode = await page.locator('.atlas-map-art').getAttribute('data-atlas-weather');
+    if (snowMode !== 'snow') throw new Error(scenario.name + ' atlas snow mode was not applied');
+    await page.locator('select[data-atlas-weather]').selectOption('rain');
+    const rainMode = await page.locator('.atlas-map-art').getAttribute('data-atlas-weather');
+    if (rainMode !== 'rain') throw new Error(scenario.name + ' atlas rain mode was not applied');
+    const lightingToggle = page.locator('[data-atlas-lighting-toggle]');
+    await lightingToggle.click();
+    if (await page.locator('.atlas-map-art').getAttribute('data-atlas-lighting') !== 'night' || await lightingToggle.getAttribute('aria-pressed') !== 'true') {
+      throw new Error(scenario.name + ' atlas night mode did not apply accessibly');
+    }
+    await lightingToggle.click();
+    if (await page.locator('.atlas-map-art').getAttribute('data-atlas-lighting') !== 'day' || await lightingToggle.getAttribute('aria-pressed') !== 'false') {
+      throw new Error(scenario.name + ' atlas day mode did not restore correctly');
+    }
+    await page.locator('[data-atlas-open]').first().click();
+    if (await page.locator('[data-atlas-modal]').isHidden()) throw new Error(scenario.name + ' atlas marker click did not open its region detail panel');
+    await page.locator('[data-atlas-close]').last().click();
+    if (!(await page.locator('[data-atlas-modal]').isHidden())) throw new Error(scenario.name + ' atlas region detail panel did not close');
     const encyclopediaPage = await page.goto(baseUrl + '/ansiklopedi', { waitUntil: 'domcontentloaded', timeout: 45000 });
     if (!encyclopediaPage || encyclopediaPage.status() !== 200) throw new Error(scenario.name + ' character encyclopedia HTTP ' + (encyclopediaPage?.status() || 'no response'));
     await page.waitForLoadState('networkidle', { timeout: 15000 });

@@ -1669,3 +1669,108 @@ body.atlas-modal-open{overflow:hidden}
 @media(max-width:700px){
  .atlas-pin-city .atlas-pin-label{max-width:min(145px,38vw);font-size:9px}
 }
+
+
+/* Frieren atlas atmosphere: restrained northern snowfall and forest mist.
+   Decorative only; the layer never intercepts input or changes canonical geography. */
+.atlas-atmosphere-layer{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none;mix-blend-mode:screen;background:radial-gradient(ellipse at 69% 18%,rgba(205,224,225,.13),transparent 25%),radial-gradient(ellipse at 27% 39%,rgba(115,158,131,.13),transparent 24%),linear-gradient(180deg,rgba(13,28,39,.04),transparent 35%,rgba(18,31,32,.09))}
+.atlas-atmosphere-layer::before{content:"";position:absolute;left:57%;top:5%;width:37%;height:32%;background-image:radial-gradient(circle,rgba(239,246,239,.78) 0 1px,transparent 1.6px),radial-gradient(circle,rgba(225,238,238,.48) 0 .8px,transparent 1.5px);background-size:53px 47px,79px 67px;background-position:0 0,21px 18px;mask-image:radial-gradient(ellipse at 55% 45%,#000 12%,transparent 76%);opacity:.22;animation:atlas-northfall 28s linear infinite}
+.atlas-atmosphere-layer::after{content:"";position:absolute;left:8%;top:25%;width:47%;height:40%;background:radial-gradient(ellipse at 45% 50%,rgba(190,211,190,.19),rgba(190,211,190,.06) 42%,transparent 73%);filter:blur(13px);opacity:.58;animation:atlas-forest-mist 34s ease-in-out infinite alternate}
+@keyframes atlas-northfall{from{background-position:0 0,21px 18px}to{background-position:0 188px,21px 286px}}
+@keyframes atlas-forest-mist{from{transform:translate3d(-1.5%,0,0);opacity:.38}to{transform:translate3d(2%,1.5%,0);opacity:.68}}
+@media(max-width:700px){.atlas-atmosphere-layer{opacity:.72}.atlas-atmosphere-layer::before{opacity:.14}.atlas-atmosphere-layer::after{filter:blur(8px);opacity:.34}}
+@media(prefers-reduced-motion:reduce){.atlas-atmosphere-layer::before,.atlas-atmosphere-layer::after{animation:none}}
+
+
+/* Geography overlays remain subtle so terrain reads as one continuous landscape. */
+.atlas-geography-overlay{position:absolute;inset:0;z-index:1;width:100%;height:100%;pointer-events:none}
+.atlas-waterways,.atlas-trails,.atlas-settled-land{transition:opacity .18s ease}
+.atlas-waterways[hidden],.atlas-trails[hidden],.atlas-settled-land[hidden]{display:none}
+.atlas-waterways{opacity:.92}
+.atlas-trails{opacity:.7}
+.atlas-settled-land{opacity:.88}
+
+.atlas-layer-controls button[data-atlas-geography]{border-style:dashed}
+@media(max-width:700px){
+ .atlas-waterways{opacity:.82}
+ .atlas-trails{opacity:.56}
+ .atlas-settled-land{opacity:.74}
+}
+@media(prefers-reduced-motion:reduce){
+ .atlas-waterways,.atlas-trails,.atlas-settled-land{transition:none}
+}
+
+
+/* Atlas terrain details and user-selectable atmosphere; purely visual, no map data mutation. */
+.atlas-terrain-details{opacity:.88;transition:opacity .18s ease}
+.atlas-terrain-details[hidden]{display:none}
+.atlas-weather-layer{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none}
+.atlas-weather-layer::before,.atlas-weather-layer::after{content:"";position:absolute;inset:0;opacity:0;pointer-events:none}
+.atlas-map-art[data-atlas-weather="mist"] .atlas-weather-layer::before{opacity:.68;background:radial-gradient(ellipse at 28% 48%,rgba(222,231,218,.4),transparent 34%),radial-gradient(ellipse at 76% 34%,rgba(207,222,221,.3),transparent 39%);filter:blur(12px)}
+.atlas-map-art[data-atlas-weather="snow"] .atlas-weather-layer::before{opacity:.48;background-image:radial-gradient(circle,rgba(250,252,244,.9) 0 1px,transparent 1.7px),radial-gradient(circle,rgba(232,243,243,.72) 0 .8px,transparent 1.5px);background-size:43px 39px,67px 59px;background-position:0 0,19px 13px;mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.3) 75%,transparent)}
+.atlas-map-art[data-atlas-weather="rain"] .atlas-weather-layer::before{opacity:.3;background-image:repeating-linear-gradient(108deg,transparent 0 17px,rgba(207,226,232,.55) 18px,transparent 19px 31px);mask-image:linear-gradient(180deg,#000,transparent 95%);animation:atlas-rainfall .8s linear infinite}
+.atlas-map-art[data-atlas-lighting="night"] .atlas-weather-layer::after{opacity:.68;background:linear-gradient(145deg,rgba(9,20,45,.72),rgba(16,26,56,.48) 52%,rgba(5,13,30,.72)),radial-gradient(circle at 78% 16%,rgba(206,218,255,.32),transparent 2px);mix-blend-mode:multiply}
+.atlas-atmosphere-control{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid #9caa9a55;border-radius:5px;color:#d8d5c8;font-size:11px}
+.atlas-atmosphere-control select{min-height:30px;border:1px solid #9caa9a55;border-radius:4px;background:#17252c;color:#f1e5ca;padding:3px 6px;font:inherit}
+.atlas-layer-controls button[data-atlas-lighting-toggle][aria-pressed="true"]{border-color:#9daee1;background:#53618b44;color:#e0e7ff}
+@keyframes atlas-rainfall{from{background-position:0 0}to{background-position:-28px 64px}}
+@media(max-width:700px){.atlas-atmosphere-control{font-size:10px}.atlas-atmosphere-control select{min-height:32px;max-width:92px}.atlas-terrain-details{opacity:.78}.atlas-map-art[data-atlas-weather="snow"] .atlas-weather-layer::before{opacity:.34}}
+@media(prefers-reduced-motion:reduce){.atlas-terrain-details,.atlas-weather-layer::before{transition:none;animation:none!important}}
+
+
+/* Slow cloud shadows add depth without obscuring the map or changing its geography. */
+.atlas-map-art::before{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;opacity:.24;mix-blend-mode:multiply;background:radial-gradient(ellipse at 18% 24%,rgba(30,42,44,.34),transparent 27%),radial-gradient(ellipse at 66% 56%,rgba(28,41,45,.24),transparent 31%),radial-gradient(ellipse at 88% 18%,rgba(34,46,47,.2),transparent 23%);animation:atlas-cloud-shadow 72s ease-in-out infinite alternate}
+@keyframes atlas-cloud-shadow{from{transform:translate3d(-1.2%,0,0) scale(1)}to{transform:translate3d(1.4%,.7%,0) scale(1.025)}}
+@media(max-width:700px){.atlas-map-art::before{opacity:.16}}
+@media(prefers-reduced-motion:reduce){.atlas-map-art::before{animation:none}}
+
+
+/* Atlas route planner, sourced event pins and zoom-aware cartographic detail. */
+.atlas-route-overlay{position:absolute;inset:0;z-index:3;width:100%;height:100%;overflow:visible;pointer-events:none}
+.atlas-route-overlay[hidden]{display:none}
+.atlas-route-glow,.atlas-route-line{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.atlas-route-glow{stroke:#172c38;stroke-width:24;stroke-opacity:.72}
+.atlas-route-line{stroke:#f5d48b;stroke-width:10;stroke-dasharray:18 12;filter:drop-shadow(0 2px 5px rgba(20,25,28,.85))}
+.atlas-route-endpoint{fill:#f6e5b7;stroke:#253b43;stroke-width:6;filter:drop-shadow(0 2px 5px rgba(15,20,24,.8))}
+.atlas-pin-layer{z-index:4}
+.atlas-pin-event .atlas-pin-glyph{background:#8a6840;color:#fff1c9;border-color:#f0d29a;box-shadow:0 2px 8px #171b20aa}
+.atlas-layer-controls button[data-atlas-layer="event"]{border-color:#d6b77c66}
+.atlas-route-planner{display:grid;grid-template-columns:minmax(180px,1.4fr) minmax(135px,1fr) minmax(135px,1fr) auto;gap:10px;align-items:end;margin:14px 0;padding:14px 16px;border:1px solid #b8a77b55;border-radius:12px;background:linear-gradient(135deg,#1b2a31ee,#29372fe8);color:#eee4ce}
+.atlas-route-planner h3{margin:3px 0 4px;font-size:16px;color:#f1e6ca}
+.atlas-route-planner p{margin:0;color:#c7c5b5;font-size:12px;line-height:1.45}
+.atlas-route-planner label{display:grid;gap:5px;color:#e3d8bf;font-size:12px}
+.atlas-route-planner select{width:100%;min-height:44px;padding:7px 9px;border:1px solid #a9a17d77;border-radius:7px;background:#14232b;color:#f5ead0;font:inherit}
+.atlas-route-actions{display:flex;gap:7px}
+.atlas-route-actions button{min-height:44px;padding:7px 11px;border:1px solid #d5bb83;border-radius:7px;background:#7a6947;color:#fff1d0;font:inherit;font-size:12px;white-space:nowrap}
+.atlas-route-actions button[data-atlas-route-clear]{background:#26343a;border-color:#83928a;color:#e3e1d4}
+.atlas-route-summary{grid-column:1/-1;min-height:18px;padding-top:8px;border-top:1px solid #b8a77b33;font-variant-numeric:tabular-nums}
+.atlas-event-row a{display:inline-block;margin-top:4px;color:#d8c28f;font-size:11px;text-decoration:underline;text-underline-offset:2px}
+.atlas-zoom-detail-layer{opacity:0;transition:opacity .2s ease;pointer-events:none}
+.atlas-map-art[data-atlas-zoom-detail="regional"] [data-atlas-detail-level="regional"],
+.atlas-map-art[data-atlas-zoom-detail="local"] [data-atlas-detail-level="regional"],
+.atlas-map-art[data-atlas-zoom-detail="local"] [data-atlas-detail-level="local"]{opacity:.92}
+.atlas-zoom-detail-local{opacity:0}
+.atlas-legend .key-event{display:inline-grid;place-items:center;width:22px;height:22px;border:1px solid #d7b77b;border-radius:50%;background:#8a6840;color:#fff1c9;font-style:normal}
+@media(max-width:900px){.atlas-route-planner{grid-template-columns:1fr 1fr}.atlas-route-planner>div:first-child,.atlas-route-summary{grid-column:1/-1}.atlas-route-actions{grid-column:1/-1}}
+@media(max-width:520px){.atlas-route-planner{grid-template-columns:1fr;gap:9px;padding:12px}.atlas-route-planner>div:first-child,.atlas-route-summary,.atlas-route-actions{grid-column:1}.atlas-route-actions button{flex:1}.atlas-route-summary{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.atlas-zoom-detail-layer{transition:none}}
+
+
+/* Seasonal ecology profiles and settlement-scale schematics. */
+.atlas-local-detail-overlay{position:absolute;inset:0;z-index:2;width:100%;height:100%;opacity:0;pointer-events:none;transition:opacity .2s ease}
+.atlas-map-art[data-atlas-zoom-detail="local"] .atlas-local-detail-overlay{opacity:.94}
+.atlas-local-settlement-plan text{font-family:Georgia,serif;letter-spacing:.6px}
+.atlas-ecology-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:12px 0}
+.atlas-ecology-summary span{padding:8px 10px;border:1px solid #a9a17d44;border-radius:7px;background:#1b2b2b88;color:#e1ddc8;font-size:11px;line-height:1.4}
+.atlas-route-calibration{display:grid;gap:5px;color:#e3d8bf;font-size:12px}
+.atlas-route-calibration input{width:100%;min-height:44px;padding:7px 9px;border:1px solid #a9a17d77;border-radius:7px;background:#14232b;color:#f5ead0;font:inherit}
+.atlas-route-calibration-note{grid-column:1/-1!important;color:#c7c5b5!important}
+.atlas-map-art[data-atlas-season="spring"] .atlas-regional-flora{filter:hue-rotate(18deg) saturate(1.16)}
+.atlas-map-art[data-atlas-season="summer"] .atlas-regional-flora{filter:saturate(1.12) brightness(1.03)}
+.atlas-map-art[data-atlas-season="autumn"] .atlas-regional-flora{filter:hue-rotate(-28deg) saturate(1.22)}
+.atlas-map-art[data-atlas-season="winter"] .atlas-regional-flora{filter:grayscale(.48) brightness(1.2)}
+.atlas-map-art[data-atlas-season="winter"] .atlas-settled-land{filter:saturate(.55) brightness(1.15)}
+.atlas-map-art[data-atlas-season="autumn"] .atlas-settled-land{filter:hue-rotate(-20deg) saturate(1.12)}
+@media(max-width:900px){.atlas-ecology-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-route-calibration-note{grid-column:1/-1}}
+@media(max-width:520px){.atlas-ecology-summary{grid-template-columns:1fr}.atlas-local-settlement-plan text{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.atlas-local-detail-overlay{transition:none}}

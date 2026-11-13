@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { ATLAS_HISTORICAL_EVENTS } from '../atlas-navigation.js';
 import { readFile } from 'node:fs/promises';
 
 test('Frieren atlas uses layered cartographic relief instead of flat decorative shapes', async () => {
@@ -117,7 +118,8 @@ test('current canon and RPG map coordinates are collision-adjusted as one visual
     ].map(([key,x,y])=>({id:'region:'+key,type:'region',x,y})),
     ...FRIEREN_WORLD_SETTLEMENTS.map(place=>({id:'city:'+place.key,type:'city',x:place.x,y:place.y})),
     ...Object.entries(FRIEREN_WORLD_BOSS_LOCATIONS).map(([key,point])=>({id:'boss:'+key,type:'boss',x:point.x,y:point.y})),
-    ...Object.entries(FRIEREN_WORLD_DUNGEON_LOCATIONS).map(([key,point])=>({id:'dungeon:'+key,type:'dungeon',x:point.x,y:point.y}))
+    ...Object.entries(FRIEREN_WORLD_DUNGEON_LOCATIONS).map(([key,point])=>({id:'dungeon:'+key,type:'dungeon',x:point.x,y:point.y})),
+    ...ATLAS_HISTORICAL_EVENTS.map(event=>({id:'event:'+event.id,type:'event',x:event.x,y:event.y}))
   ];
   const arranged = declutterAtlasPins(markers);
   for (let i = 0; i < arranged.length; i++) {
@@ -127,4 +129,83 @@ test('current canon and RPG map coordinates are collision-adjusted as one visual
       assert.ok(Math.hypot(dx, dy) >= 3.1, 'catalog pins overlap: ' + arranged[i].id + ' / ' + arranged[j].id);
     }
   }
+});
+
+
+test('Frieren atlas adds subtle northern snowfall and forest mist without changing map data', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const site = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
+  assert.match(atlas, /<div class="atlas-atmosphere-layer" aria-hidden="true"><\/div>/);
+  assert.match(atlas, /frieren-world-map\.svg\?v=atlas-362-1/);
+  assert.match(css, /\.atlas-atmosphere-layer::before/);
+  assert.match(css, /atlas-northfall/);
+  assert.match(css, /atlas-forest-mist/);
+  assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-atmosphere-layer::before/);
+  assert.match(site, /site\.css\?v=atlas-370-1/);
+});
+
+
+test('Frieren atlas terrain uses organic mountain ridgelines and fine terrain grain rather than repeated cartoon peaks', async () => {
+  const artwork = await readFile(new URL('../public-assets/frieren-world-map.svg', import.meta.url), 'utf8');
+  assert.match(artwork, /id="terrain-grain"/);
+  assert.match(artwork, /M700 347 748 294 780 319 820 232/);
+  assert.match(artwork, /stroke-opacity=".72" stroke-width="4"/);
+  assert.match(artwork, /fill="url\(#terrain-grain\)" opacity=".42"/);
+  assert.doesNotMatch(artwork, /<use href="#ridge" x="710"/);
+  assert.match(artwork, /GRÖSSE ORMANI/);
+  assert.match(artwork, /KUZEY PLATOSU/);
+});
+
+
+test('atlas geography layers are cohesive, optional and do not alter canonical encounter coordinates', async () => {
+  const artwork = await readFile(new URL('../public-assets/frieren-world-map.svg', import.meta.url), 'utf8');
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  const client = await readFile(new URL('../public-assets/exploration-atlas.js', import.meta.url), 'utf8');
+  const locations = await readFile(new URL('../exploration-world-locations.js', import.meta.url), 'utf8');
+  const site = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  for (const layer of ['waterways', 'trails', 'settled-land']) {
+    assert.match(atlas, new RegExp('data-atlas-geography-layer="' + layer + '"'));
+  }
+  assert.match(atlas, /const geographyOverlay = `</);
+  assert.match(atlas, /atlas-geography-overlay/);
+  assert.ok(atlas.includes("geographyOverlay+localDetailOverlay+routeOverlay+'<div class="), 'inline geography and route overlays must be inserted into map markup');
+  assert.match(atlas, /atlas-inline-land-clip/);
+  assert.match(atlas, /atlas-river-main/);
+  assert.match(atlas, /atlas-lake/);
+  assert.match(atlas, /atlas-foothill-transition/);
+  assert.match(atlas, /atlas-field-mosaic/);
+  assert.match(atlas, /data-atlas-geography-layer="terrain-details"/);
+  assert.match(atlas, /atlas-waterfall/);
+  assert.match(atlas, /atlas-regional-flora/);
+  assert.match(atlas, /atlas-settlement-architecture/);
+  assert.match(atlas, /atlas-ruin-remnants/);
+  assert.match(atlas, /data-atlas-weather="clear"/);
+  assert.match(atlas, /data-atlas-season="summer"/);
+  assert.match(atlas, /buildAtlasLocalDetailLayer/);
+  assert.match(atlas, /data-atlas-lighting="day"/);
+  assert.match(atlas, /data-atlas-lighting-toggle/);
+  assert.match(atlas, /data-atlas-weather/);
+  assert.match(atlas, /data-atlas-lighting-toggle/);
+  assert.match(atlas, /RPG tehlikesi:/);
+  assert.match(client, /dataset\.atlasLighting/);
+  assert.match(client, /dataset\.atlasWeather/);
+  assert.match(css, /atlas-weather-layer/);
+  assert.match(css, /atlas-cloud-shadow/);
+  assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-map-art::before/);
+  assert.match(css, /data-atlas-weather="snow"/);
+  assert.match(css, /data-atlas-lighting="night"/);
+  assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-terrain-details/);
+  for (const layer of ['waterways', 'trails', 'settled-land']) {
+    assert.match(atlas, new RegExp('data-atlas-geography="' + layer + '"'));
+
+  }
+  assert.match(client, /data-atlas-geography/);
+  assert.ok(client.includes("querySelectorAll('[data-atlas-geography-layer="), 'client must locate the SVG layer rendered by the server module');
+  assert.match(client, /toggleAttribute\('hidden',!enabled\)/, 'SVG layer visibility must use a real hidden attribute');
+  assert.match(atlas, /atlas-362-1/);
+  assert.match(site, /exploration-atlas\.js\?v=atlas-371-1/);
+  assert.match(locations, /x:39, y:79/);
+  assert.match(locations, /level_1: Object\.freeze\(\{ regionKey:'merkez', x:43, y:72/);
 });

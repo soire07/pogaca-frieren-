@@ -1577,7 +1577,7 @@ test('dedicated user center pages expose the new account, social and life naviga
  assert.match(source,/inventory-center-page/);
  assert.match(source,/notification-center-page/);
  assert.match(source,/public-assets\/user-center\.js', 'public-assets\/public-chat\.js'].includes/);
- assert.match(source,/site\.css\?v=atlas-358-2/);
+ assert.match(source,/site\.css\?v=atlas-370-1/);
  assert.match(source,/public-chat\.js\?v=chat-282-1/);
  const chatClient=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');
  assert.ok(!chatClient.includes('for(const emoji of ["❤️","✨","😂","😍","🥰","😭","👀","🎉","🙌","💜","🍪","🌸"])'));
@@ -1832,7 +1832,7 @@ test('illustrated atlas background is served as a first-party image asset', asyn
  assert.ok(artwork.startsWith('<svg'));
  assert.match(artwork,/KUZEY KITASI/);
  const atlas=renderExplorationAtlas({mapContent:{regions:[],summary:{}}});
- assert.ok(atlas.includes('src="/assets/frieren-world-map.svg?v=atlas-358-1"'));
+ assert.ok(atlas.includes('src="/assets/frieren-world-map.svg?v=atlas-362-1"'));
  assert.match(atlas,/atlas-pin-layer/);
  assert.doesNotMatch(atlas,/<svg class="atlas-world-map"/);
 });

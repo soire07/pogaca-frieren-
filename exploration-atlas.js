@@ -1,5 +1,7 @@
 import { CREATURE_CATALOG } from './creatures.js';
 import { declutterAtlasPins } from './atlas-pin-layout.js';
+import { ATLAS_HISTORICAL_EVENTS, ATLAS_ROUTE_STOPS, findAtlasRoute } from './atlas-navigation.js';
+import { buildAtlasLocalDetailLayer, getAtlasEcologyProfile } from './atlas-advanced.js';
 import {
   FRIEREN_WORLD_SETTLEMENTS,
   FRIEREN_WORLD_BOSS_LOCATIONS,
@@ -32,16 +34,19 @@ const position = (x,y) => 'left:'+x+'%;top:'+y+'%;';
 
 function pin({key,targetKey=key,label,type,icon,x,y,focus='region',extraClass='',subtitle=''}) {
   const title = subtitle ? label+' · '+subtitle : label;
-  return '<button type="button" class="atlas-pin atlas-pin-'+type+' '+(type==='city'&&Number(x)>=68?'atlas-pin-label-left ':'')+extraClass+'" style="'+position(x,y)+'" data-atlas-layer-item="'+type+'" data-atlas-open="'+escapeHtml(key)+'" data-atlas-focus="'+focus+'" data-atlas-target-key="'+escapeHtml(targetKey)+'" aria-label="'+escapeHtml(title)+'" title="'+escapeHtml(title)+'"><span class="atlas-pin-glyph" aria-hidden="true">'+icon+'</span><span class="atlas-pin-label">'+escapeHtml(label)+'</span></button>';
+  return '<button type="button" class="atlas-pin atlas-pin-'+type+' '+(type==='city'&&Number(x)>=68?'atlas-pin-label-left ':'')+extraClass+'" style="'+position(x,y)+'" data-atlas-layer-item="'+type+'" data-atlas-open="'+escapeHtml(key)+'" data-atlas-focus="'+focus+'" data-atlas-target-key="'+escapeHtml(targetKey)+'" '+(type==='event'?'data-atlas-event="'+escapeHtml(targetKey)+'" ':'')+'aria-label="'+escapeHtml(title)+'" title="'+escapeHtml(title)+'"><span class="atlas-pin-glyph" aria-hidden="true">'+icon+'</span><span class="atlas-pin-label">'+escapeHtml(label)+'</span></button>';
 }
 
 function detailRow({key,name,description,icon,state='',focus=''}) {
   return '<li class="exploration-detail-row '+state+'" '+(focus?'data-atlas-focus-target="'+focus+'"':'')+' data-atlas-target-key="'+escapeHtml(key)+'"><span class="exploration-detail-icon" aria-hidden="true">'+icon+'</span><span><strong>'+escapeHtml(name)+'</strong><small>'+escapeHtml(description)+'</small></span></li>';
 }
 
-function panel(item,index,settlements,esc) {
+function panel(item,index,settlements,events,esc) {
   const region=item.region;
   const geography=REGIONS[region.key]||REGIONS.merkez;
+  const encounterLevels=[...item.bosses,...item.dungeons].map(entry=>Number(entry.minLevel)||0);
+  const dangerLevel=Math.max(Number(region.minLevel)||1,...encounterLevels);
+  const dangerLabel=dangerLevel>=50?'Çok yüksek':dangerLevel>=35?'Yüksek':dangerLevel>=20?'Orta':dangerLevel>=10?'Dikkat':'Düşük';
   const localSettlements=settlements.filter(place=>place.regionKey===region.key);
   const settlementRows=localSettlements.map(place=>detailRow({
     key:place.key,name:place.name,description:place.subtitle,icon:'⌂',focus:'city'
@@ -63,8 +68,9 @@ function panel(item,index,settlements,esc) {
     description:(entry.ownedQuantity?'Envanterinde ×'+entry.ownedQuantity:'Henüz bulunmadı')+' · '+entry.sources.map(source=>source==='dungeon'?'Zindan':source==='boss_material'?'Boss malzemesi':'Boss').join(' / '),
     icon:'✧',state:entry.ownedQuantity?'is-owned':'is-unowned'
   })).join('');
+  const eventRows=events.filter(event=>event.regionKey===region.key).map(event=>'<li class="exploration-detail-row atlas-event-row" data-atlas-focus-target="event" data-atlas-target-key="'+esc(event.id)+'"><span class="exploration-detail-icon" aria-hidden="true">◷</span><span><strong>'+esc(event.title)+'</strong><small>'+esc(event.episodeLabel)+' · '+esc(event.location)+'</small><a href="'+esc(event.officialSource)+'" target="_blank" rel="noopener noreferrer">Resmî anime yol haritası</a> · <a href="'+esc(event.locationSource)+'" target="_blank" rel="noopener noreferrer">Konum kaynağı</a> · '+(event.episodeSources||[]).map(source=>'<a href="'+esc(source.url)+'" target="_blank" rel="noopener noreferrer">'+esc(source.label)+' özeti</a>').join(' · ')+'</span></li>').join('');
   const section=(heading,rows,empty='Bu bölgede kayıtlı nokta bulunmuyor.')=>'<section><h4>'+heading+'</h4><ul>'+(rows||'<li class="atlas-empty-row">'+empty+'</li>')+'</ul></section>';
-  return '<section class="atlas-panel" data-atlas-panel="'+esc(region.key)+'" hidden><div class="atlas-hero"><small>BÖLGE '+(index+1)+' · '+esc(geography.type)+'</small><h3>'+esc(geography.name)+'</h3><p>'+esc(region.name)+' · '+esc(geography.city)+'</p><div><span>'+(item.discovered?'Keşfedildi':item.unlocked?'Keşfe açık':'Kilitli · Seviye '+region.minLevel)+'</span><span>'+item.visits+' keşif ziyareti</span><span>Ustalık '+item.masteryLevel+'</span></div></div><div class="atlas-detail-grid">'+section('Anime yerleşimleri ve önemli noktalar',settlementRows)+section('Biyom canlıları',creatureRows)+section('Boss karşılaşmaları',bossRows)+section('Zindanlar',dungeonRows)+section('Nadir ganimet',lootRows)+'</div></section>';
+  return '<section class="atlas-panel" data-atlas-panel="'+esc(region.key)+'" hidden><div class="atlas-hero"><small>BÖLGE '+(index+1)+' · '+esc(geography.type)+'</small><h3>'+esc(geography.name)+'</h3><p>'+esc(region.name)+' · '+esc(geography.city)+'</p><div><span>'+(item.discovered?'Keşfedildi':item.unlocked?'Keşfe açık':'Kilitli · Seviye '+region.minLevel)+'</span><span>RPG tehlikesi: '+dangerLabel+' · Seviye '+dangerLevel+'+</span><span>'+item.visits+' keşif ziyareti</span><span>Ustalık '+item.masteryLevel+'</span></div></div><div class="atlas-detail-grid">'+section('Anime yerleşimleri ve önemli noktalar',settlementRows)+section('Biyom canlıları',creatureRows)+section('Boss karşılaşmaları',bossRows)+section('Zindanlar',dungeonRows)+section('Nadir ganimet',lootRows)+section('Anime tarihçesi',eventRows,'Bu bölgede doğrulanmış tarihsel olay kaydı yok.')+'</div></section>';
 }
 
 function renderRegionList(rows,esc) {
@@ -123,7 +129,8 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
       const slots=fallback[item.region.key]||fallback.merkez;
       const point=dungeon.location||FRIEREN_WORLD_DUNGEON_LOCATIONS[dungeon.key]||slots[index%slots.length];
       return {id:'dungeon:'+dungeon.key,key:item.region.key,targetKey:dungeon.key,label:dungeon.name,type:'dungeon',icon:'◇',x:point.x,y:point.y,focus:'dungeon',subtitle:point.place};
-    }))
+    })),
+    ...ATLAS_HISTORICAL_EVENTS.map(event=>({id:'event:'+event.id,key:event.regionKey,targetKey:event.id,label:event.title,type:'event',icon:'◷',x:event.x,y:event.y,focus:'event',subtitle:event.episodeLabel}))
   ];
   const markerPins=declutterAtlasPins(markerConfigs).map(marker=>pin(marker)).join('');
   const fogPaths=points.filter(point=>!point.item.discovered).map(point=>{
@@ -131,9 +138,91 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
     return path?'<path d="'+path+'" fill="#243647" opacity=".18" stroke="#d4c4a1" stroke-opacity=".16" stroke-width=".35"/>':'';
   }).join('');
   const fog='<svg class="atlas-fog-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><filter id="atlas-fog-soft"><feGaussianBlur stdDeviation="1.2"/></filter></defs><g filter="url(#atlas-fog-soft)">'+fogPaths+'</g></svg>';
-  const panels=points.map(point=>panel(point.item,point.index,FRIEREN_WORLD_SETTLEMENTS,esc)).join('');
-  const map='<div class="atlas-map-viewport" data-atlas-viewport tabindex="0" role="region" aria-label="Frieren anime dünyası ve RPG keşif haritası"><div class="atlas-map-camera" data-atlas-camera><div class="atlas-map-art atlas-world-map" role="group" aria-label="Frieren dünyasının anime yerleşimleri, dağları, ormanları ve yolları"><img class="atlas-map-image" src="/assets/frieren-world-map.svg?v=atlas-358-1" alt="Frieren dünyasından esinlenen Merkez Topraklar, Kuzey Toprakları, Größe Ormanı, Kühl Bölgesi, Schwer Dağları ve Ende haritası" draggable="false">'+fog+'<div class="atlas-pin-layer">'+markerPins+'</div></div></div><div class="atlas-map-tools" aria-label="Harita yakınlaştırma kontrolleri"><button type="button" data-atlas-zoom="-1" aria-label="Uzaklaştır">−</button><output data-atlas-zoom-value>100%</output><button type="button" data-atlas-zoom="1" aria-label="Yakınlaştır">+</button><button type="button" data-atlas-reset aria-label="Haritayı sıfırla">Sıfırla</button></div></div><div class="atlas-layer-controls" aria-label="Harita işaret katmanları"><span>GÖSTER</span><button type="button" data-atlas-layer="region" aria-pressed="true">RPG Bölgeleri</button><button type="button" data-atlas-layer="city" aria-pressed="true">Anime Yerleşimleri</button><button type="button" data-atlas-layer="boss" aria-pressed="true">Bosslar</button><button type="button" data-atlas-layer="dungeon" aria-pressed="true">Zindanlar</button><small>İşaretleri seçerek ayrıntıları aç. Haritayı sürükle veya iki parmakla yakınlaştır.</small></div>';
-  const legend='<div class="atlas-legend"><span><i class="key-region">✦</i>RPG bölgesi</span><span><i class="key-city">⌂</i>Anime yerleşimi</span><span><i class="key-boss">☠</i>RPG bossu</span><span><i class="key-dungeon">◇</i>RPG zindanı</span><small>Harita yerleşimleri anime coğrafyasına dayalı fan yapımı konumlandırmadır.</small></div>';
+  const panels=points.map(point=>panel(point.item,point.index,FRIEREN_WORLD_SETTLEMENTS,ATLAS_HISTORICAL_EVENTS,esc)).join('');
+  const localDetailOverlay = buildAtlasLocalDetailLayer(FRIEREN_WORLD_SETTLEMENTS);
+  const geographyOverlay = `<svg class="atlas-geography-overlay" viewBox="0 0 1800 1200" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="atlas-inline-land-clip"><path d="M206 292C259 221 371 179 492 198 585 133 718 129 832 163 940 100 1075 119 1170 157 1304 107 1442 167 1524 248 1632 309 1665 412 1618 516 1677 625 1634 741 1582 826 1631 929 1521 1033 1390 1038 1284 1104 1160 1073 1073 1043 948 1118 825 1086 739 1032 624 1092 505 1057 414 1000 300 989 220 901 233 793 159 708 160 590 192 501 139 412 151 339 206 292Z"/></clipPath></defs><g clip-path="url(#atlas-inline-land-clip)" pointer-events="none"><g data-atlas-geography-layer="waterways" class="atlas-waterways">
+  <path d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="#385d67" stroke-opacity=".48" stroke-width="18" stroke-linecap="round"/>
+  <path class="atlas-river-main" d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="url(#river)" stroke-width="8" stroke-linecap="round"/>
+  <path d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="#d5e5d9" stroke-opacity=".5" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M1290 280C1250 330 1210 365 1165 390S1080 445 1045 500 1000 570 960 610" fill="none" stroke="#456e78" stroke-opacity=".34" stroke-width="12" stroke-linecap="round"/>
+  <path d="M1290 280C1250 330 1210 365 1165 390S1080 445 1045 500 1000 570 960 610" fill="none" stroke="#86aeb1" stroke-width="5" stroke-linecap="round"/>
+  <path d="M690 650C650 625 615 600 580 565S520 520 485 500" fill="none" stroke="#8bb0ad" stroke-opacity=".76" stroke-width="4" stroke-linecap="round"/>
+  <g class="atlas-lake" fill="#6f9ba0" stroke="#d0ded0" stroke-opacity=".7" stroke-width="3">
+   <path d="M1125 350c24-19 58-17 75 3 13 16 2 39-22 47-26 9-57-3-65-22-7-12-2-21 12-28Z"/>
+   <path d="M790 565c18-13 42-10 54 4 9 12 1 27-17 32-20 6-43-2-48-15-4-8 1-16 11-21Z"/>
+   <path d="M1360 730c17-12 40-8 49 5 7 12-2 25-18 29-19 4-39-5-42-17-2-7 2-13 11-17Z"/>
+  </g>
+  <g fill="none" stroke="#d5e7d9" stroke-opacity=".5" stroke-width="2"><path d="M1138 365q23-15 44 0M800 578q16-10 30 0M1368 740q15-9 29 0"/></g>
+ </g>
+ <g data-atlas-geography-layer="trails" class="atlas-trails" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M440 930C475 870 500 830 540 790S620 735 670 700 740 620 770 570 820 500 870 470" stroke="#655b43" stroke-opacity=".5" stroke-width="9"/>
+  <path d="M440 930C475 870 500 830 540 790S620 735 670 700 740 620 770 570 820 500 870 470" stroke="#d2b985" stroke-opacity=".85" stroke-width="4" stroke-dasharray="3 9"/>
+  <path d="M1035 285C1080 325 1105 375 1130 430S1180 520 1240 570" stroke="#655b43" stroke-opacity=".42" stroke-width="7"/>
+  <path d="M1035 285C1080 325 1105 375 1130 430S1180 520 1240 570" stroke="#d0b886" stroke-opacity=".72" stroke-width="3" stroke-dasharray="2 9"/>
+  <path d="M790 590C825 560 850 525 875 485" stroke="#e8e0c9" stroke-opacity=".8" stroke-width="2" stroke-dasharray="2 8"/>
+ </g>
+ <g data-atlas-geography-layer="settled-land" class="atlas-settled-land">
+  <!-- Foothills blend the Schwer highlands into the central valleys. -->
+  <path class="atlas-foothill-transition" d="M620 480C690 430 760 430 820 465S930 520 1000 500 1115 535 1140 600 1090 700 1015 730 880 690 815 730 690 700 640 640Z" fill="#8d9b78" opacity=".2" stroke="#e0d3ad" stroke-opacity=".24" stroke-width="5"/>
+  <path d="M650 510C720 465 780 475 835 505S945 555 1010 535M670 545C740 505 795 510 850 540S950 580 1035 560M700 585C760 555 815 555 870 580S960 610 1060 590" fill="none" stroke="#596e55" stroke-opacity=".24" stroke-width="3"/>
+  <!-- Small field mosaics sit around the established central settlement corridor. -->
+  <g class="atlas-field-mosaic" fill="#c6b77f" stroke="#7c805c" stroke-opacity=".55" stroke-width="2" opacity=".34">
+   <path d="M345 825q42-22 88-5l-10 42q-48 12-83-8Z"/>
+   <path d="M390 875q39-20 79-4l-9 36q-43 13-77-7Z"/>
+   <path d="M465 820q37-17 68 2l-12 35q-37 8-64-8Z"/>
+   <path d="M300 890q31-17 59-4l-8 31q-32 8-57-7Z"/>
+  </g>
+  <g fill="none" stroke="#e5d7ae" stroke-opacity=".46" stroke-width="1.5"><path d="M352 831l-5 29m20-35-5 34m25-37-4 35m35-28-5 30m-15 25-5 29m23-34-5 34m35-38-5 34"/></g>
+ </g>
+ <g data-atlas-geography-layer="terrain-details" class="atlas-terrain-details">
+  <!-- Fan-made relief details; no new canonical locations or encounter coordinates. -->
+  <path d="M1190 360C1155 415 1135 470 1090 520S1035 620 985 680 940 755 900 810" fill="none" stroke="#354e4e" stroke-opacity=".42" stroke-width="34" stroke-linecap="round"/>
+  <path d="M1190 360C1155 415 1135 470 1090 520S1035 620 985 680 940 755 900 810" fill="none" stroke="#9b987b" stroke-opacity=".42" stroke-width="15" stroke-linecap="round"/>
+  <path d="M1190 360C1155 415 1135 470 1090 520S1035 620 985 680 940 755 900 810" fill="none" stroke="#d5c9a4" stroke-opacity=".32" stroke-width="2" stroke-dasharray="5 12"/>
+  <g class="atlas-waterfall" fill="none" stroke-linecap="round">
+   <path d="M850 495q-10 18-23 31m17-27q-3 22-17 38m25-34q-1 18-8 30" stroke="#d8e7df" stroke-opacity=".82" stroke-width="4"/>
+   <path d="M1045 500q-8 15-19 24m15-20q-2 18-13 31m21-28q-1 13-7 23" stroke="#d8e7df" stroke-opacity=".72" stroke-width="3"/>
+   <path d="M817 531q15-8 28 0m175-3q12-7 25 0" stroke="#e9eee0" stroke-opacity=".55" stroke-width="5"/>
+  </g>
+  <g class="atlas-regional-flora">
+   <g fill="#315b43" stroke="#a8b68b" stroke-opacity=".28" stroke-width="2">
+    <path d="M370 410q-15-27 7-42 5-22 27-14 20-14 34 6 24 2 19 26 14 22-10 33-12 22-34 11-24 12-32-10-23 2-11-10Z"/>
+    <path d="M450 475q-13-22 6-34 4-20 24-13 16-12 28 5 19 2 16 21 11 18-8 28-10 18-28 9-19 9-25-8-18 2-13-8Z"/>
+    <path d="M520 390q-10-18 5-28 3-16 19-11 13-10 22 4 16 1 13 18 9 14-7 22-8 15-23 8-15 7-20-7-14 1-9-6Z"/>
+   </g>
+   <g fill="none" stroke="#c3c69a" stroke-opacity=".46" stroke-width="2"><path d="M387 408q12-18 27-19m47 79q11-14 25-16m40-64q9-11 19-11"/></g>
+  </g>
+  <g class="atlas-settlement-architecture" fill="#8b7658" stroke="#e4d4b1" stroke-opacity=".72" stroke-width="2">
+   <path d="M678 925l18-16 18 16v22h-36Z"/><path d="M721 943l15-13 16 13v19h-31Z"/>
+   <path d="M663 958l13-11 14 11v16h-27Z"/><path d="M747 918l12-10 13 10v17h-25Z"/>
+   <path d="M678 925l18-16 18 16M721 943l15-13 16 13M663 958l13-11 14 11M747 918l12-10 13 10" fill="none" stroke="#ead8b3" stroke-width="3"/>
+  </g>
+  <g class="atlas-ruin-remnants" fill="none" stroke="#a9a18a" stroke-opacity=".58" stroke-width="5">
+   <path d="M965 520q28-34 60-4m-60 4 5 28m55-32-4 30M982 548l35-2"/>
+   <path d="M1050 570q25-27 48-2m-47 2 4 22m43-24-2 21"/>
+   <path d="M970 512l-7-10m65 10 8-12m-37 44 1 10"/>
+  </g>
+ <g data-atlas-detail-level="regional" class="atlas-zoom-detail-layer atlas-zoom-detail-regional">
+  <path d="M870 450C940 420 1015 400 1080 410M720 760C780 720 850 705 920 720M1160 760C1230 730 1300 730 1360 760" fill="none" stroke="#f1e7ca" stroke-opacity=".55" stroke-width="2" stroke-dasharray="5 10"/>
+  <g fill="#f3e9cf" stroke="#3b4a45" stroke-opacity=".72" stroke-width="1.4" paint-order="stroke" font-family="Georgia,serif" font-size="20" letter-spacing="2">
+   <text x="870" y="430">RIEGEL KANYONU</text><text x="1180" y="350">OFFEN DAĞLARI</text><text x="1320" y="650">KUZEY PLATOSU</text>
+  </g>
+ </g>
+ <g data-atlas-detail-level="local" class="atlas-zoom-detail-layer atlas-zoom-detail-local">
+  <g fill="#f5edda" stroke="#263a3d" stroke-opacity=".82" stroke-width="2" paint-order="stroke" font-family="Georgia,serif" font-size="16" letter-spacing="1.5">
+   <text x="850" y="520">KÜÇÜK GEÇİT YOLU</text><text x="1060" y="600">KRALIN MEZARI HARABELERİ</text><text x="690" y="940">YERLEŞİM TARLALARI</text>
+  </g>
+  <g fill="none" stroke="#f1e6c8" stroke-opacity=".52" stroke-width="2"><path d="M830 535q28-24 58-4t62-3M1010 615q30-20 58-3t52-2M650 980q40-18 80-4t70-2"/></g>
+ </g>
+ </g></g></svg>`;
+  const routeCatalog={};
+  for(const from of ATLAS_ROUTE_STOPS)for(const to of ATLAS_ROUTE_STOPS){const route=findAtlasRoute(from.id,to.id);if(route)routeCatalog[from.id+":"+to.id]={distanceUnits:route.distanceUnits,nodes:route.nodes.map(node=>({id:node.id,label:node.label,x:node.x,y:node.y}))};}
+  const routeOptions=ATLAS_ROUTE_STOPS.map(stop=>'<option value="'+esc(stop.id)+'">'+esc(stop.label)+'</option>').join('');
+  const routeControls='<section class="atlas-route-planner" data-atlas-route-planner data-atlas-route-catalog="'+esc(JSON.stringify(routeCatalog))+'"><div><span class="eyebrow">YOLCULUK PLANI</span><h3>Rota ve mesafe hesapla</h3><p>Anime kaynaklarında adı geçen yerleri bağlayan fan yapımı yol/geçit şemasıdır. Mesafe, ölçeği resmî olmayan atlasın harita birimidir; kilometre ölçeği belirtilmemiştir.</p></div><label>Başlangıç<select data-atlas-route-from aria-label="Rota başlangıç noktası">'+routeOptions+'</select></label><label>Varış<select data-atlas-route-to aria-label="Rota varış noktası">'+routeOptions.replace('<option value="ende">','<option value="ende" selected>')+'</select></label><div class="atlas-route-actions"><button type="button" data-atlas-route-submit>Rotayı hesapla</button><button type="button" data-atlas-route-clear>Temizle</button></div><label class="atlas-route-calibration">Ölçek kalibrasyonu (km / 100 harita birimi)<input type="number" min="0.1" step="0.1" inputmode="decimal" data-atlas-reference-km placeholder="Örn. 8" aria-label="100 harita birimi başına bilinen kilometre"></label><p class="atlas-route-calibration-note">Bilinen bir ölçek değerin varsa 100 harita biriminin kaç kilometre olduğunu gir. Doğrulanmış kaynak değeri olmadığı için varsayılan kilometre tahmini üretilmez.</p><p class="atlas-route-summary" data-atlas-route-summary role="status" aria-live="polite">Bir başlangıç ve varış noktası seçerek yolculuğu haritada göster.</p></section>';
+  const routeOverlay='<svg class="atlas-route-overlay" viewBox="0 0 1800 1200" preserveAspectRatio="none" aria-hidden="true" hidden><path class="atlas-route-glow" data-atlas-route-glow d="" /><path class="atlas-route-line" data-atlas-route-path d="" /><circle class="atlas-route-endpoint" data-atlas-route-start cx="0" cy="0" r="13"/><circle class="atlas-route-endpoint" data-atlas-route-end cx="0" cy="0" r="13"/></svg>';
+  const map='<div class="atlas-map-viewport" data-atlas-viewport tabindex="0" role="region" aria-label="Frieren anime dünyası ve RPG keşif haritası"><div class="atlas-map-camera" data-atlas-camera><div class="atlas-map-art atlas-world-map" data-atlas-weather="clear" data-atlas-season="summer" data-atlas-lighting="day" data-atlas-zoom-detail="overview" data-atlas-zoom-regional="1.35" data-atlas-zoom-local="2.2" role="group" aria-label="Frieren dünyasının anime yerleşimleri, dağları, ormanları ve yolları"><img class="atlas-map-image" src="/assets/frieren-world-map.svg?v=atlas-362-1" alt="Frieren dünyasından esinlenen Merkez Topraklar, Kuzey Toprakları, Größe Ormanı, Kühl Bölgesi, Schwer Dağları ve Ende haritası" draggable="false">'+geographyOverlay+localDetailOverlay+routeOverlay+'<div class="atlas-atmosphere-layer" aria-hidden="true"></div><div class="atlas-weather-layer" aria-hidden="true"></div>'+fog+'<div class="atlas-pin-layer">'+markerPins+'</div></div></div><div class="atlas-map-tools" aria-label="Harita yakınlaştırma kontrolleri"><button type="button" data-atlas-zoom="-1" aria-label="Uzaklaştır">−</button><output data-atlas-zoom-value>100%</output><button type="button" data-atlas-zoom="1" aria-label="Yakınlaştır">+</button><button type="button" data-atlas-reset aria-label="Haritayı sıfırla">Sıfırla</button></div></div><div class="atlas-layer-controls" aria-label="Harita işaret katmanları"><span>GÖSTER</span><button type="button" data-atlas-layer="region" aria-pressed="true">RPG Bölgeleri</button><button type="button" data-atlas-layer="city" aria-pressed="true">Anime Yerleşimleri</button><button type="button" data-atlas-layer="boss" aria-pressed="true">Bosslar</button><button type="button" data-atlas-layer="dungeon" aria-pressed="true">Zindanlar</button><button type="button" data-atlas-layer="event" aria-pressed="true">Anime olayları</button><button type="button" data-atlas-geography="waterways" aria-pressed="true">Nehirler ve göller</button><button type="button" data-atlas-geography="trails" aria-pressed="true">Yollar ve geçitler</button><button type="button" data-atlas-geography="settled-land" aria-pressed="true">Arazi geçişleri</button><button type="button" data-atlas-geography="terrain-details" aria-pressed="true">Kanyonlar, şelaleler ve kalıntılar</button><label class="atlas-atmosphere-control">Mevsim <select data-atlas-season aria-label="Harita mevsimi"><option value="spring">İlkbahar</option><option value="summer" selected>Yaz</option><option value="autumn">Sonbahar</option><option value="winter">Kış</option></select></label><label class="atlas-atmosphere-control">Hava <select data-atlas-weather aria-label="Harita hava görünümü"><option value="clear">Açık</option><option value="mist">Sis</option><option value="snow">Kar</option><option value="rain">Yağmur</option></select></label><button type="button" data-atlas-lighting-toggle aria-pressed="false">Gece görünümü</button><small>İşaretleri seçerek ayrıntıları aç. Haritayı sürükle veya iki parmakla yakınlaştır.</small></div>';
+  const routePanel=routeControls;
+  const legend='<div class="atlas-legend"><span><i class="key-region">✦</i>RPG bölgesi</span><span><i class="key-city">⌂</i>Anime yerleşimi</span><span><i class="key-boss">☠</i>RPG bossu</span><span><i class="key-dungeon">◇</i>RPG zindanı</span><span><i class="key-event">◷</i>Anime tarihsel olayı</span><small>Harita yerleşimleri anime coğrafyasına dayalı fan yapımı konumlandırmadır.</small></div>';
   const modal='<div class="atlas-modal" data-atlas-modal hidden><button class="atlas-backdrop" type="button" data-atlas-close aria-label="Pencereyi kapat"></button><section class="atlas-modal-card" role="dialog" aria-modal="true" aria-label="Bölge ayrıntıları"><header><span>FRIEREN · KEŞİF KAYDI</span><button type="button" data-atlas-close aria-label="Kapat">×</button></header><div class="atlas-modal-content">'+panels+'</div></section></div>';
-  return '<section class="section atlas-section" id="exploration-map" data-exploration-atlas><div class="section-head"><span class="eyebrow">FRIEREN · DÜNYA ATLASI</span><h2>Frieren Dünyası</h2><p>Anime coğrafyasını temel alan dünya haritası; Poğaça Frieren RPG keşif bölgeleri, bossları ve zindanlarıyla bağlantılı.</p></div><div class="atlas-progress"><div class="atlas-progress-copy"><span>SEÇİLİ KARAKTER · KEŞİF DURUMU</span><strong>'+percent+'% keşfedildi</strong></div><div class="atlas-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+percent+'" aria-label="Keşfedilen bölgeler"><i style="width:'+percent+'%"></i></div><small>'+discovered+' / '+rows.length+' RPG bölgesi · Yenilen bosslar: '+Number(mapContent?.summary?.defeatedBosses||0)+' / '+Number(mapContent?.summary?.totalBosses||0)+' · Zindanlar: '+Number(mapContent?.summary?.totalDungeons||0)+' konum · bölge · boss · zindan · Boss zaferleri · karakter geneli: '+Number(stats.boss_defeats||0)+' · Zindan zaferleri · karakter geneli: '+Number(stats.dungeon_wins||0)+'</small></div><article class="atlas-map-shell"><span class="atlas-map-paper atlas-paper" aria-hidden="true"></span>'+map+legend+'</article>'+renderRegionList(rows,esc)+modal+'</section>';
+  return '<section class="section atlas-section" id="exploration-map" data-exploration-atlas><div class="section-head"><span class="eyebrow">FRIEREN · DÜNYA ATLASI</span><h2>Frieren Dünyası</h2><p>Anime coğrafyasını temel alan dünya haritası; Poğaça Frieren RPG keşif bölgeleri, bossları ve zindanlarıyla bağlantılı.</p></div><div class="atlas-progress"><div class="atlas-progress-copy"><span>SEÇİLİ KARAKTER · KEŞİF DURUMU</span><strong>'+percent+'% keşfedildi</strong></div><div class="atlas-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+percent+'" aria-label="Keşfedilen bölgeler"><i style="width:'+percent+'%"></i></div><small>'+discovered+' / '+rows.length+' RPG bölgesi · Yenilen bosslar: '+Number(mapContent?.summary?.defeatedBosses||0)+' / '+Number(mapContent?.summary?.totalBosses||0)+' · Zindanlar: '+Number(mapContent?.summary?.totalDungeons||0)+' konum · bölge · boss · zindan · Boss zaferleri · karakter geneli: '+Number(stats.boss_defeats||0)+' · Zindan zaferleri · karakter geneli: '+Number(stats.dungeon_wins||0)+'</small></div><article class="atlas-map-shell"><span class="atlas-map-paper atlas-paper" aria-hidden="true"></span>'+map+routePanel+legend+'</article>'+'<div class="atlas-ecology-summary" data-atlas-ecology-summary aria-live="polite">'+Object.entries(REGIONS).map(([key,region])=>'<span data-atlas-ecology-profile="'+key+'">'+escapeHtml(region.name)+': '+escapeHtml(getAtlasEcologyProfile(key,'summer','clear').vegetation)+'</span>').join('')+'</div>'+renderRegionList(rows,esc)+modal+'</section>';
 }
