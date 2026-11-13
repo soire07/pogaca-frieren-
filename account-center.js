@@ -487,9 +487,9 @@ export async function exportSiteAccountData(db, accountId) {
 export async function deleteSiteAccount(db, accountId, confirmation) {
   if (confirmation !== 'HESABIMI SIL') return { status: 'confirmation_required' };
   const id = accountUuid(accountId);
-  await deleteChatMediaForAccount(db,accountId);
   const client = await db.connect();
   try {
+    await deleteChatMediaForAccount(client,accountId);
     await client.query('BEGIN');
     const account = await client.query('SELECT id FROM frieren_site_accounts WHERE id=$1 FOR UPDATE', [id]);
     if (!account.rowCount) {
