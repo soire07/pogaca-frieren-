@@ -23,6 +23,13 @@ test('reaction emoji validation accepts one native Unicode emoji grapheme and re
  for(const emoji of ['😂','🔥','🥹','👨🏽‍🚀','🏳️‍🌈','🇹🇷','1️⃣'])assert.equal(isValidPublicChatReactionEmoji(emoji),true,emoji);
  for(const value of ['', 'hello', '😂😂', '😂 hello', '  😂', 'a'.repeat(17)])assert.equal(isValidPublicChatReactionEmoji(value),false,value);
 });
+test('public chat reactions use the device keyboard and display only active emoji counts',async()=>{
+ const {readFile}=await import('node:fs/promises');const script=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');
+ assert.match(script,/className='public-chat-reaction-add'/);
+ assert.match(script,/input\.inputMode='text'/);
+ assert.match(script,/chip\.textContent=emoji\+' \+'\+total/);
+ assert.doesNotMatch(script,/data-chat-emoji-toggle|data-chat-emoji-picker|data-chat-emoji=/);
+});
 test('public chat rejects anonymous, malformed and oversized writes before database access',async()=>{
  let queries=0;const db={query:async()=>{queries++;return{rows:[],rowCount:0};}};
  await assert.rejects(sendPublicChatMessage(db,{accountId:'anonymous',username:'Gezgin',body:'Merhaba'}),/PUBLIC_CHAT_ACCOUNT_INVALID/);
