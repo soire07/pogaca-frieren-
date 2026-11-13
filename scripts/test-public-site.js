@@ -1124,6 +1124,16 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  const db={async query(sql,params){
   calls.push({sql,params});
   if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return{rows:[],rowCount:0};
+  if(sql.includes('INSERT INTO guild_daily_quests'))return{rows:[],rowCount:0};
+  if(sql.includes('FROM guild_daily_quests WHERE guild_id=$1'))return{rows:[
+   {quest_key:'adventure',title:'Macera tutkunu',description:'Bugün bir maceraya çık',objective_type:'adventure',class_name:null,reward_coins:100,active:true,is_system:true},
+   {quest_key:'class_buyucu',title:'Mana araştırmacısı',description:'Büyücü olarak büyü çalış',objective_type:'spell',class_name:'Büyücü',reward_coins:140,active:true,is_system:true},
+   {quest_key:'class_muhafiz',title:'Ön safta nöbet',description:'Muhafız olarak boss yen',objective_type:'boss_win',class_name:'Muhafız',reward_coins:130,active:true,is_system:true}
+  ],rowCount:3};
+  if(sql.includes('FROM daily_mission_claims'))return{rows:[{mission_key:'adventure'}],rowCount:1};
+  if(sql.includes('last_adventure_at::date'))return{rows:[{done:true}],rowCount:1};
+  if(sql.includes('FROM spell_mastery'))return{rows:[{done:true}],rowCount:1};
+  if(sql.includes('last_boss_win_at::date'))return{rows:[{done:false}],rowCount:1};
   if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[{guild_id:guildId,user_id:userId,character_name:'Fern',class_name:'Büyücü',level:99,xp:38050,coins:900}],rowCount:1};
   if(sql.includes('FROM users WHERE guild_id=$1 AND user_id=$2'))return{rows:[{created_at:'2026-01-01T00:00:00.000Z',boss_defeats:12,dungeon_wins:8,exploration_count:42,items_used_count:9,daily_streak:4,best_daily_streak:7}],rowCount:1};
   if(sql.includes('FROM user_titles'))return{rows:[{title:'Kıdemli Maceracı',unlocked_at:'2026-01-02T00:00:00.000Z'}],rowCount:1};
@@ -1155,6 +1165,11 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/Büyü arşivi/);
  assert.match(response.body,/1\/7 kayıt/);
  assert.match(response.body,/Ödül alındı/);
+ assert.match(response.body,/Günlük Görev Panosu/);
+ assert.match(response.body,/Macera tutkunu/);
+ assert.match(response.body,/Ödül alındı/);
+ assert.match(response.body,/Mana araştırmacısı/);
+ assert.doesNotMatch(response.body,/Ön safta nöbet/);
  assert.match(response.body,/Keşif Haritası/);
  assert.match(response.body,/Merkez Topraklar/);
  assert.match(response.body,/Büyük Orman Yolu/);
@@ -1230,6 +1245,9 @@ test('owner profile overrides VIP and renders the exclusive role, title, blood X
   process.env.FRIEREN_OWNER_ACCOUNT_IDS=accountId;
   const db={async query(sql){
     if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return{rows:[],rowCount:0};
+    if(sql.includes('INSERT INTO guild_daily_quests'))return{rows:[],rowCount:0};
+    if(sql.includes('FROM guild_daily_quests WHERE guild_id=$1'))return{rows:[],rowCount:0};
+    if(sql.includes('FROM daily_mission_claims'))return{rows:[],rowCount:0};
     if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};
     if(sql.includes('SELECT show_stats,show_achievements'))return{rows:[{show_stats:true,show_achievements:true,show_collections:true,show_activity:true,show_cosmetics:true,active_title:'Yıldız Büyücüsü'}],rowCount:1};
     if(sql.includes('SELECT created_at,boss_defeats'))return{rows:[{created_at:'2025-01-01T00:00:00Z',boss_defeats:8,dungeon_wins:5,exploration_count:12,daily_streak:4,best_daily_streak:9}],rowCount:1};
