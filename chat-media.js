@@ -23,7 +23,7 @@ function config(){
  const bucket=String(process.env.CHAT_MEDIA_R2_BUCKET||'').trim();
  const accessKey=String(process.env.CHAT_MEDIA_R2_ACCESS_KEY_ID||'').trim();
  const secret=String(process.env.CHAT_MEDIA_R2_SECRET_ACCESS_KEY||'').trim();
- if(!/^[a-f0-9]{32}$/i.test(account)||!/^[a-z0-9._-]{3,63}$/i.test(bucket)||!accessKey||!secret)return null;
+ if(!/^[a-f0-9]{32}$/i.test(account)||!/^[a-z0-9-]{3,63}$/i.test(bucket)||!accessKey||!secret)return null;
  return{account,bucket,accessKey,secret,host:account+'.r2.cloudflarestorage.com'};
 }
 export function isChatMediaConfigured(){return Boolean(config());}
@@ -62,7 +62,7 @@ export function signChatMediaUrl(method,objectKey,mimeType,expiresIn=300){
  const canonicalHeaders=verb==='PUT'?'content-type:'+String(mimeType||'application/octet-stream')+'\nhost:'+cfg.host+'\n':'host:'+cfg.host+'\n';
  const params=[['X-Amz-Algorithm','AWS4-HMAC-SHA256'],['X-Amz-Credential',credential],['X-Amz-Date',amzDate],['X-Amz-Expires',String(expires)],['X-Amz-SignedHeaders',headers]];
  if(verb==='GET'&&mimeType){params.push(['response-content-type',String(mimeType)],['response-content-disposition','inline']);}
- const canonicalQuery=params.slice().sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>encode(k)+'='+encode(v)).join('&');
+ const canonicalQuery=params.slice().sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0).map(([k,v])=>encode(k)+'='+encode(v)).join('&');
  const canonicalRequest=[verb,uri,canonicalQuery,canonicalHeaders,headers,'UNSIGNED-PAYLOAD'].join('\n');
  const stringToSign=['AWS4-HMAC-SHA256',amzDate,credentialScope,sha256(canonicalRequest)].join('\n');
  const dateKey=hmac('AWS4'+cfg.secret,date),regionKey=hmac(dateKey,'auto'),serviceKey=hmac(regionKey,'s3'),signingKey=hmac(serviceKey,'aws4_request');
@@ -116,6 +116,6 @@ export async function attachChatMedia(db,{mediaId,accountId,scope,scopeKey,messa
 }
 
 export function getChatMediaReadUrl({object_key,mime_type}={}){
- if(!object_key||!mime_type||!SPECS[mime_type])return null;
+ if(!object_key||!mime_type||!SPECS[mime_type]||!config())return null;
  return signChatMediaUrl('GET',object_key,mime_type,3600);
 }
