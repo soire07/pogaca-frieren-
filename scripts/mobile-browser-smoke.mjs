@@ -104,10 +104,10 @@ for (const scenario of scenarios) {
     if (await terrainLayer.getAttribute('hidden') === null) throw new Error(scenario.name + ' atlas terrain detail toggle did not hide the SVG layer');
     await terrainToggle.click();
     if (await terrainLayer.getAttribute('hidden') !== null) throw new Error(scenario.name + ' atlas terrain detail toggle did not restore the SVG layer');
-    await page.locator('[data-atlas-weather]').selectOption('snow');
+    await page.locator('select[data-atlas-weather]').selectOption('snow');
     const snowMode = await page.locator('.atlas-map-art').getAttribute('data-atlas-weather');
     if (snowMode !== 'snow') throw new Error(scenario.name + ' atlas snow mode was not applied');
-    await page.locator('[data-atlas-weather]').selectOption('rain');
+    await page.locator('select[data-atlas-weather]').selectOption('rain');
     const rainMode = await page.locator('.atlas-map-art').getAttribute('data-atlas-weather');
     if (rainMode !== 'rain') throw new Error(scenario.name + ' atlas rain mode was not applied');
     const lightingToggle = page.locator('[data-atlas-lighting]');
