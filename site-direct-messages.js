@@ -105,7 +105,7 @@ export async function listSiteDmGroups(db,accountId){
  const viewer=account(accountId);await ensureSiteDirectMessageSchema(db);
  const r=await db.query(`SELECT g.group_id,g.title,g.created_at,g.created_by,
   (SELECT COUNT(*)::int FROM frieren_site_dm_group_members gm WHERE gm.group_id=g.group_id) AS member_count,
-  (SELECT COUNT(*)::int FROM frieren_site_dm_group_messages m WHERE m.group_id=g.group_id AND m.sender_account_id<>$1 AND NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE b.blocker_account_id=$1 AND b.blocked_account_id=m.sender_account_id) AND NOT EXISTS(SELECT 1 FROM frieren_site_dm_group_reads rd WHERE rd.message_id=m.message_id AND rd.reader_account_id=$1)) AS unread_count
+  (SELECT COUNT(*)::int FROM frieren_site_dm_group_messages m WHERE m.group_id=g.group_id AND m.sender_account_id<>$1 AND NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE (b.blocker_account_id=$1 AND b.blocked_account_id=m.sender_account_id) OR (b.blocker_account_id=m.sender_account_id AND b.blocked_account_id=$1)) AND NOT EXISTS(SELECT 1 FROM frieren_site_dm_group_reads rd WHERE rd.message_id=m.message_id AND rd.reader_account_id=$1)) AS unread_count
   FROM frieren_site_dm_groups g JOIN frieren_site_dm_group_members mine ON mine.group_id=g.group_id
   WHERE mine.account_id=$1 ORDER BY g.created_at DESC LIMIT 50`,[viewer]);
  return r.rows;
@@ -137,7 +137,7 @@ export async function listSiteDmGroupMessages(db,{accountId,groupId,limit=60}){
  const r=await db.query(`SELECT m.message_id,m.sender_account_id,COALESCE(NULLIF(ap.display_name,''),'Gezgin') AS username,m.body,m.created_at,(m.sender_account_id=$2) AS is_own,
   EXISTS(SELECT 1 FROM frieren_site_dm_group_reads rd WHERE rd.message_id=m.message_id AND rd.reader_account_id<>m.sender_account_id) AS is_read
   FROM frieren_site_dm_group_messages m LEFT JOIN frieren_account_profiles ap ON ap.account_id=m.sender_account_id WHERE m.group_id=$1
-  AND NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE b.blocker_account_id=$2 AND b.blocked_account_id=m.sender_account_id)
+  AND NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE (b.blocker_account_id=$2 AND b.blocked_account_id=m.sender_account_id) OR (b.blocker_account_id=m.sender_account_id AND b.blocked_account_id=$2))
   ORDER BY m.created_at DESC,m.message_id DESC LIMIT $3`,[groupId,viewer,n]);
  return{status:'ok',messages:r.rows.reverse()};
 }
@@ -148,7 +148,7 @@ export async function markSiteDmGroupMessagesRead(db,{accountId,groupId}){
  if(!member.rowCount)return{status:'not_allowed',count:0};
  const r=await db.query(`INSERT INTO frieren_site_dm_group_reads(message_id,reader_account_id)
   SELECT m.message_id,$2 FROM frieren_site_dm_group_messages m WHERE m.group_id=$1 AND m.sender_account_id<>$2
-  AND NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE b.blocker_account_id=$2 AND b.blocked_account_id=m.sender_account_id)
+  AND NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE (b.blocker_account_id=$2 AND b.blocked_account_id=m.sender_account_id) OR (b.blocker_account_id=m.sender_account_id AND b.blocked_account_id=$2))
   ON CONFLICT(message_id,reader_account_id) DO NOTHING`,[groupId,viewer]);
  return{status:'read',count:r.rowCount||0};
 }
