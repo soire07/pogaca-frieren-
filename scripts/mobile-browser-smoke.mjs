@@ -95,7 +95,7 @@ for (const scenario of scenarios) {
     });
     await page.setContent('<!doctype html><html lang="tr"><head><link rel="stylesheet" href="' + baseUrl + '/assets/site.css?v=atlas-370-1"></head><body>' + atlasMarkup + '</body></html>');
     await page.waitForLoadState('networkidle', { timeout: 15000 });
-    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-370-1' });
+    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-371-1' });
     const routeFrom = page.locator('[data-atlas-route-from]');
     const routeTo = page.locator('[data-atlas-route-to]');
     await routeFrom.selectOption('royal-capital');
@@ -145,7 +145,7 @@ for (const scenario of scenarios) {
     if (await localDetail.count() !== 1 || localZoomLevel !== 'local') throw new Error(scenario.name + ' atlas settlement-level detail layer did not activate at local zoom: ' + localZoomLevel);
     await page.waitForFunction(() => { const node = document.querySelector('[data-atlas-local-detail-layer]'); return Boolean(node && Number(getComputedStyle(node).opacity) > 0.5); }, null, { timeout: 3000 });
     await page.locator('[data-atlas-reset]').click();
-    await page.locator('[data-atlas-season]').selectOption('winter');
+    await page.locator('select[data-atlas-season]').selectOption('winter');
     if (await page.locator('.atlas-map-art').getAttribute('data-atlas-season') !== 'winter' || !(await page.locator('[data-atlas-ecology-profile="aus"]').textContent()).includes('Yoğun kar')) throw new Error(scenario.name + ' atlas winter ecology profile did not update');
     const calibration = page.locator('[data-atlas-reference-km]');
     await calibration.fill('8');
