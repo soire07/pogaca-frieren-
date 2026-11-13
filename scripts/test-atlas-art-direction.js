@@ -162,6 +162,7 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   const client = await readFile(new URL('../public-assets/exploration-atlas.js', import.meta.url), 'utf8');
   const locations = await readFile(new URL('../exploration-world-locations.js', import.meta.url), 'utf8');
   const site = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
   for (const layer of ['waterways', 'trails', 'settled-land']) {
     assert.match(atlas, new RegExp('data-atlas-geography-layer="' + layer + '"'));
   }
@@ -173,6 +174,22 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   assert.match(atlas, /atlas-lake/);
   assert.match(atlas, /atlas-foothill-transition/);
   assert.match(atlas, /atlas-field-mosaic/);
+  assert.match(atlas, /data-atlas-geography-layer="terrain-details"/);
+  assert.match(atlas, /atlas-waterfall/);
+  assert.match(atlas, /atlas-regional-flora/);
+  assert.match(atlas, /atlas-settlement-architecture/);
+  assert.match(atlas, /atlas-ruin-remnants/);
+  assert.match(atlas, /data-atlas-weather="clear"/);
+  assert.match(atlas, /data-atlas-lighting="day"/);
+  assert.match(atlas, /data-atlas-weather/);
+  assert.match(atlas, /data-atlas-lighting/);
+  assert.match(atlas, /RPG tehlikesi:/);
+  assert.match(client, /dataset\.atlasLighting/);
+  assert.match(client, /dataset\.atlasWeather/);
+  assert.match(css, /atlas-weather-layer/);
+  assert.match(css, /data-atlas-weather="snow"/);
+  assert.match(css, /data-atlas-lighting="night"/);
+  assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-terrain-details/);
   for (const layer of ['waterways', 'trails', 'settled-land']) {
     assert.match(atlas, new RegExp('data-atlas-geography="' + layer + '"'));
 
