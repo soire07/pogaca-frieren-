@@ -1451,7 +1451,7 @@ html[data-a11y-motion=reduce] *,html[data-a11y-motion=reduce] *::before,html[dat
   .exploration-map-progress-summary > span:first-child { grid-column: 1 / -1; }
   .exploration-map-combat-badges { grid-template-columns: 1fr 1fr; }
   .exploration-map-shell { padding: 10px; border-radius: 17px; }
-  .exploration-map-svg { min-width: 680px; }
+  .exploration-map-svg { min-width: 560px; }
   .exploration-region-grid { grid-template-columns: 1fr; }
   .exploration-region-card { padding: 15px; }
   .exploration-map-legend { gap: 8px 11px; font-size: .73rem; }
