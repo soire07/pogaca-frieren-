@@ -49,6 +49,8 @@ async function canMessage(db,a,b){
  const blocked=await db.query('SELECT 1 FROM frieren_public_chat_blocks WHERE (blocker_account_id=$1 AND blocked_account_id=$2) OR (blocker_account_id=$2 AND blocked_account_id=$1) LIMIT 1',[a,b]);
  return !blocked.rowCount;
 }
+export async function canSiteDmAccountsMessage(db,a,b){const left=account(a),right=account(b);if(left===right)return false;await ensureSiteDirectMessageSchema(db);return canMessage(db,left,right);}
+export async function isSiteDmGroupMember(db,accountId,groupId){const viewer=account(accountId);if(!/^[0-9a-f-]{36}$/i.test(String(groupId||'')))return false;await ensureSiteDirectMessageSchema(db);const result=await db.query('SELECT 1 FROM frieren_site_dm_group_members WHERE group_id=$1 AND account_id=$2 LIMIT 1',[groupId,viewer]);return Boolean(result.rowCount);}
 export async function sendSiteDirectMessage(db,{senderAccountId,recipientAccountId,body,mediaId=null}){
  const sender=account(senderAccountId),recipient=account(recipientAccountId),message=String(body??'').normalize('NFC').trim();
  if((!message&&!mediaId)||Array.from(message).length>1000||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(message))throw new Error('SITE_DM_MESSAGE_INVALID');
