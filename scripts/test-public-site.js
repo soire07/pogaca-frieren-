@@ -1172,6 +1172,17 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/Alev Küresi/);
  assert.match(response.body,/Buz Mızrağı/);
  assert.match(response.body,/Ustalık 2/);
+ assert.match(response.body,/data-spellbook-filter/);
+ assert.match(response.body,/data-spellbook-mastery/);
+ assert.match(response.body,/data-spellbook-count/);
+ assert.match(response.body,/spellbook-controls\.js/);
+ const spellbookAsset=res();
+ assert.equal(await handlePublicSiteRequest(request('/assets/spellbook-controls.js'),spellbookAsset,{db:null}),true);
+ assert.equal(spellbookAsset.status,200);
+ const spellbookScript=spellbookAsset.body.toString('utf8');
+ assert.match(spellbookScript,/addEventListener\('input'/);
+ assert.match(spellbookScript,/addEventListener\('change'/);
+ assert.match(spellbookScript,/data-spellbook-empty/);
  assert.match(response.body,/Günlük Görev Panosu/);
  assert.match(response.body,/Macera tutkunu/);
  assert.match(response.body,/Ödül alındı/);
