@@ -1843,3 +1843,13 @@ test('interactive atlas exposes accessible zoom, pan and independent map-layer c
  const script=await readFile(new URL('../public-assets/exploration-atlas.js',import.meta.url),'utf8');
  for(const behavior of ["addEventListener('wheel'","addEventListener('pointerdown'","addEventListener('pointermove'","pointers.size===2","data-atlas-layer-item","Escape"])assert.ok(script.includes(behavior),'atlas interaction should include '+behavior);
 });
+
+
+test('atlas exploration fog reveals only regions marked discovered by the RPG map data',()=>{
+ const mapContent=buildExplorationMapContent({level:50,regionVisits:[{region_key:'merkez',visits:3}],bosses:[],dungeons:[]});
+ const html=renderExplorationAtlas({mapContent,stats:{}});
+ assert.match(html,/atlas-fog-layer/);
+ assert.match(html,/atlas-discovery-mask/);
+ assert.match(html,/<circle cx="26\.4" cy="57\.5" r="13" fill="black"\/>/);
+ assert.doesNotMatch(html,/<circle cx="37\.2" cy="32\.1" r="13" fill="black"\/>/);
+});
