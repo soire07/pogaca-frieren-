@@ -5,7 +5,7 @@
  if(!modal||!viewport||!camera)return;
  let last=null,scale=1,x=0,y=0,pointers=new Map(),drag=null,pinchDistance=0;
  const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
- const paint=()=>{camera.style.transform='translate3d('+x+'px,'+y+'px,0) scale('+scale+')';const output=root.querySelector('[data-atlas-zoom-value]');if(output)output.value=Math.round(scale*100)+'%';const mapArt=root.querySelector('.atlas-map-art');if(mapArt)mapArt.dataset.atlasZoomDetail=scale>=2.2?'local':scale>=1.35?'regional':'overview';};
+ const paint=()=>{camera.style.transform='translate3d('+x+'px,'+y+'px,0) scale('+scale+')';const output=root.querySelector('[data-atlas-zoom-value]');if(output)output.value=Math.round(scale*100)+'%';const mapArt=root.querySelector('.atlas-map-art');if(mapArt){const regional=Number(mapArt.dataset.atlasZoomRegional)||1.35,local=Number(mapArt.dataset.atlasZoomLocal)||2.2;mapArt.dataset.atlasZoomDetail=scale>=local?'local':scale>=regional?'regional':'overview';}};
  const bounds=()=>{const rect=viewport.getBoundingClientRect();return {x:Math.max(0,(rect.width*(scale-1))/2),y:Math.max(0,(rect.height*(scale-1))/2)};};
  const constrain=()=>{const limit=bounds();x=clamp(x,-limit.x,limit.x);y=clamp(y,-limit.y,limit.y);};
  const zoom=delta=>{scale=clamp(scale*delta,.85,3.2);constrain();paint();};
