@@ -24,6 +24,7 @@ test('R2 signing creates bounded presigned PUT, GET and DELETE requests without 
   const put=new URL(signChatMediaUrl('PUT',key,'image/jpeg',600));
   assert.equal(put.hostname,'1234567890abcdef1234567890abcdef.r2.cloudflarestorage.com');
   assert.equal(put.searchParams.get('X-Amz-Expires'),'600');
+  assert.equal(put.searchParams.get('X-Amz-Content-Sha256'),'UNSIGNED-PAYLOAD');
   assert.equal(put.searchParams.get('X-Amz-SignedHeaders'),'content-type;host');
   assert.match(put.searchParams.get('X-Amz-Signature'),/^[a-f0-9]{64}$/);
   assert.ok(!put.href.includes('test-secret-key'));
