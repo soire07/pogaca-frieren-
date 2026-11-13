@@ -108,7 +108,6 @@ export async function uploadChatMedia(db,{accountId,scope,scopeKey,mimeType,buff
 
 export async function attachChatMedia(db,{mediaId,accountId,scope,scopeKey,messageId}){
  if(!/^[0-9a-f-]{36}$/i.test(String(mediaId||''))||!ACCOUNT.test(String(accountId||''))||!['public','dm','group'].includes(scope)||!/^[0-9a-f-]{36}$/i.test(String(messageId||'')))throw new Error('CHAT_MEDIA_ATTACHMENT_INVALID');
- await ensureChatMediaSchema(db);
  const result=await db.query(`UPDATE frieren_site_chat_media SET message_id=$5,attached_at=NOW()
   WHERE media_id=$1 AND owner_account_id=$2 AND scope_type=$3 AND scope_key=$4 AND message_id IS NULL
   AND created_at>NOW()-INTERVAL '24 hours' RETURNING media_id`,[mediaId,accountId,scope,scopeKey,messageId]);
