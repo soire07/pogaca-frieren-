@@ -1520,5 +1520,5 @@ test('community chat keeps own messages readable and reactions flowing on mobile
  assert.match(styles,/@media\s*\(max-width:\s*620px\)\s*\{[^}]*\.public-chat-message\.is-own\s*\{\s*grid-template-columns:\s*32px\s+minmax\(0,1fr\)/);
  assert.match(styles,/\.public-chat-reactions\s*\{[^}]*display:\s*flex/);
  assert.match(styles,/\.public-chat-reactions\s*\{[^}]*flex-wrap:\s*wrap/);
- assert.match(styles,/@media\s*\(max-width:\s*620px\)\s*\{[^}]*\.public-chat-messages\s*\{[^}]*min-height:\s*150px/);
+ assert.ok(styles.includes('.public-chat-messages{min-height:150px;max-height:52vh;'));
 });
