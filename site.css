@@ -1774,3 +1774,10 @@ body.atlas-modal-open{overflow:hidden}
 @media(max-width:900px){.atlas-ecology-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-route-calibration-note{grid-column:1/-1}}
 @media(max-width:520px){.atlas-ecology-summary{grid-template-columns:1fr}.atlas-local-settlement-plan text{font-size:13px}}
 @media(prefers-reduced-motion:reduce){.atlas-local-detail-overlay{transition:none}}
+
+
+/* Painterly atlas color grade: restore vivid regional contrast without neon saturation. */
+.atlas-map-image{filter:saturate(1.14) contrast(1.055) brightness(1.015)}
+.atlas-map-viewport{touch-action:none;cursor:grab;aspect-ratio:3/2;min-height:0;max-width:1100px;margin-inline:auto;border-radius:8px;background:radial-gradient(ellipse at 48% 45%,#365a60 0%,#203f49 62%,#132b35 100%);box-shadow:inset 0 0 0 1px #e2d1a044,0 12px 32px #02080d66}
+.atlas-map-shell{border-color:#c4a66d;background:linear-gradient(145deg,#253a3b,#12252d);box-shadow:0 28px 68px #02080dbb}
+@media(max-width:700px){.atlas-map-image{filter:saturate(1.1) contrast(1.045) brightness(1.015)}}

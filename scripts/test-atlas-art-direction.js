@@ -137,12 +137,12 @@ test('Frieren atlas adds subtle northern snowfall and forest mist without changi
   const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
   const site = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
   assert.match(atlas, /<div class="atlas-atmosphere-layer" aria-hidden="true"><\/div>/);
-  assert.match(atlas, /frieren-world-map\.svg\?v=atlas-362-1/);
+  assert.match(atlas, /frieren-world-map\.svg\?v=atlas-374-1/);
   assert.match(css, /\.atlas-atmosphere-layer::before/);
   assert.match(css, /atlas-northfall/);
   assert.match(css, /atlas-forest-mist/);
   assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-atmosphere-layer::before/);
-  assert.match(site, /site\.css\?v=atlas-370-1/);
+  assert.match(site, /site\.css\?v=atlas-374-1/);
 });
 
 
@@ -204,8 +204,55 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   assert.match(client, /data-atlas-geography/);
   assert.ok(client.includes("querySelectorAll('[data-atlas-geography-layer="), 'client must locate the SVG layer rendered by the server module');
   assert.match(client, /toggleAttribute\('hidden',!enabled\)/, 'SVG layer visibility must use a real hidden attribute');
-  assert.match(atlas, /atlas-362-1/);
-  assert.match(site, /exploration-atlas\.js\?v=atlas-371-1/);
+  assert.match(atlas, /atlas-374-1/);
+  assert.match(site, /exploration-atlas\.js\?v=atlas-374-1/);
   assert.match(locations, /x:39, y:79/);
   assert.match(locations, /level_1: Object\.freeze\(\{ regionKey:'merkez', x:43, y:72/);
+});
+
+
+test('atlas terrain has organic biome edges and distinct painterly relief layers', async () => {
+  const artwork = await readFile(new URL('../public-assets/frieren-world-map.svg', import.meta.url), 'utf8');
+  assert.match(artwork, /id="biome-edge"/, 'biome boundaries need organic edge displacement');
+  assert.match(artwork, /feTurbulence/);
+  assert.match(artwork, /feDisplacementMap[^>]+scale="(?:1[2-9]|[2-9][0-9])"/);
+  for (const layer of [
+    'atlas-forest-canopy',
+    'atlas-mountain-relief',
+    'atlas-meadow-texture',
+    'atlas-coastline-detail',
+    'atlas-tundra-texture'
+  ]) {
+    assert.ok(artwork.includes(layer), 'missing painterly terrain layer: ' + layer);
+  }
+  assert.match(artwork, /clip-path="url\(#land-clip\)"/);
+  assert.match(artwork, /stroke-linecap="round"/);
+  assert.doesNotMatch(artwork, /<circle[^>]+fill="black"/i);
+});
+
+
+test('atlas color grading keeps terrain vivid and legible on desktop and mobile', async () => {
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const colorGrade = css.slice(css.lastIndexOf('Painterly atlas color grade'));
+  assert.match(colorGrade, /saturate\(1\.14\)/);
+  assert.match(colorGrade, /contrast\(1\.055\)/);
+  assert.match(colorGrade, /@media\(max-width:700px\)/);
+});
+
+
+test('painterly terrain avoids tiled forest stamps and identical repeated mountain silhouettes', async () => {
+  const artwork = await readFile(new URL('../public-assets/frieren-world-map.svg', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  for (const variant of ['a', 'b', 'c', 'd']) {
+    assert.match(artwork, new RegExp('id="atlas-canopy-' + variant + '"'), 'forest canopy needs distinct crown geometry: ' + variant);
+    assert.match(artwork, new RegExp('id="atlas-peak-' + variant + '"'), 'mountain relief needs distinct peak geometry: ' + variant);
+    assert.match(artwork, new RegExp('href="#atlas-canopy-' + variant + '"'), 'forest should use canopy variant ' + variant);
+    assert.match(artwork, new RegExp('href="#atlas-peak-' + variant + '"'), 'mountains should use peak variant ' + variant);
+  }
+  assert.doesNotMatch(artwork, /<use href="#atlas-canopy" transform="translate\(\d+ \d+\) scale\([^)]+\)"\/>/);
+  assert.doesNotMatch(artwork, /<use href="#atlas-peak" transform="translate\(\d+ \d+\) scale\([^)]+\)"\/>/);
+  assert.match(artwork, /fill="url\(#forest-canopy\)" filter="url\(#biome-edge\)" opacity="\.22"/, 'the tiled forest underpainting must not overpower the individual canopy crowns');
+  const colorGrade = css.slice(css.lastIndexOf('Painterly atlas color grade'));
+  assert.match(colorGrade, /\.atlas-map-viewport\{[^}]*aspect-ratio:3\/2/, '3:2 viewport ratio must remain authoritative');
+  assert.match(colorGrade, /@media\(max-width:700px\)/, 'mobile map treatment must remain explicit');
 });
