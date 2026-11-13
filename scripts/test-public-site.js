@@ -1483,7 +1483,7 @@ test('dedicated user center pages expose the new account, social and life naviga
  assert.match(source,/site\.css\?v=community-chat-280/);
  assert.match(source,/public-chat\.js\?v=chat-282-1/);
  const chatClient=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');
- assert.doesNotMatch(chatClient,/for\s*\(const emoji of \["❤️","✨","😂","😍","🥰","😭","👀","🎉","🙌","💜","🍪","🌸"\\]\\)/);
+ assert.ok(!chatClient.includes('for(const emoji of ["❤️","✨","😂","😍","🥰","😭","👀","🎉","🙌","💜","🍪","🌸"])'));
  assert.match(styles,/\.social-center-page/);
  assert.match(styles,/\.user-center-tabs/);
 });
