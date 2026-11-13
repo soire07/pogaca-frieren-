@@ -1660,3 +1660,5 @@ body.atlas-modal-open{overflow:hidden}
  .atlas-pin-label{max-width:125px;font-size:9px}
 }
 @media(prefers-reduced-motion:reduce){.atlas-pin{transition:none}}
+
+.atlas-map-viewport{aspect-ratio:3/2;min-height:0;max-width:1100px;margin-inline:auto;border-radius:8px}
