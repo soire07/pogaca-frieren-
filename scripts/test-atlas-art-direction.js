@@ -229,3 +229,12 @@ test('atlas terrain has organic biome edges and distinct painterly relief layers
   assert.match(artwork, /stroke-linecap="round"/);
   assert.doesNotMatch(artwork, /<circle[^>]+fill="black"/i);
 });
+
+
+test('atlas color grading keeps terrain vivid and legible on desktop and mobile', async () => {
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const colorGrade = css.slice(css.lastIndexOf('Painterly atlas color grade'));
+  assert.match(colorGrade, /saturate\(1\.14\)/);
+  assert.match(colorGrade, /contrast\(1\.055\)/);
+  assert.match(colorGrade, /@media\(max-width:700px\)/);
+});
