@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ensurePublicChatSchema,listPublicChatMessages,sendPublicChatMessage,deletePublicChatMessage,markPublicChatMessagesRead,reportPublicChatMessage,togglePublicChatPin,setPublicChatPaused} from '../public-chat.js';
+import {ensurePublicChatSchema,listPublicChatMessages,sendPublicChatMessage,deletePublicChatMessage,markPublicChatMessagesRead,reportPublicChatMessage,togglePublicChatPin,setPublicChatPaused,isValidPublicChatReactionEmoji} from '../public-chat.js';
 
 const account='site_123e4567-e89b-12d3-a456-426614174000';
 test('public chat schema is additive and never destroys existing data',async()=>{
@@ -10,15 +10,25 @@ test('public chat schema is additive and never destroys existing data',async()=>
  assert.ok(statements.some(sql=>sql.includes('frieren_public_chat_recent_idx')));
  assert.ok(statements.every(sql=>! /DROP TABLE|TRUNCATE|DELETE FROM/i.test(sql)));
 });
-test('reaction schema upgrades the existing three-emoji database constraint',async()=>{
+test('reaction schema atomically replaces the fixed emoji allowlist with bounded Unicode storage',async()=>{
  const statements=[];await ensurePublicChatSchema({query:async sql=>{statements.push(sql);return{rows:[],rowCount:0};}});
- const upgrade=statements.find(sql=>sql.includes('pg_get_constraintdef')&&sql.includes('frieren_public_chat_reactions_emoji_check'));
- assert.ok(upgrade.includes('DO $$ BEGIN'));
- assert.ok(upgrade.includes('END; $$'));
- assert.ok(upgrade,'schema must inspect and upgrade the existing three-emoji database constraint');
+ const upgrade=statements.find(sql=>sql.includes('DROP CONSTRAINT IF EXISTS')&&sql.includes('frieren_public_chat_reactions_emoji_check'));
+ assert.ok(upgrade,'schema must replace the old emoji constraint');
  assert.match(upgrade,/DROP CONSTRAINT IF EXISTS frieren_public_chat_reactions_emoji_check/);
  assert.match(upgrade,/ADD CONSTRAINT frieren_public_chat_reactions_emoji_check CHECK/);
- for(const emoji of ['😍','🥰','😭','👀','🎉','🙌','💜','🍪','🌸'])assert.ok(upgrade.includes(emoji));
+ assert.match(upgrade,/char_length\(emoji\) BETWEEN 1 AND 16/);
+ assert.doesNotMatch(upgrade,/❤️|✨|😂|😍|🥰|😭|👀|🎉|🙌|💜|🍪|🌸/);
+});
+test('reaction emoji validation accepts one native Unicode emoji grapheme and rejects text or multiple emoji',()=>{
+ for(const emoji of ['😂','🔥','🥹','👨🏽‍🚀','🏳️‍🌈','🇹🇷','1️⃣'])assert.equal(isValidPublicChatReactionEmoji(emoji),true,emoji);
+ for(const value of ['', 'hello', '😂😂', '😂 hello', '  😂', 'a'.repeat(17)])assert.equal(isValidPublicChatReactionEmoji(value),false,value);
+});
+test('public chat reactions use the device keyboard and display only active emoji counts',async()=>{
+ const {readFile}=await import('node:fs/promises');const script=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');
+ assert.match(script,/className='public-chat-reaction-add'/);
+ assert.match(script,/input\.inputMode='text'/);
+ assert.match(script,/chip\.textContent=emoji\+' \+'\+total/);
+ assert.doesNotMatch(script,/data-chat-emoji-toggle|data-chat-emoji-picker|data-chat-emoji=/);
 });
 test('public chat rejects anonymous, malformed and oversized writes before database access',async()=>{
  let queries=0;const db={query:async()=>{queries++;return{rows:[],rowCount:0};}};
@@ -33,8 +43,9 @@ test('public chat read is bounded and uses hidden-message filtering',async()=>{
  const db={query:async(q,p)=>{if(q.includes('SELECT m.message_id')){sql=q;params=p;return{rows,rowCount:2};}return{rows:[],rowCount:0};}};
  const result=await listPublicChatMessages(db,{limit:1000});
  assert.equal(result.length,2);assert.equal(params[0],100);
- assert.match(sql,/hidden=FALSE/);assert.match(sql,/ORDER BY \(m\.pinned_at IS NOT NULL\) DESC,m\.created_at DESC,m\.message_id DESC/);
+ assert.match(sql,/hidden=FALSE/);assert.match(sql,/ORDER BY CASE WHEN \$6::boolean THEN m\.pinned_at ELSE m\.created_at END DESC,m\.created_at DESC,m\.message_id DESC/);
 });
+test('pinned-only history returns only pinned messages',async()=>{let sql='',params;const db={async query(q,p){sql=q;params=p;return{rows:[],rowCount:0};}};await listPublicChatMessages(db,{pinnedOnly:true});assert.match(sql,/m\.pinned_at IS NOT NULL/);assert.equal(params[5],true);});
 test('public chat marks only trusted owner authors for the visible OWNER badge',async()=>{
  let sql='',params;
  const db={query:async(q,p)=>{if(q.includes('SELECT m.message_id')){sql=q;params=p;return{rows:[{message_id:'owner-message',is_owner:true}],rowCount:1};}return{rows:[],rowCount:0};}};
@@ -64,12 +75,13 @@ test('only owner can pause or resume chat and paused chat rejects new posts',asy
  assert.equal((await sendPublicChatMessage(pausedDb,{accountId:account,username:'Gezgin',body:'Yeni mesaj'})).status,'chat_paused');
  assert.equal(inserted,false);
 });
-test('chat reactions can be toggled only for an existing message and an allowed emoji',async()=>{
+test('chat reactions can be toggled for any single Unicode emoji on an existing message',async()=>{
  const {togglePublicChatReaction}=await import('../public-chat.js');let inserted=0;
  const db={async query(sql){if(sql.includes('SELECT message_id,account_id,username FROM frieren_public_chat_messages'))return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174000',account_id:'site_123e4567-e89b-12d3-a456-426614174001',username:'Fern'}],rowCount:1};if(sql.includes('SELECT 1 FROM frieren_public_chat_reactions'))return{rows:[],rowCount:0};if(sql.includes('INSERT INTO frieren_public_chat_reactions')){inserted++;return{rows:[],rowCount:1};}return{rows:[],rowCount:0};}};
  const result=await togglePublicChatReaction(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',emoji:'✨'});assert.equal(result.status,'added');assert.equal(inserted,1);
  assert.equal((await togglePublicChatReaction(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',emoji:'💜'})).status,'added');
- await assert.rejects(togglePublicChatReaction(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',emoji:'🔥'}),/PUBLIC_CHAT_REACTION_INVALID/);
+ await assert.equal((await togglePublicChatReaction(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',emoji:'👨🏽‍🚀'})).status,'added');
+  await assert.rejects(togglePublicChatReaction(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',emoji:'hello'}),/PUBLIC_CHAT_REACTION_INVALID/);
 });
 test('chat blocking resolves a message author without exposing account identifiers in the message list',async()=>{
  const {blockPublicChatUser,unblockPublicChatUser}=await import('../public-chat.js');let blockSql='';
@@ -146,17 +158,15 @@ test('public chat prefers an uploaded avatar and otherwise resolves the linked D
  const byId=Object.fromEntries(rows.map(row=>[row.message_id,row]));
  assert.equal(byId.uploaded.avatar_url,'/profil/media/public?accountId='+account);
  assert.equal(byId.discord.avatar_url,buildDiscordAvatarUrl('123456789012345678','a_customhash'));
- assert.equal(byId.default.avatar_url,buildDiscordAvatarUrl('123456789012345678',null));
+ assert.equal(byId.default.avatar_url,'/site-avatar.webp');
  assert.equal(Object.hasOwn(byId.discord,'discord_avatar_hash'),false);
  assert.equal(Object.hasOwn(byId.discord,'discord_user_id'),false);
 });
 
 
-test('community chat falls back to initials when an avatar image cannot be loaded',async()=>{
- const {readFile}=await import('node:fs/promises');const script=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');
- assert.match(script,/avatar\.onerror\s*=/);assert.match(script,/avatar\.replaceWith\(fallback\)/);assert.match(script,/fallback\.dataset\.online=avatar\.dataset\.online/);
-});
+test('community chat uses the Frieren fallback avatar instead of username initials',async()=>{const {readFile}=await import('node:fs/promises');const script=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');assert.match(script,/site-avatar\.webp/);assert.match(script,/avatar\.onerror\s*=/);assert.doesNotMatch(script,/fallback\.textContent=Array\.from\(String\(item\.username/);});
 
+test('pinned messages render in a separate view without changing original timeline order',async()=>{const {readFile}=await import('node:fs/promises');const client=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');const site=await readFile(new URL('../public-site.js',import.meta.url),'utf8');assert.match(client,/data-chat-pinned-top-list/);assert.match(client,/data-chat-pinned-list/);assert.match(client,/data-chat-jump/);assert.doesNotMatch(client,/sort\(\(a,b\)=>Number\(Boolean\(b\.pinned_at\)\)/);assert.match(site,/data-chat-tab="pinned"/);});
 test('public chat accepts an attachment-only message and binds media to its new message id',async()=>{
  const {sendPublicChatMessage}=await import('../public-chat.js');
  const account='site_123e4567-e89b-12d3-a456-426614174000',media='123e4567-e89b-12d3-a456-426614174099';const seen=[];

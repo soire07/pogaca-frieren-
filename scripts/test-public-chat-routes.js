@@ -17,6 +17,10 @@ test('public discovery page and chat history are readable without login',async()
  const page=response();assert.equal(await handlePublicSiteRequest(get('/kesfet'),page,{db}),true);assert.equal(page.status,200);assert.match(page.body,/Yol arkadaşlarınla sohbet et/);assert.match(page.body,/Giriş yap ve sohbete katıl/);const signedPage=response();assert.equal(await handlePublicSiteRequest(get('/kesfet',account),signedPage,{db}),true);assert.equal(signedPage.status,200);assert.match(signedPage.body,/name="replyToMessageId"/);assert.match(signedPage.body,/data-chat-reply-preview/);assert.match(signedPage.body,/data-chat-reply-clear/);assert.match(signedPage.body,/data-chat-media/);
  const api=response();assert.equal(await handlePublicSiteRequest(get('/api/public-chat/messages'),api,{db}),true);assert.equal(api.status,200);assert.match(api.body,/Merhaba/);
 });
+test('public chat browser client accepts Supabase signed media URLs instead of R2-only hosts',async()=>{
+ const res=response();assert.equal(await handlePublicSiteRequest(get('/assets/public-chat.js'),res,{db:{query:async()=>({rows:[],rowCount:0})}}),true);
+ assert.equal(res.status,200);assert.ok(res.body.includes(String.raw`storage\.supabase\.co`));assert.ok(!res.body.includes('r2.cloudflarestorage.com'));
+});
 test('public chat posting requires an authenticated site account and CSRF token',async()=>{
  let queries=0;const db={async query(sql){queries++;if(sql.includes('SELECT COUNT(*)'))return{rows:[{count:0}],rowCount:1};if(sql.includes('INSERT INTO frieren_public_chat_messages'))return{rows:[{message_id:'m1',body:'Merhaba'}],rowCount:1};return{rows:[],rowCount:0};}};
  const anonymous=response();const anonymousReq=Readable.from([Buffer.from('csrf=x&message=Merhaba')]);Object.assign(anonymousReq,{method:'POST',url:'/api/public-chat/messages',headers:{'content-type':'application/x-www-form-urlencoded'}});
@@ -41,7 +45,7 @@ test('homepage chat is inserted immediately after the hero and includes Frieren 
  const pageRes=response();assert.equal(await handlePublicSiteRequest(get('/kesfet',{id:accountId,username:'Gezgin'}),pageRes,{db}),true);
  assert.ok(pageRes.body.indexOf('public-chat-section')>pageRes.body.toLocaleLowerCase('tr-TR').indexOf('fantastik bir'));
  assert.ok(pageRes.body.indexOf('public-chat-section')<pageRes.body.indexOf('YOL ARKADAŞLARIN'));
- assert.match(pageRes.body,/data-chat-search/);assert.match(pageRes.body,/data-site-dm/);assert.match(pageRes.body,/Arkadaş seç/);assert.match(pageRes.body,/data-site-dm-group/);assert.match(pageRes.body,/data-site-dm-profile/,'direct message view must expose the selected friend profile link');assert.match(pageRes.body,/Grup sohbetleri/);assert.match(pageRes.body,/data-site-dm-tab/);assert.match(pageRes.body,/data-chat-new-messages/);assert.match(pageRes.body,/data-chat-counter/);assert.match(pageRes.body,/chat-279-1/);assert.match(pageRes.body,/data-chat-owner="true"/);assert.match(pageRes.body,/data-chat-reports-refresh/);
+ assert.match(pageRes.body,/data-chat-search/);assert.match(pageRes.body,/data-site-dm/);assert.match(pageRes.body,/Arkadaş seç/);assert.match(pageRes.body,/data-site-dm-group/);assert.match(pageRes.body,/data-site-dm-profile/,'direct message view must expose the selected friend profile link');assert.match(pageRes.body,/Grup sohbetleri/);assert.match(pageRes.body,/data-site-dm-tab/);assert.match(pageRes.body,/data-chat-new-messages/);assert.match(pageRes.body,/data-chat-counter/);assert.match(pageRes.body,/chat-281-1/);assert.doesNotMatch(pageRes.body,/data-chat-emoji-toggle|data-chat-emoji-picker|data-chat-emoji=/);assert.match(pageRes.body,/data-chat-owner="true"/);assert.match(pageRes.body,/data-chat-reports-refresh/);
  assert.equal((pageRes.body.match(/id="topluluk-sohbeti"/g)||[]).length,1,'community chat section must expose exactly one unique anchor id');
 });
 
