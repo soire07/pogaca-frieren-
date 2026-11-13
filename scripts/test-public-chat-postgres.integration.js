@@ -4,7 +4,7 @@ import {randomUUID} from 'node:crypto';
 import pg from 'pg';
 import {assertIsolatedAuditDatabase} from './isolated-audit-db-guard.js';
 import {ensurePublicChatSchema,deleteOwnPublicChatMessage,updatePublicChatMessage,togglePublicChatReaction,sendPublicChatMessage} from '../public-chat.js';
-import {sendSiteDirectMessage,listSiteDirectMessages,markSiteDirectMessagesRead,ensureSiteDirectMessageSchema} from '../site-direct-messages.js';
+import {sendSiteDirectMessage,listSiteDirectMessages,markSiteDirectMessagesRead,ensureSiteDirectMessageSchema,createSiteDmGroup,listSiteDmGroups,sendSiteDmGroupMessage,listSiteDmGroupMessages,markSiteDmGroupMessagesRead,leaveSiteDmGroup} from '../site-direct-messages.js';
 
 const {Pool}=pg;
 const account=()=> 'site_'+randomUUID();
@@ -65,6 +65,19 @@ test('site private messages enforce accepted friendships, block rules, receipts 
   assert.equal(receipt.status,'read');assert.equal(receipt.count,1);
   const read=await listSiteDirectMessages(scoped,{accountId:a,otherAccountId:b});
   assert.ok(read.messages[0].read_at);
+  const c=account();
+  await scoped.query("INSERT INTO frieren_account_friend_requests(request_id,requester_account_id,recipient_account_id,status) VALUES($1,$2,$3,'accepted')",[randomUUID(),a,c]);
+  const group=await createSiteDmGroup(scoped,{creatorAccountId:a,memberAccountIds:[b,c],title:'Büyü akademisi'});
+  assert.equal(group.status,'created');
+  assert.equal((await listSiteDmGroups(scoped,b)).length,1);
+  const groupSent=await sendSiteDmGroupMessage(scoped,{senderAccountId:a,groupId:group.groupId,body:'Grup mesajı'});
+  assert.equal(groupSent.status,'sent');
+  const groupInbox=await listSiteDmGroupMessages(scoped,{accountId:b,groupId:group.groupId});
+  assert.equal(groupInbox.status,'ok');assert.equal(groupInbox.messages.length,1);assert.equal(groupInbox.messages[0].username,'Gezgin');
+  assert.equal((await markSiteDmGroupMessagesRead(scoped,{accountId:b,groupId:group.groupId})).status,'read');
+  await scoped.query('INSERT INTO frieren_public_chat_blocks(blocker_account_id,blocked_account_id,blocked_username) VALUES($1,$2,$3)',[b,a,'Gezgin']);
+  assert.equal((await listSiteDmGroupMessages(scoped,{accountId:b,groupId:group.groupId})).messages.length,0);
+  assert.equal((await leaveSiteDmGroup(scoped,{accountId:a,groupId:group.groupId})).status,'left');
   await scoped.query('INSERT INTO frieren_public_chat_blocks(blocker_account_id,blocked_account_id,blocked_username) VALUES($1,$2,$3)',[b,a,'Fern']);
   assert.equal((await sendSiteDirectMessage(scoped,{senderAccountId:a,recipientAccountId:b,body:'Engel sonrası'})).status,'not_allowed');
   assert.deepEqual((await listSiteDirectMessages(scoped,{accountId:a,otherAccountId:b})),{status:'not_allowed',messages:[]});
