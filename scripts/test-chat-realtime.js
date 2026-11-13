@@ -41,3 +41,9 @@ test('unsubscribing releases subscriber slots exactly once',()=>{
  assert.equal(getChatRealtimeSubscriberCount(),before+1);stop();stop();
  assert.equal(getChatRealtimeSubscriberCount(),before);
 });
+
+test('realtime subscriptions are capped per account',()=>{
+ const stops=[subscribeChatEvents(a,()=>{}),subscribeChatEvents(a,()=>{}),subscribeChatEvents(a,()=>{}),subscribeChatEvents(a,()=>{})];
+ try{assert.ok(stops.slice(0,3).every(Boolean));assert.equal(stops[3],null);}
+ finally{for(const stop of stops)stop?.();}
+});
