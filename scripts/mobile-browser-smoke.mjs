@@ -93,9 +93,9 @@ for (const scenario of scenarios) {
       },
       stats: {}
     });
-    await page.setContent('<!doctype html><html lang="tr"><head><link rel="stylesheet" href="' + baseUrl + '/assets/site.css?v=atlas-368-1"></head><body>' + atlasMarkup + '</body></html>');
+    await page.setContent('<!doctype html><html lang="tr"><head><link rel="stylesheet" href="' + baseUrl + '/assets/site.css?v=atlas-370-1"></head><body>' + atlasMarkup + '</body></html>');
     await page.waitForLoadState('networkidle', { timeout: 15000 });
-    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-369-1' });
+    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-370-1' });
     const routeFrom = page.locator('[data-atlas-route-from]');
     const routeTo = page.locator('[data-atlas-route-to]');
     await routeFrom.selectOption('royal-capital');
@@ -136,6 +136,20 @@ for (const scenario of scenarios) {
     if (await terrainLayer.getAttribute('hidden') === null) throw new Error(scenario.name + ' atlas terrain detail toggle did not hide the SVG layer');
     await terrainToggle.click();
     if (await terrainLayer.getAttribute('hidden') !== null) throw new Error(scenario.name + ' atlas terrain detail toggle did not restore the SVG layer');
+    const localDetail = page.locator('[data-atlas-local-detail-layer]');
+    await page.locator('[data-atlas-zoom="1"]').click();
+    if (await localDetail.count() !== 1 || await localDetail.evaluate(node => getComputedStyle(node).opacity) === '0') throw new Error(scenario.name + ' atlas settlement-level detail did not appear at local zoom');
+    await page.locator('[data-atlas-reset]').click();
+    await page.locator('[data-atlas-season]').selectOption('winter');
+    if (await page.locator('.atlas-map-art').getAttribute('data-atlas-season') !== 'winter' || !(await page.locator('[data-atlas-ecology-profile="aus"]').textContent()).includes('Yoğun kar')) throw new Error(scenario.name + ' atlas winter ecology profile did not update');
+    const calibration = page.locator('[data-atlas-reference-km]');
+    await calibration.fill('8');
+    await calibration.dispatchEvent('change');
+    await routeFrom.selectOption('royal-capital');
+    await routeTo.selectOption('ende');
+    await page.locator('[data-atlas-route-submit]').click();
+    if (!(await page.locator('[data-atlas-route-summary]').textContent()).includes('yaklaşık') || !(await page.locator('[data-atlas-route-summary]').textContent()).includes('senin ölçek kalibrasyonun')) throw new Error(scenario.name + ' atlas calibrated kilometre estimate did not appear');
+    await page.locator('[data-atlas-route-clear]').click();
     await page.locator('select[data-atlas-weather]').selectOption('snow');
     const snowMode = await page.locator('.atlas-map-art').getAttribute('data-atlas-weather');
     if (snowMode !== 'snow') throw new Error(scenario.name + ' atlas snow mode was not applied');
