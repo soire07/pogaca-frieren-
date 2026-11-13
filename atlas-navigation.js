@@ -107,23 +107,23 @@ export const ATLAS_HISTORICAL_EVENTS = Object.freeze([
     location: 'Kraliyet Başkenti', anchorKey: 'royal-capital', regionKey: 'merkez',
     ...settlementByKey.get('royal-capital'),
     description: 'Himmel ve kahraman partisinin yolculuğunun başladığı başkent.',
-    officialSource: officialMap, locationSource: locationGuide
+    officialSource: officialMap, locationSource: 'https://frieren-anime.jp/story/ep06/', episodeSources: Object.freeze([{ label: 'Bölüm 06', url: 'https://frieren-anime.jp/story/ep06/' }]), episodeSources: Object.freeze([{ label: 'Bölüm 01', url: 'https://frieren-anime.jp/story/1st/ep01/' }])
   }),
   Object.freeze({
-    id: 'waal-riegel-crossing', title: 'Riegel Kanyonu ve Waal',
+    id: 'riegel-canyon-village-hero', title: 'Riegel Kanyonu köyünün kahramanı',
     episodeStart: 6, episodeEnd: 6, episodeLabel: '6. bölüm',
-    location: 'Waal ve Riegel Kanyonu', anchorKey: 'waal', regionKey: 'merkez',
-    ...settlementByKey.get('waal'),
+    location: 'Riegel Kanyonu kıyısındaki köy', anchorKey: 'riegel-canyon', regionKey: 'merkez',
+    ...nodesById.get('riegel-canyon'),
     description: 'Kuzey ile Merkez Toprakları arasındaki tahkim edilmiş geçiş noktası.',
-    officialSource: officialMap, locationSource: locationGuide
+    officialSource: officialMap, locationSource: locationGuide, episodeSources: Object.freeze([{ label: 'Bölüm 23', url: 'https://frieren-anime.jp/story/ep23/' }, { label: 'Bölüm 26', url: 'https://frieren-anime.jp/story/ep26/' }]), episodeSources: Object.freeze([{ label: 'Bölüm 18', url: 'https://frieren-anime.jp/story/ep18/' }, { label: 'Bölüm 28', url: 'https://frieren-anime.jp/story/ep28/' }])
   }),
   Object.freeze({
     id: 'graf-granat-aura', title: 'Graf Granat bölgesinde Aura olayı',
-    episodeStart: 7, episodeEnd: 11, episodeLabel: '7–11. bölümler',
+    episodeStart: 8, episodeEnd: 9, episodeLabel: '8–9. bölümler',
     location: 'Graf Granat Bölgesi', anchorKey: 'graf-granat', regionKey: 'harabeler',
     ...settlementByKey.get('graf-granat'),
     description: 'Aura ve iblislerinin şehri tehdit ettiği kuzey yolculuğu bölümü.',
-    officialSource: officialMap, locationSource: 'https://frieren.fandom.com/wiki/Story_Arcs'
+    officialSource: officialMap, locationSource: 'https://frieren.fandom.com/wiki/Story_Arcs', episodeSources: Object.freeze([{ label: 'Bölüm 08', url: 'https://frieren-anime.jp/story/ep08/' }, { label: 'Bölüm 09', url: 'https://frieren-anime.jp/story/ep09/' }])
   }),
   Object.freeze({
     id: 'first-class-mage-exam', title: 'Birinci Sınıf Büyücü Sınavı',
