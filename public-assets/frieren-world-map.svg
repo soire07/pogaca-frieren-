@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1200">
+<defs>
+ <linearGradient id="sea" x2="0" y2="1"><stop stop-color="#426d70"/><stop offset=".55" stop-color="#315b63"/><stop offset="1" stop-color="#24464f"/></linearGradient>
+ <linearGradient id="land" x2=".8" y2="1"><stop stop-color="#e8d7ae"/><stop offset=".5" stop-color="#d7c294"/><stop offset="1" stop-color="#bda477"/></linearGradient>
+ <radialGradient id="plains"><stop stop-color="#c8c98a" stop-opacity=".95"/><stop offset="1" stop-color="#9ba875" stop-opacity=".2"/></radialGradient>
+ <radialGradient id="forest"><stop stop-color="#426b4c" stop-opacity=".96"/><stop offset="1" stop-color="#31563f" stop-opacity=".2"/></radialGradient>
+ <radialGradient id="desert"><stop stop-color="#d7a45f" stop-opacity=".95"/><stop offset="1" stop-color="#c18b53" stop-opacity=".18"/></radialGradient>
+ <radialGradient id="snow"><stop stop-color="#e3e8df" stop-opacity=".98"/><stop offset="1" stop-color="#a9c0c5" stop-opacity=".18"/></radialGradient>
+ <radialGradient id="glacier"><stop stop-color="#a9c9cf" stop-opacity=".96"/><stop offset="1" stop-color="#8baeb6" stop-opacity=".2"/></radialGradient>
+ <radialGradient id="volcano"><stop stop-color="#a76a51" stop-opacity=".98"/><stop offset="1" stop-color="#8d594a" stop-opacity=".18"/></radialGradient>
+ <pattern id="paper" width="120" height="120" patternUnits="userSpaceOnUse"><path d="M8 18l24-5m38 34 20-4M17 91l30-7m45 19 15-3" stroke="#765d3d" stroke-opacity=".13" stroke-width="2"/><circle cx="52" cy="76" r="2" fill="#745a3b" opacity=".15"/></pattern>
+ <pattern id="waves" width="90" height="44" patternUnits="userSpaceOnUse"><path d="M0 22q22-15 45 0t45 0" fill="none" stroke="#9bb9b2" stroke-opacity=".18" stroke-width="2"/></pattern>
+ <filter id="soft"><feGaussianBlur stdDeviation="24"/></filter>
+ <filter id="shadow"><feGaussianBlur stdDeviation="8"/></filter>
+</defs>
+<rect width="1800" height="1200" fill="url(#sea)"/><rect width="1800" height="1200" fill="url(#waves)"/>
+<path d="M142 270Q235 150 420 185Q555 94 745 165Q860 88 1018 150Q1150 84 1320 165Q1510 150 1634 330Q1710 455 1622 590Q1705 755 1550 900Q1435 1055 1240 1015Q1100 1120 920 1035Q755 1120 600 1015Q405 1070 275 930Q125 825 182 670Q78 525 142 270Z" fill="#725b40" opacity=".5" filter="url(#shadow)" transform="translate(8 18)"/>
+<path d="M142 270Q235 150 420 185Q555 94 745 165Q860 88 1018 150Q1150 84 1320 165Q1510 150 1634 330Q1710 455 1622 590Q1705 755 1550 900Q1435 1055 1240 1015Q1100 1120 920 1035Q755 1120 600 1015Q405 1070 275 930Q125 825 182 670Q78 525 142 270Z" fill="url(#land)" stroke="#806342" stroke-width="18"/>
+<path d="M142 270Q235 150 420 185Q555 94 745 165Q860 88 1018 150Q1150 84 1320 165Q1510 150 1634 330Q1710 455 1622 590Q1705 755 1550 900Q1435 1055 1240 1015Q1100 1120 920 1035Q755 1120 600 1015Q405 1070 275 930Q125 825 182 670Q78 525 142 270Z" fill="url(#paper)" opacity=".8"/>
+<!-- biome washes -->
+<ellipse cx="475" cy="670" rx="330" ry="250" fill="url(#plains)"/>
+<ellipse cx="665" cy="385" rx="300" ry="245" fill="url(#forest)"/>
+<ellipse cx="1010" cy="770" rx="330" ry="245" fill="url(#desert)"/>
+<ellipse cx="1040" cy="315" rx="310" ry="225" fill="url(#snow)"/>
+<ellipse cx="1370" cy="650" rx="270" ry="260" fill="url(#glacier)"/>
+<ellipse cx="1470" cy="330" rx="250" ry="210" fill="url(#volcano)"/>
+<!-- river -->
+<path d="M490 250Q570 365 520 470T650 650Q730 740 700 930" fill="none" stroke="#6f9b9b" stroke-width="24" opacity=".75"/>
+<path d="M490 250Q570 365 520 470T650 650Q730 740 700 930" fill="none" stroke="#b3c9b5" stroke-width="4" opacity=".65"/>
+<!-- forest clusters -->
+<g fill="#31543d" stroke="#d1c49b" stroke-width="3" opacity=".96">
+<path d="M470 360l42-104 42 104h-23l32 58h-102l32-58z"/><path d="M590 300l48-120 48 120h-27l36 66h-114l36-66z"/><path d="M710 410l39-96 39 96h-22l30 54h-94l30-54z"/><path d="M780 285l35-86 35 86h-20l27 49h-84l27-49z"/><path d="M550 500l34-83 34 83h-19l27 49h-84l27-49z"/>
+<path d="M845 390l34-82 34 82h-19l27 48h-82l27-48z"/>
+</g>
+<!-- golden grassland hills -->
+<g fill="none" stroke="#7f8c5c" stroke-width="8" opacity=".55"><path d="M270 650q100-90 205 0t205 0"/><path d="M250 735q120-80 240 0t230 0"/><path d="M350 820q95-55 190 0t185 0"/></g>
+<!-- desert dunes -->
+<g fill="none" stroke="#f0cc8d" stroke-width="15" stroke-linecap="round" opacity=".72"><path d="M790 720q110-115 230 0t245 0"/><path d="M820 820q100-90 205 0t220 0"/><path d="M930 900q90-65 180 0t180 0"/></g>
+<!-- northern peaks -->
+<g stroke="#7d98a0" stroke-width="8" stroke-linejoin="round">
+<path d="M810 390l115-220 112 220-80-48-34 54-38-54z" fill="#e9e7d7"/>
+<path d="M970 360l135-250 130 250-92-60-38 58-48-57z" fill="#dce5df"/>
+<path d="M1120 410l112-205 115 205-80-48-35 47-42-49z" fill="#e8e8dc"/>
+<path d="M870 440l80-130 82 130-55-28-25 33-29-33z" fill="#b9cbd0"/>
+</g>
+<!-- glacier shards -->
+<g fill="#dce9e4" stroke="#769da6" stroke-width="7"><path d="M1250 570l90-180 88 180-55-24-34 78-34-78z"/><path d="M1390 710l90-205 100 205-65-30-34 83-33-83z"/><path d="M1190 780l66-140 70 140-45-18-25 55-26-55z"/></g>
+<!-- volcanic ridges -->
+<g fill="#594b48" stroke="#a66c51" stroke-width="9"><path d="M1330 390l90-185 92 185-62-28-30 43-31-43z"/><path d="M1470 480l90-175 95 175-65-30-30 42-32-42z"/></g>
+<g fill="none" stroke="#e58b52" stroke-width="10" stroke-linecap="round"><path d="M1420 215l-18 60 28 22 18-42 22-20"/><path d="M1560 305l-18 45 25 20"/></g>
+<!-- fine cartographic roads -->
+<g fill="none" stroke="#8b6943" stroke-width="6" stroke-linecap="round" stroke-dasharray="2 18" opacity=".9">
+<path d="M445 690Q535 540 670 390T1030 315T1460 330"/>
+<path d="M445 690Q700 730 1010 770T1370 650"/>
+<path d="M670 390Q760 520 1010 770"/>
+<path d="M1030 315Q1160 480 1370 650"/>
+</g>
+<g fill="none" stroke="#f2e4c4" stroke-width="2" opacity=".5"><path d="M180 285Q380 160 560 205T940 165T1330 190T1610 340"/><path d="M190 900Q400 1050 600 990T920 1010T1240 970T1540 870"/></g>
+<!-- map title cartouche and compass -->
+<g transform="translate(95 90)"><path d="M0 0h370v92H0z" fill="#e8d7b5" fill-opacity=".82" stroke="#806342" stroke-width="5"/><path d="M14 14h342v64H14z" fill="none" stroke="#aa8b5e" stroke-width="2"/><text x="185" y="40" text-anchor="middle" font-family="Georgia,serif" font-size="17" letter-spacing="5" fill="#735637">THE NORTHERN CONTINENT</text><text x="185" y="67" text-anchor="middle" font-family="Georgia,serif" font-size="13" letter-spacing="3" fill="#92744c">FRIEREN · ADVENTURE ATLAS</text></g>
+<g transform="translate(1600 1020)"><circle r="74" fill="#e6d4ad" fill-opacity=".78" stroke="#82613e" stroke-width="5"/><circle r="60" fill="none" stroke="#a88a5d" stroke-width="2"/><path d="M0-53L13-8 0 0-13-8zM53 0L8 13 0 0 8-13zM0 53L-13 8 0 0 13 8zM-53 0L-8-13 0 0-8 13z" fill="#8b6841"/><text y="-88" text-anchor="middle" fill="#745538" font-family="Georgia,serif" font-size="20">N</text></g>
+</svg>
