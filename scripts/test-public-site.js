@@ -1397,6 +1397,12 @@ test('global account profile renders without a guild picker and keeps profile me
   assert.match(response.body,/sunucu.*karakteri seçmen gerekmez/i);
   assert.match(response.body,/data-profile-media-editor/);
   assert.doesNotMatch(response.body,/Sunucu seç|Karakter seç/);
+  assert.match(response.body,/theme-gallery\.js\?v=theme-gallery-1/);
+  const themeAsset=res();
+  assert.equal(await handlePublicSiteRequest(request('/assets/theme-gallery.js'),themeAsset,{db:null}),true);
+  assert.equal(themeAsset.status,200);
+  assert.match(themeAsset.body.toString('utf8'),/aria-pressed/);
+  assert.match(themeAsset.body.toString('utf8'),/dispatchEvent\(new Event\('change'/);
   assert.match(response.body,/\/assets\/user-center\.js/);
 });
 
