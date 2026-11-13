@@ -817,7 +817,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>2048){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'message_too_large'}));return true;}chunks.push(chunk);}
     const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
     if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
-    try{const result=await markSiteDirectMessagesRead(db,{accountId:session.id,otherAccountId:form.get('recipientAccountId')});res.writeHead(result.status==='read'?200:403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(result));return true;}catch(error){if(String(error?.message||'').startsWith('SITE_DM_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_recipient'}));return true;}throw error;}
+    try{const result=await markSiteDirectMessagesRead(db,{accountId:session.id,otherAccountId:form.get('recipientAccountId')});res.writeHead(result.status==='read'?200:403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(result));return true;}catch(error){if(String(error?.message||'').startsWith('SITE_DM_')||String(error?.message||'').startsWith('CHAT_MEDIA_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_recipient'}));return true;}throw error;}
   }
   if(url.pathname==='/api/site-dm/messages'&&req.method==='POST'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
@@ -926,7 +926,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       if(status===200&&url.pathname!=='/api/public-chat/presence')publishChatEvent({scope:'public'});
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
     }catch(error){
-      if(String(error?.message||'').startsWith('PUBLIC_CHAT_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_chat_action'}));return true;}
+      if(String(error?.message||'').startsWith('PUBLIC_CHAT_')||String(error?.message||'').startsWith('CHAT_MEDIA_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_chat_action'}));return true;}
       throw error;
     }
   }
