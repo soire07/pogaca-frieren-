@@ -973,3 +973,14 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
     transition:none!important;
   }
 }
+
+/* Account notification inbox states. */
+.notification-card { position: relative; display: grid; gap: 10px; }
+.notification-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.notification-state { display: inline-flex; align-items: center; border: 1px solid rgba(167,139,250,.28); border-radius: 999px; padding: 4px 9px; color: #c9b8f5; font-size: .75rem; font-weight: 700; white-space: nowrap; }
+.notification-card.is-unread { border-color: rgba(167,139,250,.58); box-shadow: inset 3px 0 0 rgba(167,139,250,.8), 0 12px 30px rgba(8,6,24,.16); }
+.notification-card.is-read .notification-state { color: #aaa3bd; border-color: rgba(170,163,189,.22); }
+.notification-all-read { color: #bcb4d0; font-size: .9rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .notification-card { transition: border-color .18s ease, box-shadow .18s ease; }
+}
