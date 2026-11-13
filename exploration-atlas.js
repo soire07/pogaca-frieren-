@@ -32,7 +32,7 @@ const position = (x,y) => 'left:'+x+'%;top:'+y+'%;';
 
 function pin({key,targetKey=key,label,type,icon,x,y,focus='region',extraClass='',subtitle=''}) {
   const title = subtitle ? label+' · '+subtitle : label;
-  return '<button type="button" class="atlas-pin atlas-pin-'+type+' '+extraClass+'" style="'+position(x,y)+'" data-atlas-layer-item="'+type+'" data-atlas-open="'+escapeHtml(key)+'" data-atlas-focus="'+focus+'" data-atlas-target-key="'+escapeHtml(targetKey)+'" aria-label="'+escapeHtml(title)+'" title="'+escapeHtml(title)+'"><span class="atlas-pin-glyph" aria-hidden="true">'+icon+'</span><span class="atlas-pin-label">'+escapeHtml(label)+'</span></button>';
+  return '<button type="button" class="atlas-pin atlas-pin-'+type+' '+(type==='city'&&Number(x)>=68?'atlas-pin-label-left ':'')+extraClass+'" style="'+position(x,y)+'" data-atlas-layer-item="'+type+'" data-atlas-open="'+escapeHtml(key)+'" data-atlas-focus="'+focus+'" data-atlas-target-key="'+escapeHtml(targetKey)+'" aria-label="'+escapeHtml(title)+'" title="'+escapeHtml(title)+'"><span class="atlas-pin-glyph" aria-hidden="true">'+icon+'</span><span class="atlas-pin-label">'+escapeHtml(label)+'</span></button>';
 }
 
 function detailRow({key,name,description,icon,state='',focus=''}) {
