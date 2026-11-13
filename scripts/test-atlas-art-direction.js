@@ -238,3 +238,20 @@ test('atlas color grading keeps terrain vivid and legible on desktop and mobile'
   assert.match(colorGrade, /contrast\(1\.055\)/);
   assert.match(colorGrade, /@media\(max-width:700px\)/);
 });
+
+
+test('painterly terrain avoids tiled forest stamps and identical repeated mountain silhouettes', async () => {
+  const artwork = await readFile(new URL('../public-assets/frieren-world-map.svg', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  for (const variant of ['a', 'b', 'c', 'd']) {
+    assert.match(artwork, new RegExp('id="atlas-canopy-' + variant + '"'), 'forest canopy needs distinct crown geometry: ' + variant);
+    assert.match(artwork, new RegExp('id="atlas-peak-' + variant + '"'), 'mountain relief needs distinct peak geometry: ' + variant);
+    assert.match(artwork, new RegExp('href="#atlas-canopy-' + variant + '"'), 'forest should use canopy variant ' + variant);
+    assert.match(artwork, new RegExp('href="#atlas-peak-' + variant + '"'), 'mountains should use peak variant ' + variant);
+  }
+  assert.doesNotMatch(artwork, /<use href="#atlas-canopy" transform="translate\(\d+ \d+\) scale\([^)]+\)"\/>/);
+  assert.doesNotMatch(artwork, /<use href="#atlas-peak" transform="translate\(\d+ \d+\) scale\([^)]+\)"\/>/);
+  const colorGrade = css.slice(css.lastIndexOf('Painterly atlas color grade'));
+  assert.match(colorGrade, /\.atlas-map-viewport\{[^}]*aspect-ratio:3\/2/, '3:2 viewport ratio must remain authoritative');
+  assert.match(colorGrade, /@media\(max-width:700px\)/, 'mobile map treatment must remain explicit');
+});
