@@ -449,6 +449,10 @@ export async function exportSiteAccountData(db, accountId) {
     accountData[table] = rows.rows;
   }
   await includeForeignKeyDescendants(db, accountData);
+  const dmTable = await db.query("SELECT to_regclass('frieren_site_direct_messages') AS table_name");
+  const siteDirectMessages = dmTable.rows?.[0]?.table_name
+    ? await db.query('SELECT message_id,sender_account_id,recipient_account_id,body,created_at,read_at FROM frieren_site_direct_messages WHERE sender_account_id=$1 OR recipient_account_id=$1 ORDER BY created_at,message_id',[accountId])
+    : { rows: [] };
   const ticketsResult = await db.query(
     'SELECT ticket_id,category,subject,message,status,created_at,updated_at FROM frieren_support_tickets WHERE account_id=$1 ORDER BY created_at,ticket_id',
     [id]
@@ -466,6 +470,7 @@ export async function exportSiteAccountData(db, accountId) {
     account: accountResult.rows[0],
     accountData,
     linkedProfiles,
+    siteDirectMessages: siteDirectMessages.rows,
     supportTickets: tickets,
     deletionScope: 'Deleting the site account removes this portal identity and its Discord links. Discord-owned RPG profiles and guild game records remain intact.'
   };
@@ -481,6 +486,10 @@ export async function deleteSiteAccount(db, accountId, confirmation) {
     if (!account.rowCount) {
       await client.query('ROLLBACK');
       return { status: 'not_found' };
+    }
+    const dmTable = await client.query("SELECT to_regclass('frieren_site_direct_messages') AS table_name");
+    if (dmTable.rows?.[0]?.table_name) {
+      await client.query('DELETE FROM frieren_site_direct_messages WHERE sender_account_id=$1 OR recipient_account_id=$1',[accountId]);
     }
     const accountTables = await client.query("SELECT table_name,data_type FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='account_id'");
     for (const table of accountTables.rows || []) {
