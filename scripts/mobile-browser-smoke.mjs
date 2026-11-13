@@ -126,7 +126,7 @@ for (const scenario of scenarios) {
     if (await eventPin.count() === 0) throw new Error(scenario.name + ' atlas historical event markers are missing');
     await eventPin.click();
     if (await page.locator('[data-atlas-modal]').isHidden() || await page.locator('.atlas-event-row.is-highlighted').count() !== 1) throw new Error(scenario.name + ' atlas historical event did not open and highlight its sourced detail');
-    await page.locator('[data-atlas-close]').first().click();
+    await page.locator('[data-atlas-close]').last().click();
     const terrainLayer = page.locator('[data-atlas-geography-layer="terrain-details"]');
     const terrainToggle = page.locator('[data-atlas-geography="terrain-details"]');
     if (await terrainLayer.count() !== 1 || await terrainLayer.getAttribute('hidden') !== null) {
@@ -153,7 +153,7 @@ for (const scenario of scenarios) {
     }
     await page.locator('[data-atlas-open]').first().click();
     if (await page.locator('[data-atlas-modal]').isHidden()) throw new Error(scenario.name + ' atlas marker click did not open its region detail panel');
-    await page.locator('[data-atlas-close]').first().click();
+    await page.locator('[data-atlas-close]').last().click();
     if (!(await page.locator('[data-atlas-modal]').isHidden())) throw new Error(scenario.name + ' atlas region detail panel did not close');
     const encyclopediaPage = await page.goto(baseUrl + '/ansiklopedi', { waitUntil: 'domcontentloaded', timeout: 45000 });
     if (!encyclopediaPage || encyclopediaPage.status() !== 200) throw new Error(scenario.name + ' character encyclopedia HTTP ' + (encyclopediaPage?.status() || 'no response'));
