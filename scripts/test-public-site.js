@@ -1208,7 +1208,7 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/data-map-marker-type="relic"/);
  assert.match(response.body,/Boss noktaları/);
  assert.match(response.body,/Schattenwolf/);
- assert.match(response.body,/Merkez Mahzeni/);
+ assert.match(response.body,/Merkez Topraklar Mahzeni/);
  assert.match(response.body,/Nadir ganimet noktaları/);
  assert.match(response.body,/Schattenwolfzahn/);
  assert.match(response.body,/Envanterinde ×2/);
