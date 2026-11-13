@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { ensureProfileMediaSchema } from './profile-media.js';
-import { ensureSiteAccountSchema } from './site-auth.js';
+import { ensureSiteDiscordAccountSchema, buildDiscordAvatarUrl } from './site-auth.js';
 import { createAccountNotification, ensureAccountProfileSchema } from './account-profile.js';
 
 const publicChatSchemaReady=new WeakMap();
@@ -50,12 +50,13 @@ export async function listPublicChatMessages(db,{limit=100,viewerAccountId=null,
  const viewer=viewerAccountId&&ACCOUNT_ID.test(String(viewerAccountId))?String(viewerAccountId):null;
  const owners=Array.isArray(ownerAccountIds)?[...new Set(ownerAccountIds.map(value=>String(value||'')).filter(value=>ACCOUNT_ID.test(value)))]:[];
  await ensurePublicChatSchema(db);
- await ensureSiteAccountSchema(db);
+ await ensureSiteDiscordAccountSchema(db);
  await ensureAccountProfileSchema(db);
  await ensureProfileMediaSchema(db);
  const result=await db.query(`SELECT m.message_id,m.account_id,COALESCE(NULLIF(ap.display_name,''),m.username) AS username,ap.profile_slug,m.body,m.created_at,m.edited_at,m.pinned_at,m.deleted_at,m.reply_to_message_id,m.account_id=$2 AS is_own,
   (m.account_id=ANY($5::text[]) OR EXISTS(SELECT 1 FROM site_discord_links sdl WHERE sdl.account_id=REPLACE(m.account_id,'site_','')::uuid AND sdl.user_id='1553794496234262641')) AS is_owner,
   CASE WHEN EXISTS(SELECT 1 FROM frieren_profile_media pm WHERE pm.account_id=REPLACE(m.account_id,'site_','')::uuid AND pm.media_kind='avatar') THEN '/profil/media/public?accountId='||m.account_id ELSE NULL END AS avatar_url,
+  dsa.discord_user_id,dsa.discord_avatar_hash,
   (SELECT COUNT(*)::int FROM frieren_public_chat_reads rd WHERE rd.message_id=m.message_id AND rd.reader_account_id<>m.account_id) AS read_count,
   EXISTS(SELECT 1 FROM frieren_public_chat_presence pr WHERE pr.account_id=m.account_id AND pr.last_seen_at>NOW()-INTERVAL '90 seconds') AS is_online,
   COALESCE((SELECT jsonb_agg(jsonb_build_object('emoji',r.emoji,'count',r.count,'reacted',r.reacted)) FROM (
@@ -63,12 +64,13 @@ export async function listPublicChatMessages(db,{limit=100,viewerAccountId=null,
   ) r),'[]'::jsonb) AS reactions,
   (SELECT jsonb_build_object('username',p.username,'body',CASE WHEN p.deleted_at IS NOT NULL THEN 'Bu mesaj silindi' ELSE LEFT(p.body,120) END) FROM frieren_public_chat_messages p WHERE p.message_id=m.reply_to_message_id) AS reply
   FROM frieren_public_chat_messages m LEFT JOIN frieren_account_profiles ap ON ap.account_id=m.account_id
+  LEFT JOIN frieren_site_discord_accounts dsa ON dsa.account_id=REPLACE(m.account_id,'site_','')::uuid
   WHERE m.hidden=FALSE AND m.created_at>=NOW()-INTERVAL '30 days'
    AND ($2::text IS NULL OR NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE b.blocker_account_id=$2 AND b.blocked_account_id=m.account_id))
    AND ($3::timestamptz IS NULL OR (m.created_at<$3 AND m.pinned_at IS NULL))
    AND ($4::text='' OR m.username ILIKE '%'||$4||'%' OR ap.display_name ILIKE '%'||$4||'%' OR m.body ILIKE '%'||$4||'%')
   ORDER BY (m.pinned_at IS NOT NULL) DESC,m.created_at DESC,m.message_id DESC LIMIT $1`,[count,viewer,cursor,term,owners]);
- return result.rows.reverse().sort((a,b)=>Number(Boolean(b.pinned_at))-Number(Boolean(a.pinned_at)));
+ return result.rows.reverse().sort((a,b)=>Number(Boolean(b.pinned_at))-Number(Boolean(a.pinned_at))).map(({discord_user_id,discord_avatar_hash,...row})=>({...row,avatar_url:row.avatar_url||buildDiscordAvatarUrl(discord_user_id,discord_avatar_hash)}));
 }
 
 export async function sendPublicChatMessage(db,{accountId,username,body,replyToMessageId=null}){
