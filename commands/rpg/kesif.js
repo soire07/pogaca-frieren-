@@ -3,6 +3,7 @@ import { pool, ensureUser } from '../../database/db.js';
 import { equipmentItems, equipmentBonus } from '../../equipment-data.js';
 import { levelForXp } from '../../utils.js';
 import { recordJournalEntry } from '../../gameplay-journal.js';
+import { EXPLORATION_REGION_CATALOG } from '../../exploration-regions.js';
 import { applyClassDefense, applyClassManaCost, applyEquipmentSetBonus, explorationMasteryReward, getCharacterBuild } from '../../rpg-mechanics.js';
 
 const COOLDOWN_MS = 15 * 60 * 1000;
@@ -63,6 +64,13 @@ const regions = {
   }
 };
 
+for (const region of EXPLORATION_REGION_CATALOG) {
+  const configured = regions[region.key];
+  if (!configured) throw new Error('EXPLORATION_REGION_CATALOG_MISMATCH');
+  configured.name = `${region.emoji} ${region.name}`;
+  configured.minLevel = region.minLevel;
+}
+
 const craftingMaterials = {
   merkez: '🥐 Büyülü Poğaça Kutusu',
   orman: '💎 Mana Kristali',
@@ -80,14 +88,10 @@ export default {
       option.setName('bolge')
         .setDescription('Keşfe çıkmak istediğin bölge')
         .setRequired(true)
-        .addChoices(
-          { name: 'Merkez Topraklar (Seviye 1+)', value: 'merkez' },
-          { name: 'Büyük Orman Yolu (Seviye 5+)', value: 'orman' },
-          { name: 'Kadim Harabeler (Seviye 12+)', value: 'harabeler' },
-          { name: 'Kuzey Topraklarına Giden Yol (Seviye 20+)', value: 'kuzey' },
-          { name: 'Kuzey Yaylaları (Seviye 35+)', value: 'yayla' },
-          { name: 'Äußerst Sınav Rotası (Seviye 50+)', value: 'aus' }
-        )
+        .addChoices(...EXPLORATION_REGION_CATALOG.map(region => ({
+          name: `${region.name} (Seviye ${region.minLevel}+)`,
+          value: region.key
+        })))
     ),
 
   async execute(interaction) {
