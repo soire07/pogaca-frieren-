@@ -16,8 +16,8 @@
  <filter id="land-shadow" x="-15%" y="-15%" width="130%" height="135%"><feGaussianBlur stdDeviation="17"/></filter>
  <filter id="soft-shadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5"/></filter>
  <clipPath id="continent"><path d="M190 285Q270 170 425 182Q540 90 690 155Q815 78 970 138Q1115 75 1245 145Q1405 112 1535 235Q1665 320 1615 475Q1695 600 1600 735Q1640 875 1500 980Q1370 1080 1210 1018Q1080 1130 930 1050Q790 1120 650 1030Q485 1080 365 980Q205 905 220 760Q115 640 155 500Q90 380 190 285Z"/></clipPath>
- <g id="pine"><path d="M0 0l18-42 18 42h-11l16 27H-5L11 0z" fill="#294b3b" stroke="#d8cba9" stroke-width="2"/><path d="M18-34v51" stroke="#d7c69e" stroke-opacity=".5" stroke-width="2"/></g>
- <g id="hill"><path d="M0 28Q34-26 72 28Q37 12 0 28Z" fill="#9da17b" stroke="#e5d6b5" stroke-width="2"/><path d="M13 24Q36 1 58 24" fill="none" stroke="#e8dcc2" stroke-width="2"/></g>
+ <g id="atlas-pine"><path d="M0 0l18-42 18 42h-11l16 27H-5L11 0z" fill="#294b3b" stroke="#d8cba9" stroke-width="2"/><path d="M18-34v51" stroke="#d7c69e" stroke-opacity=".5" stroke-width="2"/></g>
+ <g id="atlas-hill"><path d="M0 28Q34-26 72 28Q37 12 0 28Z" fill="#9da17b" stroke="#e5d6b5" stroke-width="2"/><path d="M13 24Q36 1 58 24" fill="none" stroke="#e8dcc2" stroke-width="2"/></g>
  <g id="peak"><path d="M0 105L90 0 178 105 126 82 93 99 60 80Z" fill="#738a8d" stroke="#f0eee0" stroke-width="7" stroke-linejoin="round"/><path d="M90 0L74 67 91 54 109 75Z" fill="#f4f0df"/><path d="M90 0L178 105 126 82 93 99 109 75Z" fill="#b8c7bf"/></g>
 </defs>
 <rect width="1800" height="1200" fill="url(#sea)"/><rect width="1800" height="1200" fill="url(#sea-lines)"/>
@@ -38,13 +38,13 @@
  <!-- Größe Forest -->
  <path d="M250 355Q360 260 525 325T700 490Q620 610 440 590T235 475Z" fill="url(#forest)" stroke="#3b5b43" stroke-width="5"/>
  <g opacity=".95">
-  <use href="#pine" x="300" y="410"/><use href="#pine" x="365" y="355"/><use href="#pine" x="430" y="390"/><use href="#pine" x="500" y="350"/><use href="#pine" x="565" y="415"/><use href="#pine" x="630" y="450"/>
-  <use href="#pine" x="320" y="500"/><use href="#pine" x="390" y="535"/><use href="#pine" x="465" y="480"/><use href="#pine" x="535" y="535"/><use href="#pine" x="605" y="520"/>
+  <use href="#atlas-pine" x="300" y="410"/><use href="#atlas-pine" x="365" y="355"/><use href="#atlas-pine" x="430" y="390"/><use href="#atlas-pine" x="500" y="350"/><use href="#atlas-pine" x="565" y="415"/><use href="#atlas-pine" x="630" y="450"/>
+  <use href="#atlas-pine" x="320" y="500"/><use href="#atlas-pine" x="390" y="535"/><use href="#atlas-pine" x="465" y="480"/><use href="#atlas-pine" x="535" y="535"/><use href="#atlas-pine" x="605" y="520"/>
  </g>
  <!-- Central Lands -->
  <path d="M270 650Q380 570 540 620T770 750Q720 925 535 980T270 870Q190 770 270 650Z" fill="url(#golden)" opacity=".88"/>
  <g fill="none" stroke="#e8d8a8" stroke-width="8" stroke-linecap="round" opacity=".62"><path d="M275 760Q390 680 510 750T740 770"/><path d="M300 835Q430 755 555 830T710 850"/><path d="M365 905Q475 845 600 910"/></g>
- <g opacity=".7"><use href="#hill" x="280" y="665"/><use href="#hill" x="400" y="615"/><use href="#hill" x="570" y="690"/><use href="#hill" x="640" y="820"/><use href="#hill" x="420" y="900"/></g>
+ <g opacity=".7"><use href="#atlas-hill" x="280" y="665"/><use href="#atlas-hill" x="400" y="615"/><use href="#atlas-hill" x="570" y="690"/><use href="#atlas-hill" x="640" y="820"/><use href="#atlas-hill" x="420" y="900"/></g>
  <!-- Ruins and dry basin -->
  <path d="M730 520Q880 455 1030 520T1190 690Q1090 820 900 800T700 665Z" fill="#c19c70" opacity=".72"/>
  <g fill="none" stroke="#e8c998" stroke-width="12" stroke-linecap="round" opacity=".68"><path d="M760 625Q865 545 970 620T1150 625"/><path d="M780 700Q900 630 1015 705T1150 700"/></g>
