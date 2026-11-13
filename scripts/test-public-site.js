@@ -1701,3 +1701,35 @@ test('public pages expose persistent and keyboard-accessible reading controls', 
  assert.match(styles,/data-a11y-contrast=high/);
  assert.match(styles,/data-a11y-motion=reduce/);
 });
+
+test('spellbook search and mastery filters update visible entries and empty state', async () => {
+ const source=await readFile(new URL('../public-assets/spellbook-controls.js',import.meta.url),'utf8');
+ const listeners={};
+ const search={value:'',addEventListener(type,callback){listeners['search:'+type]=callback;}};
+ const mastery={value:'',addEventListener(type,callback){listeners['mastery:'+type]=callback;}};
+ const count={textContent:''},empty={hidden:true};
+ const entries=[
+  {dataset:{search:'alev kuresi fire damage',mastery:'2'},hidden:false},
+  {dataset:{search:'buz mizragi ice freeze',mastery:'1'},hidden:false},
+  {dataset:{search:'mana patlamasi arcane',mastery:'3'},hidden:false}
+ ];
+ const root={dataset:{},querySelector(selector){return selector==='[data-spellbook-filter]'?search:selector==='[data-spellbook-mastery]'?mastery:selector==='[data-spellbook-count]'?count:selector==='[data-spellbook-empty]'?empty:null;},querySelectorAll(selector){return selector==='[data-spellbook-entry]'?entries:[];}};
+ const document={querySelector(selector){return selector==='[data-spellbook]'?root:null;}};
+ const {runInNewContext}=await import('node:vm');
+ runInNewContext(source,{document});
+ assert.equal(root.dataset.spellbookReady,'true');
+ assert.equal(count.textContent,'3 / 3 büyü');
+ search.value='ice';
+ listeners['search:input']();
+ assert.deepEqual(entries.map(entry=>entry.hidden),[true,false,true]);
+ assert.equal(count.textContent,'1 / 3 büyü');
+ mastery.value='3';
+ listeners['mastery:change']();
+ assert.deepEqual(entries.map(entry=>entry.hidden),[true,true,true]);
+ assert.equal(count.textContent,'0 / 3 büyü');
+ assert.equal(empty.hidden,false);
+ search.value='arcane';
+ listeners['search:input']();
+ assert.deepEqual(entries.map(entry=>entry.hidden),[true,true,false]);
+ assert.equal(empty.hidden,true);
+});
