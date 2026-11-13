@@ -750,9 +750,19 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!requireSiteAccount(res,session?.id))return true;
     if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'messages_unavailable'}));return true;}
     const other=String(url.searchParams.get('with')||'');
+    if(!SITE_ACCOUNT_ID.test(other)){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_recipient'}));return true;}
     const result=await listSiteDirectMessages(db,{accountId:session.id,otherAccountId:other,limit:60});
-    if(result.status==='ok')await markSiteDirectMessagesRead(db,{accountId:session.id,otherAccountId:other});
     res.writeHead(result.status==='ok'?200:403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
+  }
+  if(url.pathname==='/api/site-dm/read'&&req.method==='POST'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
+    if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'messages_unavailable'}));return true;}
+    if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
+    let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>2048){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'message_too_large'}));return true;}chunks.push(chunk);}
+    const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
+    if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
+    try{const result=await markSiteDirectMessagesRead(db,{accountId:session.id,otherAccountId:form.get('recipientAccountId')});res.writeHead(result.status==='read'?200:403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(result));return true;}catch(error){if(String(error?.message||'').startsWith('SITE_DM_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_recipient'}));return true;}throw error;}
   }
   if(url.pathname==='/api/site-dm/messages'&&req.method==='POST'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
