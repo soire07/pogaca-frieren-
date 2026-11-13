@@ -99,3 +99,22 @@ test('chat reports validate ownership, reason and prevent duplicate reports',asy
  assert.equal(inserted,1);
  await assert.rejects(()=>reportPublicChatMessage(db,{accountId:account,messageId:'123e4567-e89b-12d3-a456-426614174000',reason:'unknown'}),/PUBLIC_CHAT_REPORT_INVALID/);
 });
+
+
+test('public chat prefers an uploaded avatar and otherwise resolves the linked Discord avatar without leaking link fields',async()=>{
+ const {buildDiscordAvatarUrl}=await import('../site-auth.js');
+ let sql='';
+ const db={async query(q){if(q.includes('SELECT m.message_id')){sql=q;return{rows:[
+  {message_id:'uploaded',account_id:account,username:'Fern',avatar_url:'/profil/media/public?accountId='+account,discord_user_id:'123456789012345678',discord_avatar_hash:'a_customhash'},
+  {message_id:'discord',account_id:account,username:'Stark',avatar_url:null,discord_user_id:'123456789012345678',discord_avatar_hash:'a_customhash'},
+  {message_id:'default',account_id:account,username:'Frieren',avatar_url:null,discord_user_id:'123456789012345678',discord_avatar_hash:null}
+ ],rowCount:3};}return{rows:[],rowCount:0};}};
+ const rows=await listPublicChatMessages(db);
+ assert.match(sql,/LEFT JOIN frieren_site_discord_accounts/);
+ assert.match(sql,/discord_avatar_hash/);
+ assert.equal(rows[0].avatar_url,'/profil/media/public?accountId='+account);
+ assert.equal(rows[1].avatar_url,buildDiscordAvatarUrl('123456789012345678','a_customhash'));
+ assert.equal(rows[2].avatar_url,buildDiscordAvatarUrl('123456789012345678',null));
+ assert.equal(Object.hasOwn(rows[1],'discord_avatar_hash'),false);
+ assert.equal(Object.hasOwn(rows[1],'discord_user_id'),false);
+});
