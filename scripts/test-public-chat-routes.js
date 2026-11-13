@@ -8,7 +8,7 @@ import {createSiteCsrfToken} from '../site-auth.js';
 const secret='test-public-chat-secret-at-least-32-characters';
 process.env.ADMIN_SESSION_SECRET=secret;
 const account={id:'site_123e4567-e89b-12d3-a456-426614174000',username:'Gezgin'};
-function response(){return{status:0,headers:{},body:'',writeHead(status,headers={}){this.status=status;this.headers=headers;},end(body){this.body=body;}};}
+function response(){const listeners={};return{status:0,headers:{},body:'',writableEnded:false,writeHead(status,headers={}){this.status=status;this.headers=headers;},write(body){this.body+=String(body);return true;},end(body){this.body=body;this.writableEnded=true;},on(event,callback){listeners[event]=callback;return this;},close(){listeners.close?.();}};}
 function cookieFor(user){const token=createPublicSiteSession(secret,user,Math.floor(Date.now()/1000)+3600);return buildPublicSiteSessionCookie(token,3600).split(';')[0];}
 function get(path,user){return{method:'GET',url:path,headers:user?{cookie:cookieFor(user)}:{}};}
 
@@ -117,4 +117,10 @@ test('site group chat endpoints reject anonymous access and CSRF-less writes',as
   const authenticated=Readable.from([Buffer.from('csrf=bad')]);Object.assign(authenticated,{method:'POST',url:path,headers:{cookie:cookieFor(account),'content-type':'application/x-www-form-urlencoded'}});
   const csrfDenied=response();await handlePublicSiteRequest(authenticated,csrfDenied,{db});assert.equal(csrfDenied.status,403,path);
  }
+});
+
+test('chat event stream requires an authenticated account and releases its listener on close',async()=>{
+ const anonymous=response();assert.equal(await handlePublicSiteRequest(get('/api/chat-events'),anonymous,{db:{query:async()=>({rows:[],rowCount:0})}}),true);assert.equal(anonymous.status,302);
+ const stream=response();assert.equal(await handlePublicSiteRequest(get('/api/chat-events',account),stream,{db:{query:async()=>({rows:[],rowCount:0})}}),true);
+ assert.equal(stream.status,200);assert.match(stream.headers['Content-Type'],/text\/event-stream/);assert.match(stream.body,/retry: 3000/);stream.close();
 });
