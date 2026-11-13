@@ -27,7 +27,7 @@ Chat attachments use a dedicated Supabase Storage project on the **Free** plan. 
 ## Free-only and security safeguards
 
 - Keep the Supabase organization/project on **Free**. Do not add paid compute, add-ons, or upgrade the plan.
-- Supabase Free currently includes 1 GB file storage, 5 GB uncached egress and 5 GB cached egress; its Free projects can pause after one week of inactivity.
+- Supabase Free currently includes 1 GB file storage, 5 GB uncached egress and 5 GB cached egress per organization; quotas are shared across that organization's projects. Create a separate Free organization for Frieren media so other projects do not consume its quota. Free projects can pause after one week of inactivity.
 - Free-plan quota overruns trigger service restrictions after notice/grace handling; do not upgrade to clear them. The app's own object metadata ceiling is lower: 900 MiB, leaving headroom below the 1 GB storage quota.
 - The app rejects further uploads when its 900 MiB total metadata ceiling or 150 MiB per-account rolling 24-hour limit is reached. Per-file limits remain: images 8 MiB, video 24 MiB, audio 16 MiB.
 - Supabase S3 access keys have full access to all buckets in their Supabase project and bypass Storage RLS. This is why the project must be dedicated to this one private chat bucket; never reuse its credentials elsewhere.
