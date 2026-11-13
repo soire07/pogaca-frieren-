@@ -158,3 +158,15 @@ export async function discardChatMedia(db,{mediaId,accountId}){
  await db.query('DELETE FROM frieren_site_chat_media WHERE media_id=$1 AND owner_account_id=$2 AND message_id IS NULL',[mediaId,accountId]);
  return{status:'deleted'};
 }
+
+export async function deleteChatMediaForMessage(db,messageId){
+ if(!/^[0-9a-f-]{36}$/i.test(String(messageId||'')))throw new Error('CHAT_MEDIA_ATTACHMENT_INVALID');
+ await ensureChatMediaSchema(db);
+ const row=await db.query('SELECT media_id,object_key FROM frieren_site_chat_media WHERE message_id=$1',[messageId]);
+ if(!row.rowCount)return{status:'empty'};
+ if(!config())return{status:'cleanup_pending'};
+ const response=await fetch(signChatMediaUrl('DELETE',row.rows[0].object_key,null,300),{method:'DELETE'});
+ if(!response.ok&&response.status!==404)return{status:'cleanup_pending'};
+ await db.query('DELETE FROM frieren_site_chat_media WHERE media_id=$1',[row.rows[0].media_id]);
+ return{status:'deleted'};
+}
