@@ -1,0 +1,55 @@
+name: Vercel production external browser smoke
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/vercel-production-smoke.yml'
+      - 'scripts/vercel-production-smoke.mjs'
+      - 'scripts/test-command-registration-workflows.js'
+  deployment_status:
+  schedule:
+    - cron: '41 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-production-external-smoke
+  cancel-in-progress: true
+
+jobs:
+  workflow-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate production smoke workflow contract
+        run: node --test scripts/test-command-registration-workflows.js
+
+  production-smoke:
+    if: github.event_name != 'deployment_status' || (github.event.deployment_status.state == 'success' && contains(fromJSON('["Production","production"]'), github.event.deployment.environment))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the workflow source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.deployment.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pinned Playwright
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
+      - name: Install Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
+      - name: Verify Vercel production DNS, HTTP, TLS, assets and responsive browsers
+        env:
+          SITE_SMOKE_BASE_URL: https://frierenbot.vercel.app
+        run: node scripts/vercel-production-smoke.mjs
