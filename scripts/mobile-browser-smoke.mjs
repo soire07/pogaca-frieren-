@@ -141,7 +141,9 @@ for (const scenario of scenarios) {
     await page.locator('[data-atlas-zoom="1"]').click();
     await page.locator('[data-atlas-zoom="1"]').click();
     await page.locator('[data-atlas-zoom="1"]').click();
-    if (await localDetail.count() !== 1 || await localDetail.evaluate(node => getComputedStyle(node).opacity) === '0') throw new Error(scenario.name + ' atlas settlement-level detail did not appear at local zoom');
+    const localZoomLevel = await page.locator('.atlas-map-art').getAttribute('data-atlas-zoom-detail');
+    if (await localDetail.count() !== 1 || localZoomLevel !== 'local') throw new Error(scenario.name + ' atlas settlement-level detail layer did not activate at local zoom: ' + localZoomLevel);
+    await page.waitForFunction(() => { const node = document.querySelector('[data-atlas-local-detail-layer]'); return Boolean(node && Number(getComputedStyle(node).opacity) > 0.5); }, null, { timeout: 3000 });
     await page.locator('[data-atlas-reset]').click();
     await page.locator('[data-atlas-season]').selectOption('winter');
     if (await page.locator('.atlas-map-art').getAttribute('data-atlas-season') !== 'winter' || !(await page.locator('[data-atlas-ecology-profile="aus"]').textContent()).includes('Yoğun kar')) throw new Error(scenario.name + ' atlas winter ecology profile did not update');
