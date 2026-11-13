@@ -203,7 +203,7 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   assert.ok(client.includes("querySelectorAll('[data-atlas-geography-layer="), 'client must locate the SVG layer rendered by the server module');
   assert.match(client, /toggleAttribute\('hidden',!enabled\)/, 'SVG layer visibility must use a real hidden attribute');
   assert.match(atlas, /atlas-362-1/);
-  assert.match(site, /exploration-atlas\.js\?v=atlas-368-1/);
+  assert.match(site, /exploration-atlas\.js\?v=atlas-369-1/);
   assert.match(locations, /x:39, y:79/);
   assert.match(locations, /level_1: Object\.freeze\(\{ regionKey:'merkez', x:43, y:72/);
 });
