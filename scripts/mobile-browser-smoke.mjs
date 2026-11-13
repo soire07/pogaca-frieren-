@@ -138,6 +138,9 @@ for (const scenario of scenarios) {
     if (await terrainLayer.getAttribute('hidden') !== null) throw new Error(scenario.name + ' atlas terrain detail toggle did not restore the SVG layer');
     const localDetail = page.locator('[data-atlas-local-detail-layer]');
     await page.locator('[data-atlas-zoom="1"]').click();
+    await page.locator('[data-atlas-zoom="1"]').click();
+    await page.locator('[data-atlas-zoom="1"]').click();
+    await page.locator('[data-atlas-zoom="1"]').click();
     if (await localDetail.count() !== 1 || await localDetail.evaluate(node => getComputedStyle(node).opacity) === '0') throw new Error(scenario.name + ' atlas settlement-level detail did not appear at local zoom');
     await page.locator('[data-atlas-reset]').click();
     await page.locator('[data-atlas-season]').selectOption('winter');
