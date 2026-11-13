@@ -74,7 +74,7 @@ test('site group conversations require friendship with every invited member and 
  const {createSiteDmGroup,sendSiteDmGroupMessage,listSiteDmGroupMessages,markSiteDmGroupMessagesRead,leaveSiteDmGroup}=await import('../site-direct-messages.js');
  const created=await createSiteDmGroup(db,{creatorAccountId:a,memberAccountIds:[b,c],title:'Büyü akademisi'});assert.equal(created.status,'created');
  assert.equal(seen.filter(x=>x.sql.startsWith('INSERT INTO frieren_site_dm_group_members')).length,3);
- assert.equal((await sendSiteDmGroupMessage(db,{senderAccountId:a,groupId,message:'Grup selamı'})).status,'sent');
+ assert.equal((await sendSiteDmGroupMessage(db,{senderAccountId:a,groupId,body:'Grup selamı'})).status,'sent');
  const messages=await listSiteDmGroupMessages(db,{accountId:b,groupId});assert.equal(messages.status,'ok');assert.equal(messages.messages[0].username,'Fern');
  assert.equal((await markSiteDmGroupMessagesRead(db,{accountId:b,groupId})).status,'read');
  assert.equal((await leaveSiteDmGroup(db,{accountId:a,groupId})).status,'left');
