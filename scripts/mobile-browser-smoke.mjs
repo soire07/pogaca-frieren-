@@ -24,6 +24,12 @@ for (const scenario of scenarios) {
       hasTouch: true
     });
     const page = await context.newPage();
+    const browserErrors = [];
+    const pageErrors = [];
+    const failedRequests = [];
+    page.on('console', message => { if (message.type() === 'error') browserErrors.push(message.text()); });
+    page.on('pageerror', error => pageErrors.push(error.message));
+    page.on('requestfailed', request => failedRequests.push({ url: request.url(), error: request.failure()?.errorText }));
     const siteSession = createPublicSiteSession(
       process.env.ADMIN_SESSION_SECRET,
       { id: 'site_123e4567-e89b-12d3-a456-426614174000', username: 'Smoke Gezgin' },
@@ -71,7 +77,13 @@ for (const scenario of scenarios) {
     const encyclopediaPage = await page.goto(baseUrl + '/ansiklopedi', { waitUntil: 'domcontentloaded', timeout: 45000 });
     if (!encyclopediaPage || encyclopediaPage.status() !== 200) throw new Error(scenario.name + ' character encyclopedia HTTP ' + (encyclopediaPage?.status() || 'no response'));
     await page.waitForLoadState('networkidle', { timeout: 15000 });
-    await page.waitForFunction(() => document.querySelector('[data-character-encyclopedia]')?.dataset.characterEncyclopediaReady === 'true', null, { timeout: 10000 });
+    await page.waitForTimeout(300);
+    const encyclopediaDiagnostics = await page.evaluate(() => ({
+      root: Boolean(document.querySelector('[data-character-encyclopedia]')),
+      ready: document.querySelector('[data-character-encyclopedia]')?.dataset.characterEncyclopediaReady || null,
+      script: [...document.scripts].filter(script => script.src.includes('character-encyclopedia.js')).map(script => ({ src: script.src, defer: script.defer }))
+    }));
+    if (encyclopediaDiagnostics.ready !== 'true') throw new Error(scenario.name + ' character encyclopedia did not initialize: ' + JSON.stringify({ encyclopediaDiagnostics, browserErrors, pageErrors, failedRequests }));
     await page.locator('[data-character-search]').fill('frieren');
     const frierenAnimeOption = await page.locator('[data-character-anime] option').evaluateAll(options => options.map(option => option.value).find(value => value.includes('Frieren')));
     if (!frierenAnimeOption) throw new Error(scenario.name + ' character encyclopedia is missing the Frieren series filter');
