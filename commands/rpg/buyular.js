@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { pool, ensureUser } from '../../database/db.js';
 
-const spellDetails = {
+export const spellDetails = {
   zoltraak: { name: '⚡ Zoltraak', cost: 'Başlangıç büyüsü', effect: '8 Mana · Dengeli saldırı' },
   alev_kuresi: { name: '🔥 Alev Küresi', cost: '180 altın', effect: '14 Mana · Yüksek hasar' },
   buz_mizragi: { name: '🧊 Buz Mızrağı', cost: '160 altın', effect: '12 Mana · %35 dondurma ihtimali' },
