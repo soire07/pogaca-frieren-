@@ -818,7 +818,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
     if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
     try{
-      const result=await sendSiteDirectMessage(db,{senderAccountId:session.id,recipientAccountId:form.get('recipientAccountId'),body:form.get('message')});
+      const result=await sendSiteDirectMessage(db,{senderAccountId:session.id,recipientAccountId:form.get('recipientAccountId'),body:form.get('message'),mediaId:form.get('mediaId')||null});
       if(result.status==='sent'){const recipient=String(form.get('recipientAccountId')||'');publishChatEvent({scope:'dm',conversationId:[session.id,recipient].sort().join(':'),accountIds:[session.id,recipient]});}
       const status=result.status==='sent'?201:result.status==='rate_limited'?429:result.status==='not_allowed'?403:result.status==='thread_limit'?409:400;
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
@@ -845,7 +845,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>4096){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'message_too_large'}));return true;}chunks.push(chunk);}
     const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
     try{let result;if(url.pathname==='/api/site-dm/groups'){let members=[];try{members=JSON.parse(form.get('memberAccountIds')||'[]');}catch{}result=await createSiteDmGroup(db,{creatorAccountId:session.id,memberAccountIds:members,title:form.get('title')});}
-      else if(url.pathname==='/api/site-dm/group-messages'){result=await sendSiteDmGroupMessage(db,{senderAccountId:session.id,groupId:form.get('groupId'),body:form.get('message')});if(result.status==='sent'){const members=await db.query('SELECT account_id FROM frieren_site_dm_group_members WHERE group_id=$1',[form.get('groupId')]);publishChatEvent({scope:'group',conversationId:form.get('groupId'),accountIds:members.rows.map(row=>row.account_id)});}}
+      else if(url.pathname==='/api/site-dm/group-messages'){result=await sendSiteDmGroupMessage(db,{senderAccountId:session.id,groupId:form.get('groupId'),body:form.get('message'),mediaId:form.get('mediaId')||null});if(result.status==='sent'){const members=await db.query('SELECT account_id FROM frieren_site_dm_group_members WHERE group_id=$1',[form.get('groupId')]);publishChatEvent({scope:'group',conversationId:form.get('groupId'),accountIds:members.rows.map(row=>row.account_id)});}}
       else if(url.pathname==='/api/site-dm/group-read')result=await markSiteDmGroupMessagesRead(db,{accountId:session.id,groupId:form.get('groupId')});
       else result=await leaveSiteDmGroup(db,{accountId:session.id,groupId:form.get('groupId')});
       const status=result.status==='created'||result.status==='sent'?201:result.status==='rate_limited'?429:result.status==='not_allowed'?403:result.status==='not_found'?404:200;
@@ -878,7 +878,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
     if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
     try{
-      const result=await sendPublicChatMessage(db,{accountId:session.id,username:session.username,body:form.get('message'),replyToMessageId:form.get('replyToMessageId')||null});
+      const result=await sendPublicChatMessage(db,{accountId:session.id,username:session.username,body:form.get('message'),replyToMessageId:form.get('replyToMessageId')||null,mediaId:form.get('mediaId')||null});
       if(result.status==='sent')publishChatEvent({scope:'public'});
       const status=result.status==='sent'?201:result.status==='rate_limited'?429:result.status==='chat_paused'?423:400;
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
