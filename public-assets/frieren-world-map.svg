@@ -1,80 +1,92 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1200" role="img" aria-labelledby="map-title map-desc">
-<title id="map-title">Frieren dünyası — Kuzey ve Merkez Topraklar</title>
-<desc id="map-desc">Frieren animesindeki Kuzey Toprakları, Merkez Topraklar, Größe Ormanı, Kühl Bölgesi, Schwer Dağları ve Ende coğrafyasından esinlenen fan yapımı parşömen atlası.</desc>
+<title id="map-title">Frieren dünyası — detaylı fantastik dünya atlası</title>
+<desc id="map-desc">Frieren animesinin Kuzey ve Merkez Topraklarından esinlenen, fan yapımı; yükselti gölgelendirmesi, topoğrafik eş yükselti çizgileri, dağ kuşakları, ormanlar, nehirler ve geçitler içeren interaktif RPG harita zemini.</desc>
 <defs>
- <linearGradient id="sea" x2="0" y2="1"><stop stop-color="#243f50"/><stop offset=".52" stop-color="#315967"/><stop offset="1" stop-color="#1c3948"/></linearGradient>
- <linearGradient id="land" x1=".15" y1="0" x2=".86" y2="1"><stop stop-color="#eee1c2"/><stop offset=".48" stop-color="#dfc99f"/><stop offset="1" stop-color="#bda77f"/></linearGradient>
- <linearGradient id="northland" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dbe3dc"/><stop offset=".55" stop-color="#b7c6bf"/><stop offset="1" stop-color="#9eafa8"/></linearGradient>
- <linearGradient id="highland" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#a8b6aa"/><stop offset="1" stop-color="#778d83"/></linearGradient>
- <linearGradient id="forest" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#486b4f"/><stop offset="1" stop-color="#294b3d"/></linearGradient>
- <linearGradient id="water" x2="0" y2="1"><stop stop-color="#8bb0ad"/><stop offset="1" stop-color="#4e7b82"/></linearGradient>
- <linearGradient id="golden" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#c6b77d"/><stop offset="1" stop-color="#8c9a68"/></linearGradient>
- <linearGradient id="stone" x2="0" y2="1"><stop stop-color="#a18b6d"/><stop offset="1" stop-color="#6d6256"/></linearGradient>
- <pattern id="paper-grain" width="120" height="120" patternUnits="userSpaceOnUse"><path d="M9 19l21-5m42 36 18-4M15 91l28-7m49 19 17-3" stroke="#765d3d" stroke-opacity=".13" stroke-width="2"/><circle cx="52" cy="76" r="1.6" fill="#745a3b" opacity=".16"/></pattern>
- <pattern id="sea-lines" width="96" height="48" patternUnits="userSpaceOnUse"><path d="M0 24q24-15 48 0t48 0" fill="none" stroke="#b4c9bd" stroke-opacity=".16" stroke-width="2"/></pattern>
- <pattern id="fine-contours" width="190" height="150" patternUnits="userSpaceOnUse"><path d="M-25 45Q25 2 95 38T210 28M-25 85Q35 40 105 77T215 68M-30 128Q35 80 115 118T220 108" fill="none" stroke="#74674f" stroke-opacity=".19" stroke-width="2"/><path d="M10 145Q70 98 145 136T230 126" fill="none" stroke="#f8edcf" stroke-opacity=".24" stroke-width="2"/></pattern>
- <filter id="land-shadow" x="-15%" y="-15%" width="130%" height="135%"><feGaussianBlur stdDeviation="17"/></filter>
- <filter id="soft-shadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5"/></filter>
- <clipPath id="continent"><path d="M190 285Q270 170 425 182Q540 90 690 155Q815 78 970 138Q1115 75 1245 145Q1405 112 1535 235Q1665 320 1615 475Q1695 600 1600 735Q1640 875 1500 980Q1370 1080 1210 1018Q1080 1130 930 1050Q790 1120 650 1030Q485 1080 365 980Q205 905 220 760Q115 640 155 500Q90 380 190 285Z"/></clipPath>
- <g id="atlas-pine"><path d="M0 0l18-42 18 42h-11l16 27H-5L11 0z" fill="#294b3b" stroke="#d8cba9" stroke-width="2"/><path d="M18-34v51" stroke="#d7c69e" stroke-opacity=".5" stroke-width="2"/></g>
- <g id="atlas-hill"><path d="M0 28Q34-26 72 28Q37 12 0 28Z" fill="#9da17b" stroke="#e5d6b5" stroke-width="2"/><path d="M13 24Q36 1 58 24" fill="none" stroke="#e8dcc2" stroke-width="2"/></g>
- <g id="peak"><path d="M0 105L90 0 178 105 126 82 93 99 60 80Z" fill="#738a8d" stroke="#f0eee0" stroke-width="7" stroke-linejoin="round"/><path d="M90 0L74 67 91 54 109 75Z" fill="#f4f0df"/><path d="M90 0L178 105 126 82 93 99 109 75Z" fill="#b8c7bf"/></g>
+ <linearGradient id="ocean" x1="0" y1="0" x2="0.9" y2="1"><stop stop-color="#142b3a"/><stop offset=".48" stop-color="#1c3b4a"/><stop offset="1" stop-color="#102633"/></linearGradient>
+ <linearGradient id="ocean-light" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#527887" stop-opacity=".32"/><stop offset="1" stop-color="#193c4b" stop-opacity="0"/></linearGradient>
+ <linearGradient id="land-base" x1=".15" y1="0" x2=".8" y2="1"><stop stop-color="#d8d0b4"/><stop offset=".3" stop-color="#c8c19e"/><stop offset=".67" stop-color="#b9b38d"/><stop offset="1" stop-color="#a59b79"/></linearGradient>
+ <linearGradient id="north-ice" x1=".2" y1="0" x2=".8" y2="1"><stop stop-color="#e2e7df"/><stop offset=".48" stop-color="#b9c9c7"/><stop offset="1" stop-color="#819ca0"/></linearGradient>
+ <linearGradient id="central-meadow" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#c9c79a"/><stop offset=".55" stop-color="#b1b789"/><stop offset="1" stop-color="#8eaa84"/></linearGradient>
+ <linearGradient id="forest-depth" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#365d4c"/><stop offset=".45" stop-color="#284c40"/><stop offset="1" stop-color="#1b3b36"/></linearGradient>
+ <linearGradient id="mountain-shadow" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#778b89"/><stop offset=".52" stop-color="#536b6c"/><stop offset="1" stop-color="#344e55"/></linearGradient>
+ <linearGradient id="sandstone" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#c4a47a"/><stop offset="1" stop-color="#947c60"/></linearGradient>
+ <linearGradient id="river" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#9bbfc0"/><stop offset="1" stop-color="#4c7d89"/></linearGradient>
+ <radialGradient id="land-light"><stop stop-color="#f4e7c6" stop-opacity=".44"/><stop offset="1" stop-color="#f4e7c6" stop-opacity="0"/></radialGradient>
+ <pattern id="sea-depth" width="210" height="118" patternUnits="userSpaceOnUse"><path d="M-20 35C25 8 74 8 112 31s82 25 128-2M-25 72c48-28 93-26 137-3s78 25 126-4" fill="none" stroke="#8eafb0" stroke-opacity=".13" stroke-width="1.6"/></pattern>
+ <pattern id="contours" width="230" height="180" patternUnits="userSpaceOnUse"><path d="M-35 42C10 5 68 7 104 36s82 32 137-5M-28 78C17 39 75 43 112 71s77 31 135-6M-32 116C16 76 73 80 113 108s78 30 137-7M-28 153C20 114 80 118 118 145s75 31 132-7" fill="none" stroke="#756f55" stroke-opacity=".24" stroke-width="1.5"/><path d="M-20 54C23 20 69 21 105 48s82 28 124-5M-24 129C19 94 72 95 112 123s76 28 128-7" fill="none" stroke="#f5edcf" stroke-opacity=".25" stroke-width="1.2"/></pattern>
+ <pattern id="forest-canopy" width="54" height="48" patternUnits="userSpaceOnUse"><path d="M9 28 17 11l8 17-5-3 8 13H6l8-13zM37 18l6-13 7 13-4-2 6 10H33l7-10z" fill="#173a34" opacity=".72"/><path d="M17 12l8 16M43 6l7 12" stroke="#86a17b" stroke-opacity=".3" stroke-width="1.4"/></pattern>
+ <pattern id="rock-hatch" width="42" height="34" patternUnits="userSpaceOnUse"><path d="m4 29 12-20 9 12 8-15M-5 13 3 2" fill="none" stroke="#344f54" stroke-opacity=".35" stroke-width="2"/></pattern>
+ <pattern id="paper-fiber" width="130" height="110" patternUnits="userSpaceOnUse"><path d="m12 17 24-4m31 37 18-3M18 89l31-5m50 9 17-3M88 16l15-2" stroke="#665c43" stroke-opacity=".1" stroke-width="1.4"/><circle cx="51" cy="70" r="1.2" fill="#5c503b" opacity=".14"/><circle cx="112" cy="43" r="1" fill="#fff" opacity=".2"/></pattern>
+ <filter id="continent-shadow" x="-15%" y="-15%" width="130%" height="135%"><feGaussianBlur stdDeviation="22"/></filter>
+ <filter id="terrain-soft" x="-15%" y="-15%" width="130%" height="130%"><feGaussianBlur stdDeviation="10"/></filter>
+ <clipPath id="land-clip"><path d="M206 292C259 221 371 179 492 198 585 133 718 129 832 163 940 100 1075 119 1170 157 1304 107 1442 167 1524 248 1632 309 1665 412 1618 516 1677 625 1634 741 1582 826 1631 929 1521 1033 1390 1038 1284 1104 1160 1073 1073 1043 948 1118 825 1086 739 1032 624 1092 505 1057 414 1000 300 989 220 901 233 793 159 708 160 590 192 501 139 412 151 339 206 292Z"/></clipPath>
+ <g id="ridge"><path d="M0 76 47 10 71 43 105 0 158 77 125 63 105 80 72 60 45 84Z" fill="url(#mountain-shadow)" stroke="#e0e1d2" stroke-opacity=".56" stroke-width="2.2" stroke-linejoin="round"/><path d="m47 10 11 38 14 12 33-60-7 42 27 21-20-8-21 17-33-20-27 22Z" fill="#b8c9c3" opacity=".55"/><path d="m47 10 11 24 13-6 34-28-24 36-10 24-19-14Z" fill="#f0eee1" opacity=".78"/><path d="M12 77q44-17 79-1t61-2" fill="none" stroke="#e5e3d3" stroke-opacity=".42" stroke-width="2"/></g>
+ <g id="hillshade"><path d="M0 50Q35 0 76 30T150 25" fill="none" stroke="#566b58" stroke-opacity=".42" stroke-width="17" stroke-linecap="round"/><path d="M0 43Q35-7 76 23T150 18" fill="none" stroke="#e6dfbd" stroke-opacity=".38" stroke-width="4" stroke-linecap="round"/></g>
 </defs>
-<rect width="1800" height="1200" fill="url(#sea)"/><rect width="1800" height="1200" fill="url(#sea-lines)"/>
-<path d="M190 285Q270 170 425 182Q540 90 690 155Q815 78 970 138Q1115 75 1245 145Q1405 112 1535 235Q1665 320 1615 475Q1695 600 1600 735Q1640 875 1500 980Q1370 1080 1210 1018Q1080 1130 930 1050Q790 1120 650 1030Q485 1080 365 980Q205 905 220 760Q115 640 155 500Q90 380 190 285Z" fill="#111e27" opacity=".42" filter="url(#land-shadow)" transform="translate(10 22)"/>
-<path d="M190 285Q270 170 425 182Q540 90 690 155Q815 78 970 138Q1115 75 1245 145Q1405 112 1535 235Q1665 320 1615 475Q1695 600 1600 735Q1640 875 1500 980Q1370 1080 1210 1018Q1080 1130 930 1050Q790 1120 650 1030Q485 1080 365 980Q205 905 220 760Q115 640 155 500Q90 380 190 285Z" fill="url(#land)" stroke="#6e5b40" stroke-width="18"/>
-<path d="M190 285Q270 170 425 182Q540 90 690 155Q815 78 970 138Q1115 75 1245 145Q1405 112 1535 235Q1665 320 1615 475Q1695 600 1600 735Q1640 875 1500 980Q1370 1080 1210 1018Q1080 1130 930 1050Q790 1120 650 1030Q485 1080 365 980Q205 905 220 760Q115 640 155 500Q90 380 190 285Z" fill="url(#paper-grain)" opacity=".86"/>
-<g clip-path="url(#continent)">
- <rect x="120" y="70" width="1600" height="1050" fill="url(#fine-contours)" opacity=".8"/>
- <!-- Ende and the far north -->
- <path d="M1080 90Q1290 65 1515 210L1610 395Q1490 455 1300 410L1120 310Z" fill="url(#northland)" opacity=".96"/>
- <path d="M1150 120Q1330 95 1510 220L1580 350Q1430 405 1270 355L1130 260Z" fill="none" stroke="#eef0df" stroke-opacity=".65" stroke-width="7"/>
- <g opacity=".95"><use href="#peak" x="1110" y="125"/><use href="#peak" x="1280" y="90"/><use href="#peak" x="1450" y="155"/><use href="#peak" x="1510" y="285"/></g>
- <path d="M1180 360Q1310 310 1450 365T1615 455" fill="none" stroke="#f0eee0" stroke-width="11" stroke-opacity=".55"/>
- <!-- Northern Plateau and mountain belt -->
- <path d="M770 185Q950 105 1160 205L1270 390Q1130 510 950 445L790 345Z" fill="url(#highland)" opacity=".88"/>
- <g opacity=".9"><use href="#peak" x="790" y="210"/><use href="#peak" x="930" y="175"/><use href="#peak" x="1075" y="220"/><use href="#peak" x="1190" y="300"/></g>
- <g fill="none" stroke="#edf0e4" stroke-width="4" stroke-opacity=".55"><path d="M790 375Q920 290 1040 365T1260 350"/><path d="M830 415Q950 335 1070 410T1280 400"/></g>
- <!-- Größe Forest -->
- <path d="M250 355Q360 260 525 325T700 490Q620 610 440 590T235 475Z" fill="url(#forest)" stroke="#3b5b43" stroke-width="5"/>
+<rect width="1800" height="1200" fill="url(#ocean)"/>
+<rect width="1800" height="1200" fill="url(#sea-depth)"/>
+<g fill="none" stroke="#8eafb0" stroke-opacity=".15"><path d="M0 190C180 110 290 130 420 205s245 68 355 0 215-79 355-9 235 78 365 6 225-70 305-23" stroke-width="2"/><path d="M-20 1000c160-75 300-60 420 7s255 83 375 5 245-85 380-12 255 75 390 1 210-70 290-36" stroke-width="2"/></g>
+<path d="M206 292C259 221 371 179 492 198 585 133 718 129 832 163 940 100 1075 119 1170 157 1304 107 1442 167 1524 248 1632 309 1665 412 1618 516 1677 625 1634 741 1582 826 1631 929 1521 1033 1390 1038 1284 1104 1160 1073 1073 1043 948 1118 825 1086 739 1032 624 1092 505 1057 414 1000 300 989 220 901 233 793 159 708 160 590 192 501 139 412 151 339 206 292Z" fill="#071923" opacity=".7" filter="url(#continent-shadow)" transform="translate(8 25)"/>
+<path d="M206 292C259 221 371 179 492 198 585 133 718 129 832 163 940 100 1075 119 1170 157 1304 107 1442 167 1524 248 1632 309 1665 412 1618 516 1677 625 1634 741 1582 826 1631 929 1521 1033 1390 1038 1284 1104 1160 1073 1073 1043 948 1118 825 1086 739 1032 624 1092 505 1057 414 1000 300 989 220 901 233 793 159 708 160 590 192 501 139 412 151 339 206 292Z" fill="url(#land-base)" stroke="#d8c8a3" stroke-width="5"/>
+<g clip-path="url(#land-clip)">
+ <rect x="120" y="80" width="1600" height="1060" fill="url(#contours)" opacity=".95"/>
+ <ellipse cx="910" cy="520" rx="900" ry="690" fill="url(#land-light)"/>
+ <!-- broad, blended biomes -->
+ <path d="M1020 82C1220 70 1470 130 1585 300L1640 470C1515 515 1400 450 1290 465 1150 445 1055 356 1000 240Z" fill="url(#north-ice)" opacity=".92"/>
+ <path d="M1040 120C1210 96 1450 150 1550 305 1500 366 1410 405 1300 380 1185 368 1110 290 1040 230Z" fill="none" stroke="#f2f0e5" stroke-opacity=".58" stroke-width="7"/>
+ <path d="M185 330C280 245 430 256 550 322 645 373 690 496 630 596 545 676 390 646 285 579 207 526 175 429 185 330Z" fill="url(#forest-depth)" opacity=".94"/>
+ <path d="M185 330C280 245 430 256 550 322 645 373 690 496 630 596 545 676 390 646 285 579 207 526 175 429 185 330Z" fill="url(#forest-canopy)" opacity=".84"/>
+ <path d="M230 700C355 590 535 614 665 675 775 731 820 884 720 1010 585 1100 390 1040 280 955 205 890 190 784 230 700Z" fill="url(#central-meadow)" opacity=".86"/>
+ <path d="M675 470C810 390 1000 415 1115 520 1225 622 1190 805 1040 865 900 925 735 842 680 720 640 632 635 540 675 470Z" fill="url(#sandstone)" opacity=".42"/>
+ <path d="M675 470C810 390 1000 415 1115 520 1225 622 1190 805 1040 865 900 925 735 842 680 720 640 632 635 540 675 470Z" fill="url(#rock-hatch)" opacity=".36"/>
+ <!-- mountain systems with layered ridgelines, not repeated cartoon peaks -->
+ <path d="M680 240C760 190 850 190 925 236 1010 190 1115 210 1185 280L1265 405C1160 465 1080 425 1000 390 900 450 795 410 715 360Z" fill="#657b7a" opacity=".5"/>
  <g opacity=".95">
-  <use href="#atlas-pine" x="300" y="410"/><use href="#atlas-pine" x="365" y="355"/><use href="#atlas-pine" x="430" y="390"/><use href="#atlas-pine" x="500" y="350"/><use href="#atlas-pine" x="565" y="415"/><use href="#atlas-pine" x="630" y="450"/>
-  <use href="#atlas-pine" x="320" y="500"/><use href="#atlas-pine" x="390" y="535"/><use href="#atlas-pine" x="465" y="480"/><use href="#atlas-pine" x="535" y="535"/><use href="#atlas-pine" x="605" y="520"/>
+  <use href="#ridge" x="710" y="230"/><use href="#ridge" x="840" y="195"/><use href="#ridge" x="970" y="220"/><use href="#ridge" x="1100" y="265"/><use href="#ridge" x="1220" y="335"/>
+  <use href="#ridge" x="760" y="330"/><use href="#ridge" x="900" y="315"/><use href="#ridge" x="1040" y="350"/>
  </g>
- <!-- Central Lands -->
- <path d="M270 650Q380 570 540 620T770 750Q720 925 535 980T270 870Q190 770 270 650Z" fill="url(#golden)" opacity=".88"/>
- <g fill="none" stroke="#e8d8a8" stroke-width="8" stroke-linecap="round" opacity=".62"><path d="M275 760Q390 680 510 750T740 770"/><path d="M300 835Q430 755 555 830T710 850"/><path d="M365 905Q475 845 600 910"/></g>
- <g opacity=".7"><use href="#atlas-hill" x="280" y="665"/><use href="#atlas-hill" x="400" y="615"/><use href="#atlas-hill" x="570" y="690"/><use href="#atlas-hill" x="640" y="820"/><use href="#atlas-hill" x="420" y="900"/></g>
- <!-- Ruins and dry basin -->
- <path d="M730 520Q880 455 1030 520T1190 690Q1090 820 900 800T700 665Z" fill="#c19c70" opacity=".72"/>
- <g fill="none" stroke="#e8c998" stroke-width="12" stroke-linecap="round" opacity=".68"><path d="M760 625Q865 545 970 620T1150 625"/><path d="M780 700Q900 630 1015 705T1150 700"/></g>
- <g fill="url(#stone)" stroke="#665947" stroke-width="4"><path d="M905 600l18-65 18 65zM940 600l14-44 14 44zM975 600l20-72 20 72zM1010 600l13-42 13 42z"/><path d="M850 745l15-48 15 48zM880 745l13-35 13 35zM910 745l16-54 16 54z"/></g>
- <!-- Rivers and lake -->
- <path d="M650 180Q690 300 760 360T810 520Q780 640 850 740T900 990" fill="none" stroke="#497f88" stroke-width="27" stroke-linecap="round" opacity=".9"/>
- <path d="M650 180Q690 300 760 360T810 520Q780 640 850 740T900 990" fill="none" stroke="#b8d0c0" stroke-width="5" stroke-linecap="round" opacity=".75"/>
- <path d="M1050 380Q1110 330 1185 375Q1230 430 1185 480Q1120 510 1055 465Q1015 420 1050 380Z" fill="url(#water)" stroke="#e2e4d5" stroke-width="8"/>
- <path d="M1070 410Q1120 370 1175 405" fill="none" stroke="#d8e5d6" stroke-width="4" opacity=".65"/>
- <!-- Roads -->
- <g fill="none" stroke="#805e3e" stroke-width="8" stroke-linecap="round" stroke-dasharray="2 20" opacity=".9">
-  <path d="M450 845Q560 750 700 665T920 540T1120 425T1390 270"/>
-  <path d="M450 845Q520 650 600 500T800 330T1130 255"/>
-  <path d="M810 520Q920 660 1050 790T1320 850"/>
-  <path d="M1120 425Q1020 530 920 640T760 820"/>
+ <path d="M770 430C875 385 990 410 1080 465 1170 520 1210 610 1160 690" fill="none" stroke="#d4ded2" stroke-opacity=".46" stroke-width="6"/>
+ <path d="M790 458C890 418 990 440 1070 490 1135 530 1165 590 1138 645" fill="none" stroke="#3d5b61" stroke-opacity=".35" stroke-width="12"/>
+ <!-- Schwer mountain chain -->
+ <path d="M1050 530C1155 465 1260 500 1345 580 1430 655 1455 765 1380 850 1280 890 1165 830 1090 765 1020 700 1000 600 1050 530Z" fill="#687c78" opacity=".4"/>
+ <g opacity=".88"><use href="#ridge" x="1040" y="555"/><use href="#ridge" x="1170" y="590"/><use href="#ridge" x="1300" y="655"/><use href="#ridge" x="1190" y="735"/></g>
+ <path d="M1020 820C1130 760 1260 795 1360 875" fill="none" stroke="#e6e1cf" stroke-opacity=".5" stroke-width="5"/>
+ <!-- relief shadows and foothill systems -->
+ <g opacity=".55"><use href="#hillshade" x="330" y="610"/><use href="#hillshade" x="480" y="660"/><use href="#hillshade" x="600" y="790"/><use href="#hillshade" x="350" y="870"/><use href="#hillshade" x="520" y="925"/><use href="#hillshade" x="1350" y="450"/></g>
+ <!-- river basins and tributaries -->
+ <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M650 175C670 270 745 320 760 405S790 545 860 620 890 785 940 940" stroke="#3d6872" stroke-width="22" opacity=".58"/>
+  <path d="M650 175C670 270 745 320 760 405S790 545 860 620 890 785 940 940" stroke="url(#river)" stroke-width="10"/>
+  <path d="M410 500C520 475 610 500 690 550S780 615 860 620M1160 290C1100 360 1040 420 980 485S900 570 860 620M1280 860C1170 820 1070 800 1000 835S940 900 940 940" stroke="#6796a0" stroke-width="7" opacity=".8"/>
+  <path d="M410 500C520 475 610 500 690 550S780 615 860 620M1160 290C1100 360 1040 420 980 485S900 570 860 620M1280 860C1170 820 1070 800 1000 835S940 900 940 940" stroke="#c0d2c5" stroke-width="2.1" opacity=".8"/>
  </g>
- <g fill="none" stroke="#f5e9c9" stroke-width="2.5" stroke-opacity=".5"><path d="M235 295Q410 185 580 255T920 210T1270 175T1540 285"/><path d="M220 920Q440 1060 650 995T1030 1040T1510 940"/></g>
+ <path d="M1110 390C1155 350 1218 364 1245 410 1260 455 1210 500 1155 493 1100 485 1070 430 1110 390Z" fill="#628b91" stroke="#d7e0d2" stroke-width="5"/>
+ <path d="M1120 410Q1165 380 1218 414" fill="none" stroke="#d9e6d7" stroke-width="2.5" opacity=".7"/>
+ <!-- weathered ruins and old stone country -->
+ <g fill="none" stroke="#75634e" stroke-opacity=".48" stroke-width="5"><path d="M820 670l25-42 26 42m-10 0v-24m30 34 21-55 22 55m-8 0v-31m37 26 20-40 22 40m-10 0v-19"/><path d="M760 755q55-45 105 0t105 0 100 0"/></g>
+ <!-- old roads, caravan tracks and mountain passes -->
+ <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M450 850C540 790 610 700 720 650S900 560 1050 470 1290 355 1500 265" stroke="#6c553c" stroke-width="9" stroke-dasharray="2 20" opacity=".6"/>
+  <path d="M450 850C540 790 610 700 720 650S900 560 1050 470 1290 355 1500 265" stroke="#f1dfb9" stroke-width="2" stroke-dasharray="2 20" opacity=".65"/>
+  <path d="M700 650C760 760 850 830 980 900S1200 945 1400 915" stroke="#6c553c" stroke-width="7" stroke-dasharray="2 18" opacity=".5"/>
+  <path d="M710 330C650 450 620 570 620 700S660 850 760 950" stroke="#6c553c" stroke-width="6" stroke-dasharray="2 18" opacity=".42"/>
+ </g>
+ <!-- subtle coastal shallows -->
+ <path d="M205 292C259 221 371 179 492 198 585 133 718 129 832 163 940 100 1075 119 1170 157 1304 107 1442 167 1524 248 1632 309 1665 412 1618 516 1677 625 1634 741 1582 826 1631 929 1521 1033 1390 1038 1284 1104 1160 1073 1073 1043 948 1118 825 1086 739 1032 624 1092 505 1057 414 1000 300 989 220 901 233 793 159 708 160 590 192 501 139 412 151 339 206 292Z" fill="url(#paper-fiber)" opacity=".65"/>
 </g>
-<!-- Geographic labels; the north is at the top of the cartographic composition. KUZEY KITASI. -->
-<!-- highland tarns, weathered ruins and coastal islets are rendered as terrain details, not marker circles. -->
-<g font-family="Georgia,serif" fill="#4f4739" opacity=".82">
- <text x="1350" y="122" font-size="27" letter-spacing="7" text-anchor="middle">ENDE</text><text x="900" y="150" font-size="15" letter-spacing="4" text-anchor="middle">KUZEY KITASI</text>
- <text x="1040" y="245" font-size="22" letter-spacing="4" text-anchor="middle">KUZEY PLATOSU</text>
- <text x="1090" y="550" font-size="20" letter-spacing="3" text-anchor="middle">KÜHL BÖLGESİ</text><text x="960" y="500" font-size="18" letter-spacing="4" text-anchor="middle">KUZEY TOPRAKLARI</text><text x="1490" y="195" font-size="16" letter-spacing="3" text-anchor="middle">AUREOLE</text>
- <text x="470" y="320" font-size="22" letter-spacing="3" text-anchor="middle" fill="#f0e4c7">GRÖSSE ORMANI</text>
- <text x="485" y="1010" font-size="25" letter-spacing="5" text-anchor="middle">MERKEZ TOPRAKLAR</text>
- <text x="1000" y="430" font-size="21" letter-spacing="4" text-anchor="middle">SCHWER DAĞLARI</text>
+<!-- cartographic annotations -->
+<g font-family="Georgia,serif" fill="#344b49" opacity=".8">
+ <text x="1335" y="185" font-size="22" letter-spacing="8" text-anchor="middle">ENDE</text>
+ <text x="1090" y="260" font-size="16" letter-spacing="5" text-anchor="middle">KUZEY PLATOSU</text>
+ <text x="980" y="475" font-size="17" letter-spacing="5" text-anchor="middle">SCHWER DAĞLARI</text>
+ <text x="1115" y="560" font-size="16" letter-spacing="4" text-anchor="middle">KÜHL BÖLGESİ</text>
+ <text x="470" y="325" font-size="19" letter-spacing="4" text-anchor="middle" fill="#e0dfc7">GRÖSSE ORMANI</text>
+ <text x="455" y="1010" font-size="20" letter-spacing="5" text-anchor="middle">MERKEZ TOPRAKLAR</text>
+ <text x="860" y="190" font-size="13" letter-spacing="5" text-anchor="middle">KUZEY TOPRAKLARI</text>
 </g>
-<!-- Small map ornament -->
-<g transform="translate(1450 885)"><circle r="65" fill="#e8d8b6" fill-opacity=".78" stroke="#806342" stroke-width="4"/><circle r="51" fill="none" stroke="#aa8b5e" stroke-width="2"/><path d="M0-43L11-7 0 0-11-7zM43 0L7 11 0 0 7-11zM0 43L-11 7 0 0 11 7zM-43 0L-7-11 0 0-7 11z" fill="#8b6841"/><text y="-78" text-anchor="middle" fill="#745538" font-family="Georgia,serif" font-size="18">N</text></g>
-<g transform="translate(90 85)"><path d="M0 0h430v112H0z" fill="#e9ddc0" fill-opacity=".9" stroke="#826342" stroke-width="5"/><path d="M14 14h402v84H14z" fill="none" stroke="#b08f60" stroke-width="2"/><text x="215" y="49" text-anchor="middle" font-family="Georgia,serif" font-size="21" letter-spacing="6" fill="#705438">FRIEREN DÜNYASI</text><text x="215" y="79" text-anchor="middle" font-family="Georgia,serif" font-size="13" letter-spacing="3" fill="#94774e">KUZEY VE MERKEZ TOPRAKLAR</text></g>
-<text x="900" y="1150" text-anchor="middle" font-family="Georgia,serif" font-size="14" letter-spacing="4" fill="#e1d1ae" opacity=".8">FAN YAPIMI DÜNYA ATLASI · ANİME COĞRAFYASINDAN ESİNLENİLMİŞTİR</text>
+<!-- understated map furniture -->
+<g transform="translate(1510 910)" opacity=".86"><circle r="52" fill="#d7cfb2" fill-opacity=".72" stroke="#66736b" stroke-width="1.5"/><circle r="43" fill="none" stroke="#788078" stroke-width="1"/><path d="M0-36 8-5 0 0-8-5ZM36 0 5 8 0 0 5-8ZM0 36-8 5 0 0 8 5ZM-36 0-5-8 0 0-5 8Z" fill="#4a5e59"/><text y="-62" text-anchor="middle" font-size="13" fill="#3e544f">N</text></g>
+<g transform="translate(92 82)"><path d="M0 0h340v88H0z" fill="#d8d0b7" fill-opacity=".84" stroke="#7d826f" stroke-width="1.5"/><path d="M9 9h322v70H9z" fill="none" stroke="#a59b7d" stroke-width="1"/><text x="170" y="39" text-anchor="middle" font-size="19" letter-spacing="5" fill="#43564e">FRIEREN DÜNYASI</text><text x="170" y="62" text-anchor="middle" font-size="10" letter-spacing="3" fill="#68756a">KUZEY VE MERKEZ TOPRAKLAR</text></g>
+<text x="900" y="1162" text-anchor="middle" font-family="Georgia,serif" font-size="12" letter-spacing="4" fill="#c4cbbd" opacity=".72">FAN YAPIMI ATLAS · ANİME COĞRAFYASINDAN ESİNLENİLMİŞTİR</text>
+<!-- highland tarns, weathered ruins and coastal islets are terrain details, not oversized map markers. -->
 </svg>
