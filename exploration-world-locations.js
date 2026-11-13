@@ -23,7 +23,7 @@ export const FRIEREN_WORLD_BOSS_LOCATIONS = Object.freeze({
   level_50: Object.freeze({ regionKey:'aus', x:88, y:30, place:'Ende' }),
   'north-general': Object.freeze({ regionKey:'yayla', x:80, y:25, place:'Kuzey Platosu' }),
   'glass-wyrm': Object.freeze({ regionKey:'kuzey', x:62, y:49, place:'Offen Dağları' }),
-  'fallen-mage': Object.freeze({ regionKey:'aus', x:82, y:13, place:'Ende yolu' }),
+  'fallen-mage': Object.freeze({ regionKey:'aus', x:78, y:20, place:'Ende yolu' }),
   zeldeila: Object.freeze({ regionKey:'aus', x:95, y:36, place:'Ende kuzey sırtı' }),
   domaltazor: Object.freeze({ regionKey:'harabeler', x:48, y:57, place:'Kadim harabeler' }),
   'the-fool': Object.freeze({ regionKey:'merkez', x:45, y:86, place:'Merkez Topraklar' })
