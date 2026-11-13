@@ -1064,3 +1064,15 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
   .encyclopedia-toolbar label:first-child { grid-column: auto; }
   .encyclopedia-toolbar output { grid-column: auto; }
 }
+
+/* Learned RPG spellbook with native, accessible disclosure. */
+.spellbook-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr)); gap: 12px; }
+.spellbook-entry { border: 1px solid rgba(190,157,245,.24); border-radius: 16px; padding: 14px 16px; background: rgba(26,21,49,.72); }
+.spellbook-entry[open] { border-color: rgba(190,157,245,.55); background: rgba(48,37,78,.68); }
+.spellbook-entry summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; color: #f0e9ff; font-weight: 750; list-style: none; }
+.spellbook-entry summary::-webkit-details-marker { display: none; }
+.spellbook-entry summary::after { content: '＋'; color: #c9b8f5; font-size: 1.1rem; }
+.spellbook-entry[open] summary::after { content: '−'; }
+.spellbook-entry summary small { color: #c8b8e6; font-size: .78rem; font-weight: 600; text-align: right; }
+.spellbook-entry p { margin: 12px 0 8px; color: #d2c9e3; }
+.spellbook-entry > small { color: #bcb4d0; }
