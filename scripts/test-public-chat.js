@@ -169,5 +169,5 @@ test('public chat accepts an attachment-only message and binds media to its new 
  }};
  const result=await sendPublicChatMessage(db,{accountId:account,username:'Gezgin',body:'',mediaId:media});
  assert.equal(result.status,'sent');const attach=seen.find(x=>x.sql.startsWith('UPDATE frieren_site_chat_media'));
- assert.deepEqual(attach.params,[media,account,'public','public','123e4567-e89b-12d3-a456-426614174088']);
+ const insert=seen.find(x=>x.sql.startsWith('INSERT INTO frieren_public_chat_messages'));assert.ok(insert);assert.deepEqual(attach.params,[media,account,'public','public',insert.params[0]]);
 });
