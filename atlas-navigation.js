@@ -86,11 +86,13 @@ export function findAtlasRoute(fromId, toId) {
   });
 }
 
+export const ATLAS_ZOOM_LEVELS = Object.freeze({ regional: 1.35, local: 2.2 });
+
 export function getAtlasDetailLevel(scale) {
   const value = Number(scale);
   if (!Number.isFinite(value)) return 'overview';
-  if (value >= 2.2) return 'local';
-  if (value >= 1.35) return 'regional';
+  if (value >= ATLAS_ZOOM_LEVELS.local) return 'local';
+  if (value >= ATLAS_ZOOM_LEVELS.regional) return 'regional';
   return 'overview';
 }
 
