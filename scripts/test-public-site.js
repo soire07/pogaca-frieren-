@@ -1822,10 +1822,10 @@ test('illustrated atlas background is served as a first-party image asset', asyn
  assert.equal(await handlePublicSiteRequest(request('/assets/frieren-world-map.svg'),response,{db:null}),true);
  assert.equal(response.status,200);
  const artwork=response.body.toString('utf8');
- assert.match(artwork,/<svg[\\s>]/);
+ assert.ok(artwork.startsWith('<svg'));
  assert.match(artwork,/Kuzey Kıtası|THE NORTHERN CONTINENT/);
  const atlas=renderExplorationAtlas({mapContent:{regions:[],summary:{}}});
- assert.match(atlas,/src="\\/assets\\/frieren-world-map\\.svg"/);
+ assert.ok(atlas.includes('src="/assets/frieren-world-map.svg"'));
  assert.match(atlas,/atlas-pin-layer/);
  assert.doesNotMatch(atlas,/<svg class="atlas-world-map"/);
 });
