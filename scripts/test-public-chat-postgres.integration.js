@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import pg from 'pg';
 import {assertIsolatedAuditDatabase} from './isolated-audit-db-guard.js';
-import {ensurePublicChatSchema,deleteOwnPublicChatMessage,updatePublicChatMessage,togglePublicChatReaction,sendPublicChatMessage} from '../public-chat.js';
+import {ensurePublicChatSchema,listPublicChatMessages,deleteOwnPublicChatMessage,updatePublicChatMessage,togglePublicChatReaction,sendPublicChatMessage} from '../public-chat.js';
 import {sendSiteDirectMessage,listSiteDirectMessages,markSiteDirectMessagesRead,ensureSiteDirectMessageSchema,createSiteDmGroup,listSiteDmGroups,sendSiteDmGroupMessage,listSiteDmGroupMessages,markSiteDmGroupMessagesRead,leaveSiteDmGroup} from '../site-direct-messages.js';
 
 const {Pool}=pg;
@@ -98,5 +98,55 @@ test('site private messages enforce accepted friendships, block rules, receipts 
  }finally{
   await pool.query('DROP SCHEMA IF EXISTS "'+schema+'" CASCADE').catch(()=>{});
   await pool.end();
+ }
+});
+
+test('PostgreSQL persists media metadata with public, friend and group message scopes',async()=>{
+ assertIsolatedAuditDatabase();
+ const keys=['CHAT_MEDIA_R2_ACCOUNT_ID','CHAT_MEDIA_R2_BUCKET','CHAT_MEDIA_R2_ACCESS_KEY_ID','CHAT_MEDIA_R2_SECRET_ACCESS_KEY'];
+ const saved=Object.fromEntries(keys.map(key=>[key,process.env[key]]));for(const key of keys)delete process.env[key];
+ const pool=new Pool({connectionString:process.env.DATABASE_URL,max:3});
+ const schema='chat_media_rehearsal_'+randomUUID().replaceAll('-','');
+ try{
+  await pool.query('CREATE SCHEMA "'+schema+'"');
+  const scoped={
+   async connect(){const client=await pool.connect();try{await client.query('SET search_path TO "'+schema+'"');return client;}catch(error){client.release();throw error;}},
+   async query(sql,params){const client=await this.connect();try{return await client.query(sql,params);}finally{client.release();}}
+  };
+  await ensureSiteDirectMessageSchema(scoped);
+  const a=account(),b=account(),c=account(),outsider=account();
+  for(const friend of [b,c])await scoped.query("INSERT INTO frieren_account_friend_requests(request_id,requester_account_id,recipient_account_id,status) VALUES($1,$2,$3,'accepted')",[randomUUID(),a,friend]);
+  const publicMedia=randomUUID(),dmMedia=randomUUID(),groupMedia=randomUUID(),wrongScopeMedia=randomUUID();
+  const mediaRows=[
+   [publicMedia,a,'public','public','image/png'],
+   [dmMedia,a,'dm','dm:'+[a,b].sort().join(':'),'image/jpeg'],
+   [groupMedia,a,'group','group:pending','image/webp'],
+   [wrongScopeMedia,a,'dm','dm:'+[a,b].sort().join(':'),'image/jpeg']
+  ];
+  for(const [id,owner,scope,scopeKey,mime] of mediaRows)await scoped.query('INSERT INTO frieren_site_chat_media(media_id,owner_account_id,scope_type,scope_key,object_key,mime_type,size_bytes) VALUES($1,$2,$3,$4,$5,$6,$7)',[id,owner,scope,scopeKey,'chat/'+scope+'/'+id+'.'+(mime==='image/png'?'png':mime==='image/jpeg'?'jpg':'webp'),mime,32]);
+  const publicSent=await sendPublicChatMessage(scoped,{accountId:a,username:'Fern',body:'Görsel',mediaId:publicMedia});
+  assert.equal(publicSent.status,'sent');
+  const publicHistory=await listPublicChatMessages(scoped,{viewerAccountId:a});
+  assert.equal(publicHistory.find(message=>message.message_id===publicSent.message.message_id)?.media_id,publicMedia);
+  assert.equal(publicHistory.find(message=>message.message_id===publicSent.message.message_id)?.media_url,null,'without R2 credentials, no public object URL may be emitted');
+  const dmSent=await sendSiteDirectMessage(scoped,{senderAccountId:a,recipientAccountId:b,body:'Özel görsel',mediaId:dmMedia});
+  assert.equal(dmSent.status,'sent');
+  const dmHistory=await listSiteDirectMessages(scoped,{accountId:b,otherAccountId:a});
+  assert.equal(dmHistory.messages[0].media_id,dmMedia);assert.equal(dmHistory.messages[0].media_url,null);
+  const group=await createSiteDmGroup(scoped,{creatorAccountId:a,memberAccountIds:[b,c],title:'Medya grubu'});
+  assert.equal(group.status,'created');
+  await scoped.query('UPDATE frieren_site_chat_media SET scope_key=$2 WHERE media_id=$1',[groupMedia,'group:'+group.groupId]);
+  const groupSent=await sendSiteDmGroupMessage(scoped,{senderAccountId:a,groupId:group.groupId,body:'Grup görseli',mediaId:groupMedia});
+  assert.equal(groupSent.status,'sent');
+  const groupHistory=await listSiteDmGroupMessages(scoped,{accountId:b,groupId:group.groupId});
+  assert.equal(groupHistory.messages[0].media_id,groupMedia);assert.equal(groupHistory.messages[0].media_url,null);
+  assert.deepEqual(await listSiteDmGroupMessages(scoped,{accountId:outsider,groupId:group.groupId}),{status:'not_allowed',messages:[]});
+  await assert.rejects(()=>sendPublicChatMessage(scoped,{accountId:a,username:'Fern',body:'',mediaId:wrongScopeMedia}),/CHAT_MEDIA_ATTACHMENT_NOT_ALLOWED/);
+  const stillPending=await scoped.query('SELECT message_id FROM frieren_site_chat_media WHERE media_id=$1',[wrongScopeMedia]);
+  assert.equal(stillPending.rows[0].message_id,null,'a media object from another conversation must not be attachable');
+ }finally{
+  await pool.query('DROP SCHEMA IF EXISTS "'+schema+'" CASCADE').catch(()=>{});
+  await pool.end();
+  for(const key of keys){if(saved[key]===undefined)delete process.env[key];else process.env[key]=saved[key];}
  }
 });
