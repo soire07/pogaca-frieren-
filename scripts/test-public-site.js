@@ -1200,12 +1200,10 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.ok(!calls.some(call=>/INSERT INTO daily_mission_claims|UPDATE users SET coins/i.test(call.sql)));
  assert.match(response.body,/Kuzey Kıtası Dünya Haritası/);
  assert.match(response.body,/atlas-world-map/);
+ assert.match(response.body,/atlas-pin-layer/);
+ assert.match(response.body,/style="left:26\.4%;top:57\.5%;"/);
  assert.match(response.body,/atlas-forest/);
- assert.match(response.body,/atlas-paper-bg/);
  assert.match(response.body,/atlas-desert/);
- assert.match(response.body,/atlas-compass/);
- assert.match(response.body,/atlas-route/);
- assert.match(response.body,/is-locked/);
  assert.match(response.body,/atlas-snow/);
  assert.match(response.body,/Boss zaferleri · karakter geneli/);
  assert.match(response.body,/Zindan zaferleri · karakter geneli/);
@@ -1221,10 +1219,9 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/bölge ·/);
  assert.match(response.body,/Yenilen bosslar/);
  assert.match(response.body,/Sandık alanı/);
- assert.match(response.body,/atlas-city-label/);
- assert.match(response.body,/data-region-key="merkez"/);
- assert.match(response.body,/href="#region-merkez"/);
- assert.match(response.body,/aria-label="Frieren RPG dünya haritası"/);
+ assert.match(response.body,/atlas-pin-label/);
+ assert.match(response.body,/data-atlas-open="merkez"/);
+ assert.match(response.body,/aria-label="Frieren Kuzey Kıtası interaktif haritası"/);
  assert.match(response.body,/Merkez Topraklar/);
  assert.match(response.body,/Büyük Orman Yolu/);
  assert.match(response.body,/data-atlas-panel="merkez"/);
@@ -1817,10 +1814,62 @@ test('spellbook search and mastery filters update visible entries and empty stat
 });
 
 
+test('illustrated atlas background is served as a first-party image asset', async () => {
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/assets/frieren-world-map.svg'),response,{db:null}),true);
+ assert.equal(response.status,200);
+ const artwork=response.body.toString('utf8');
+ assert.ok(artwork.startsWith('<svg'));
+ assert.match(artwork,/KUZEY KITASI/);
+ const atlas=renderExplorationAtlas({mapContent:{regions:[],summary:{}}});
+ assert.ok(atlas.includes('src="/assets/frieren-world-map.svg"'));
+ assert.match(atlas,/atlas-pin-layer/);
+ assert.doesNotMatch(atlas,/<svg class="atlas-world-map"/);
+});
+
 test('interactive parchment atlas renders biome regions, settlements, NPCs, creatures, boss and dungeon pins with live discovery percentage',()=>{
  const mapContent=buildExplorationMapContent({level:50,regionVisits:[{region_key:'merkez',visits:3},{region_key:'orman',visits:1},{region_key:'harabeler',visits:1}],bosses:[{key:'test_boss',name:'Schattenwolf',minLevel:1,region:'Merkez Topraklar'}],dungeons:[{key:'test_dungeon',name:'Merkez Topraklar Mahzeni',minLevel:1,loot:'Schattenwolfzahn'}]});
  const html=renderExplorationAtlas({mapContent,stats:{boss_defeats:2,dungeon_wins:1}});
  for(const text of ['50% keşfedildi','Fısıltılı Mistik Orman','Kızıl Kum ve Kadim Harabeler','Ayaz Geçidi','Buzul Tacı Yaylaları','Kül Ateşi Volkan Kuşağı','Linden Meydanı','Sylvan Köyü','Aren Taş Şehri','Frostholm','Hrafn Kalesi','Emberwatch','Mira','Gezgin büyücü','Mana Slime','Orman Perisi','Schattenwolf','Merkez Topraklar Mahzeni','Sandıklar ve nadir ganimet','atlas-paper','atlas-forest','atlas-volcano'])assert.ok(html.includes(text),'atlas should include '+text);
  assert.match(html,/data-atlas-focus="city"/);assert.match(html,/data-atlas-focus="boss"/);assert.match(html,/data-atlas-focus="dungeon"/);assert.match(html,/role="dialog"/);assert.match(html,/data-atlas-close/);
  assert.doesNotMatch(html,/exploration-map-node-pin/);
+});
+
+
+test('interactive atlas exposes accessible zoom, pan and independent map-layer controls',async()=>{
+ const mapContent=buildExplorationMapContent({level:50,regionVisits:[{region_key:'merkez',visits:3}],bosses:[{key:'test_boss',name:'Schattenwolf',minLevel:1,region:'Merkez Topraklar'}],dungeons:[{key:'test_dungeon',name:'Merkez Topraklar Mahzeni',minLevel:1,loot:'Schattenwolfzahn'}]});
+ const html=renderExplorationAtlas({mapContent,stats:{}});
+ for(const token of ['data-atlas-viewport','data-atlas-camera','data-atlas-zoom="1"','data-atlas-zoom="-1"','data-atlas-reset','data-atlas-layer="region"','data-atlas-layer="city"','data-atlas-layer="boss"','data-atlas-layer="dungeon"','aria-pressed="true"'])assert.ok(html.includes(token),'atlas navigation should include '+token);
+ const script=await readFile(new URL('../public-assets/exploration-atlas.js',import.meta.url),'utf8');
+ for(const behavior of ["addEventListener('wheel'","addEventListener('pointerdown'","addEventListener('pointermove'","pointers.size===2","data-atlas-layer-item","Escape"])assert.ok(script.includes(behavior),'atlas interaction should include '+behavior);
+ assert.ok(script.includes('Math.max(0,(rect.width*(scale-1))/2)'),'zooming below 100% must not create negative pan bounds');assert.ok(script.includes("modal.querySelectorAll('button:not([disabled])')"),'modal focus trap must include only sequentially focusable controls');assert.ok(script.includes('document.activeElement===heading'),'modal heading focus must remain inside the focus trap');assert.ok(script.includes('document.activeElement===lastItem'),'tabbing from the final modal control must wrap to the first');
+});
+
+
+test('atlas exploration fog reveals only regions marked discovered by the RPG map data',()=>{
+ const mapContent=buildExplorationMapContent({level:50,regionVisits:[{region_key:'merkez',visits:3}],bosses:[],dungeons:[]});
+ const html=renderExplorationAtlas({mapContent,stats:{}});
+ assert.match(html,/atlas-fog-layer/);
+ assert.match(html,/atlas-discovery-mask/);
+ assert.match(html,/<circle cx="26\.4" cy="57\.5" r="13" fill="black"\/>/);
+ assert.doesNotMatch(html,/<circle cx="37\.2" cy="32\.1" r="13" fill="black"\/>/);
+});
+
+
+test('fantasy atlas artwork includes detailed terrain relief and layered landscape features',async()=>{
+ const asset=await readFile(new URL('../public-assets/frieren-world-map.svg',import.meta.url),'utf8');
+ for(const feature of ['fine-contours','atlas-pine','atlas-hill','highland tarns','weathered ruins','coastal islets'])assert.ok(asset.includes(feature),'map artwork should include '+feature);
+});
+
+
+test('illustrated atlas preserves the source map aspect ratio so pins and discovery fog stay aligned on every screen',async()=>{
+ const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
+ const viewportRules=[...css.matchAll(/\.atlas-map-viewport\{([^}]*)\}/g)];
+ const activeRule=viewportRules.at(-1)?.[1]||'';
+ assert.match(activeRule,/aspect-ratio:\s*3\s*\/\s*2/);
+ assert.match(activeRule,/min-height:\s*0/);
+ assert.match(activeRule,/max-width:\s*1100px/);
+ assert.doesNotMatch(css,/\.atlas-map-viewport\{min-height:300px\}/);
+ const artwork=await readFile(new URL('../public-assets/frieren-world-map.svg',import.meta.url),'utf8');
+ assert.match(artwork,/viewBox="0 0 1800 1200"/);
 });
