@@ -36,13 +36,7 @@ async function createPublicChatSchema(db){
  await db.query('ALTER TABLE frieren_public_chat_presence ADD COLUMN IF NOT EXISTS typing_until TIMESTAMPTZ');
  await ensureChatMediaSchema(db);
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_reactions(message_id UUID NOT NULL REFERENCES frieren_public_chat_messages(message_id) ON DELETE CASCADE,account_id TEXT NOT NULL,emoji VARCHAR(16) NOT NULL CHECK(char_length(emoji) BETWEEN 1 AND 16),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(message_id,account_id,emoji))');
- await db.query(`DO $ BEGIN
-  PERFORM pg_advisory_xact_lock(hashtext('frieren_public_chat_schema'));
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='frieren_public_chat_reactions'::regclass AND conname='frieren_public_chat_reactions_emoji_check' AND pg_get_constraintdef(oid) LIKE '%char_length%') THEN
-   ALTER TABLE frieren_public_chat_reactions DROP CONSTRAINT IF EXISTS frieren_public_chat_reactions_emoji_check;
-   ALTER TABLE frieren_public_chat_reactions ADD CONSTRAINT frieren_public_chat_reactions_emoji_check CHECK (char_length(emoji) BETWEEN 1 AND 16);
-  END IF;
- END; $`);
+ await db.query('ALTER TABLE frieren_public_chat_reactions DROP CONSTRAINT IF EXISTS frieren_public_chat_reactions_emoji_check, ADD CONSTRAINT frieren_public_chat_reactions_emoji_check CHECK (char_length(emoji) BETWEEN 1 AND 16)');
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_blocks(blocker_account_id TEXT NOT NULL,blocked_account_id TEXT NOT NULL,blocked_username VARCHAR(24) NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(blocker_account_id,blocked_account_id),CHECK(blocker_account_id<>blocked_account_id))');
  await db.query('CREATE INDEX IF NOT EXISTS frieren_public_chat_recent_idx ON frieren_public_chat_messages(created_at DESC) WHERE hidden=FALSE');
  await db.query('CREATE INDEX IF NOT EXISTS frieren_public_chat_account_idx ON frieren_public_chat_messages(account_id,created_at DESC)');
