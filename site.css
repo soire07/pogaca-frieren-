@@ -992,3 +992,31 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .journal-collection-card .progress i { background: linear-gradient(90deg,#8064bd,#c5a9f4); }
 .journal-collection-card small { color: #bcb4d0; }
 .journal-collection-state { margin: 0; color: #d4c5f4; font-weight: 650; }
+
+/* Data-backed exploration atlas and region progression. */
+.exploration-map-shell { overflow: hidden; padding: clamp(14px,3vw,28px); background: radial-gradient(ellipse at 50% 40%,rgba(105,79,157,.2),transparent 70%),rgba(18,15,38,.78); }
+.exploration-map-svg { display: block; width: 100%; max-height: 330px; min-height: 190px; overflow: visible; }
+.exploration-map-route { fill: none; stroke: rgba(188,163,236,.46); stroke-width: 1.8; stroke-dasharray: 2.4 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.exploration-map-node circle { stroke: #d8c7ff; stroke-width: .8; }
+.exploration-map-node text { fill: #171329; font-size: 4px; font-weight: 900; }
+.exploration-map-node.is-discovered circle { fill: #c9a7ff; }
+.exploration-map-node.is-open circle { fill: #8f80bd; }
+.exploration-map-node.is-locked circle { fill: #555064; stroke: #888197; }
+.exploration-map-node.is-locked text { fill: #e5e0ed; }
+.exploration-map-legend { display: flex; flex-wrap: wrap; gap: 12px 20px; color: #c4bdd4; font-size: .82rem; }
+.exploration-map-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.exploration-map-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #8f80bd; }
+.exploration-map-legend i.is-discovered { background: #c9a7ff; }
+.exploration-map-legend i.is-locked { background: #555064; }
+.exploration-region-card { display: grid; align-content: start; gap: 9px; }
+.exploration-region-card > strong { color: #e6dcf8; }
+.exploration-region-card > p { margin: 0; }
+.exploration-region-card.is-locked { opacity: .72; border-style: dashed; }
+.exploration-region-card.is-discovered { border-color: rgba(190,157,245,.5); }
+.exploration-region-card small { color: #bdb4d1; }
+.exploration-region-card .progress { height: 8px; }
+.exploration-region-card .progress i { background: linear-gradient(90deg,#8064bd,#c5a9f4); }
+@media (max-width: 560px) {
+  .exploration-map-svg { min-height: 150px; }
+  .exploration-map-legend { gap: 8px 12px; font-size: .76rem; }
+}
