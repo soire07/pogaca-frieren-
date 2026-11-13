@@ -1716,3 +1716,10 @@ body.atlas-modal-open{overflow:hidden}
 @keyframes atlas-rainfall{from{background-position:0 0}to{background-position:-28px 64px}}
 @media(max-width:700px){.atlas-atmosphere-control{font-size:10px}.atlas-atmosphere-control select{min-height:32px;max-width:92px}.atlas-terrain-details{opacity:.78}.atlas-map-art[data-atlas-weather="snow"] .atlas-weather-layer::before{opacity:.34}}
 @media(prefers-reduced-motion:reduce){.atlas-terrain-details,.atlas-weather-layer::before{transition:none;animation:none!important}}
+
+
+/* Slow cloud shadows add depth without obscuring the map or changing its geography. */
+.atlas-map-art::before{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;opacity:.24;mix-blend-mode:multiply;background:radial-gradient(ellipse at 18% 24%,rgba(30,42,44,.34),transparent 27%),radial-gradient(ellipse at 66% 56%,rgba(28,41,45,.24),transparent 31%),radial-gradient(ellipse at 88% 18%,rgba(34,46,47,.2),transparent 23%);animation:atlas-cloud-shadow 72s ease-in-out infinite alternate}
+@keyframes atlas-cloud-shadow{from{transform:translate3d(-1.2%,0,0) scale(1)}to{transform:translate3d(1.4%,.7%,0) scale(1.025)}}
+@media(max-width:700px){.atlas-map-art::before{opacity:.16}}
+@media(prefers-reduced-motion:reduce){.atlas-map-art::before{animation:none}}
