@@ -1203,7 +1203,7 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/Frieren Dünyası/);
  assert.match(response.body,/atlas-world-map/);
  assert.match(response.body,/atlas-pin-layer/);
- assert.match(response.body,/style="left:26\.4%;top:57\.5%;"/);
+ assert.match(response.body,/style="left:35%;top:68%;"/);
  assert.match(response.body,/atlas-forest/);
  assert.match(response.body,/atlas-highlands/);
  assert.match(response.body,/atlas-north/);
