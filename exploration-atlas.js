@@ -14,7 +14,7 @@ function pin(x,y,type,key,label,focus,n){
  :type==='boss'?'<path class="atlas-paper atlas-boss" d="M-19-15q19-17 38 0l-4 23-11 12h-8L-15 8z"/><path class="atlas-ink" d="M-11-5l5-3 4 4-2 8-7-2zM11-5L6-8 2-4l2 8 7-2zM-5 11l5-3 5 3-5 5z"/>'
  :type==='dungeon'?'<path class="atlas-paper atlas-dungeon" d="M-18-16h36v31L0 28-18 15z"/><path class="atlas-ink" d="M-10 10V-7h20v17M-5 10V-1H5v11M-14-11h28"/>'
  :'<path class="atlas-paper atlas-region-pin" d="M0-27C-14-27-22-17-22-5c0 15 22 34 22 34S22 10 22-5C22-17 14-27 0-27z"/><path class="atlas-ink" d="M-9-7L0-15 9-7 0 5z"/><text class="atlas-number" y="-3" text-anchor="middle">'+n+'</text>';
- return '<a class="atlas-pin is-'+type+'" href="#region-'+key+'" data-atlas-open="'+key+'" data-atlas-focus="'+focus+'" aria-label="'+label+'" transform="translate('+x+' '+y+')"><title>'+label+'</title><g>'+shape+'</g></a>';
+ return '<a class="atlas-pin is-'+type+'" data-region-key="'+key+'" href="#region-'+key+'" data-atlas-open="'+key+'" data-atlas-focus="'+focus+'" aria-label="'+label+'" transform="translate('+x+' '+y+')"><title>'+label+'</title><g>'+shape+'</g></a>';
 }
 function panel(item,index,esc){
  const r=item.region,b=BIOMES[r.key]||BIOMES.merkez;
@@ -33,7 +33,7 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escDefault}={}){
  const percent=Math.max(0,Math.min(100,Math.round(discovered/total*100)));
  const pts=rows.map((item,i)=>({item,b:BIOMES[item.region.key]||BIOMES.merkez,i}));
  const routes=pts.slice(1).map((p,i)=>{const a=pts[i];return '<path class="atlas-route '+(a.item.unlocked&&p.item.unlocked?'is-open':'is-locked')+'" d="M'+a.b.x+' '+a.b.y+' Q'+Math.round((a.b.x+p.b.x)/2)+' '+(Math.round((a.b.y+p.b.y)/2)-36)+' '+p.b.x+' '+p.b.y+'"/>';}).join('');
- const labels=pts.map(p=>'<text class="atlas-biome-label" x="'+p.b.x+'" y="'+(p.b.y-63)+'" text-anchor="middle">'+esc(p.b.name)+'</text>').join('');
+ const labels=pts.map(p=>'<text class="atlas-biome-label" x="'+p.b.x+'" y="'+(p.b.y-63)+'" text-anchor="middle">'+esc(p.b.name)+'</text><text class="atlas-city-label" x="'+p.b.cx+'" y="'+(p.b.cy+34)+'" text-anchor="middle">'+esc(p.b.label)+'</text>').join('');
  const regionPins=pts.map(p=>pin(p.b.x,p.b.y,'region',p.item.region.key,p.b.name+' bölgesini aç','region',p.i+1)).join('');
  const cityPins=pts.map(p=>pin(p.b.cx,p.b.cy,'city',p.item.region.key,p.b.city+' yerleşimini aç','city',p.i+1)).join('');
  const bossPins=pts.flatMap(p=>p.item.bosses.map((b,i)=>pin(p.b.x+34+i*23,p.b.y+28+i*5,'boss',p.item.region.key,b.name+' boss noktasını aç','boss',p.i+1))).join('');
