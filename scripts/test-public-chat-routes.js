@@ -124,3 +124,11 @@ test('chat event stream requires an authenticated account and releases its liste
  const stream=response();assert.equal(await handlePublicSiteRequest(get('/api/chat-events',account),stream,{db:{query:async()=>({rows:[],rowCount:0})}}),true);
  assert.equal(stream.status,200);assert.match(stream.headers['Content-Type'],/text\/event-stream/);assert.match(stream.body,/retry: 3000/);stream.close();
 });
+
+test('chat media upload requires a signed-in account and valid CSRF before checking storage setup',async()=>{
+ const anonymous=response();const anonReq=Readable.from([Buffer.from([0xff,0xd8,0xff])]);Object.assign(anonReq,{method:'POST',url:'/api/chat-media/upload',headers:{'content-type':'image/jpeg','x-chat-scope':'public'}});
+ await handlePublicSiteRequest(anonReq,anonymous,{db:{query:async()=>({rows:[],rowCount:0})}});assert.equal(anonymous.status,302);
+ const req=Readable.from([Buffer.from([0xff,0xd8,0xff])]);Object.assign(req,{method:'POST',url:'/api/chat-media/upload',headers:{cookie:cookieFor(account),'content-type':'image/jpeg','x-csrf-token':createSiteCsrfToken(secret),'x-chat-scope':'public','x-chat-target':'public'}});
+ const res=response();await handlePublicSiteRequest(req,res,{db:{query:async()=>({rows:[],rowCount:0})}});
+ assert.equal(res.status,503);assert.match(res.body,/media_storage_not_configured/);
+});
