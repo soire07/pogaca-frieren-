@@ -19,8 +19,10 @@
   const layerButton=event.target.closest('[data-atlas-layer]');if(layerButton){const layer=layerButton.dataset.atlasLayer,enabled=layerButton.getAttribute('aria-pressed')!=='true';layerButton.setAttribute('aria-pressed',String(enabled));root.querySelectorAll('[data-atlas-layer-item="'+layer+'"]').forEach(pin=>{pin.hidden=!enabled;});return;}
   const geographyButton=event.target.closest('[data-atlas-geography]');
   if(geographyButton){const layer=geographyButton.dataset.atlasGeography,enabled=geographyButton.getAttribute('aria-pressed')!=='true';geographyButton.setAttribute('aria-pressed',String(enabled));root.querySelectorAll('[data-atlas-geography-layer="'+layer+'"]').forEach(node=>node.toggleAttribute('hidden',!enabled));return;}
+  const lightingButton=event.target.closest('[data-atlas-lighting]');if(lightingButton){const enabled=lightingButton.getAttribute('aria-pressed')!=='true',mapArt=root.querySelector('.atlas-map-art');lightingButton.setAttribute('aria-pressed',String(enabled));if(mapArt)mapArt.dataset.atlasLighting=enabled?'night':'day';lightingButton.textContent=enabled?'Gündüz görünümü':'Gece görünümü';return;}
   const trigger=event.target.closest('[data-atlas-open]');if(trigger){event.preventDefault();open(trigger.dataset.atlasOpen,trigger.dataset.atlasFocus,trigger.dataset.atlasTargetKey,trigger);}
  });
+ root.addEventListener('change',event=>{const weather=event.target.closest('[data-atlas-weather]');if(!weather)return;const mapArt=root.querySelector('.atlas-map-art');if(!mapArt)return;const allowed=['clear','mist','snow','rain'];mapArt.dataset.atlasWeather=allowed.includes(weather.value)?weather.value:'clear';});
  viewport.addEventListener('wheel',event=>{event.preventDefault();zoom(event.deltaY<0?1.12:.89);},{passive:false});
  viewport.addEventListener('pointerdown',event=>{
   if(event.target.closest('button'))return;
