@@ -1699,3 +1699,20 @@ body.atlas-modal-open{overflow:hidden}
 @media(prefers-reduced-motion:reduce){
  .atlas-waterways,.atlas-trails,.atlas-settled-land{transition:none}
 }
+
+
+/* Atlas terrain details and user-selectable atmosphere; purely visual, no map data mutation. */
+.atlas-terrain-details{opacity:.88;transition:opacity .18s ease}
+.atlas-terrain-details[hidden]{display:none}
+.atlas-weather-layer{position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none}
+.atlas-weather-layer::before,.atlas-weather-layer::after{content:"";position:absolute;inset:0;opacity:0;pointer-events:none}
+.atlas-map-art[data-atlas-weather="mist"] .atlas-weather-layer::before{opacity:.68;background:radial-gradient(ellipse at 28% 48%,rgba(222,231,218,.4),transparent 34%),radial-gradient(ellipse at 76% 34%,rgba(207,222,221,.3),transparent 39%);filter:blur(12px)}
+.atlas-map-art[data-atlas-weather="snow"] .atlas-weather-layer::before{opacity:.48;background-image:radial-gradient(circle,rgba(250,252,244,.9) 0 1px,transparent 1.7px),radial-gradient(circle,rgba(232,243,243,.72) 0 .8px,transparent 1.5px);background-size:43px 39px,67px 59px;background-position:0 0,19px 13px;mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.3) 75%,transparent)}
+.atlas-map-art[data-atlas-weather="rain"] .atlas-weather-layer::before{opacity:.3;background-image:repeating-linear-gradient(108deg,transparent 0 17px,rgba(207,226,232,.55) 18px,transparent 19px 31px);mask-image:linear-gradient(180deg,#000,transparent 95%);animation:atlas-rainfall .8s linear infinite}
+.atlas-map-art[data-atlas-lighting="night"] .atlas-weather-layer::after{opacity:.68;background:linear-gradient(145deg,rgba(9,20,45,.72),rgba(16,26,56,.48) 52%,rgba(5,13,30,.72)),radial-gradient(circle at 78% 16%,rgba(206,218,255,.32),transparent 2px);mix-blend-mode:multiply}
+.atlas-atmosphere-control{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid #9caa9a55;border-radius:5px;color:#d8d5c8;font-size:11px}
+.atlas-atmosphere-control select{min-height:30px;border:1px solid #9caa9a55;border-radius:4px;background:#17252c;color:#f1e5ca;padding:3px 6px;font:inherit}
+.atlas-layer-controls button[data-atlas-lighting][aria-pressed="true"]{border-color:#9daee1;background:#53618b44;color:#e0e7ff}
+@keyframes atlas-rainfall{from{background-position:0 0}to{background-position:-28px 64px}}
+@media(max-width:700px){.atlas-atmosphere-control{font-size:10px}.atlas-atmosphere-control select{min-height:32px;max-width:92px}.atlas-terrain-details{opacity:.78}.atlas-map-art[data-atlas-weather="snow"] .atlas-weather-layer::before{opacity:.34}}
+@media(prefers-reduced-motion:reduce){.atlas-terrain-details,.atlas-weather-layer::before{transition:none;animation:none!important}}
