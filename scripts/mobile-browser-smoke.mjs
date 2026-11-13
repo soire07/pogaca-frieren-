@@ -110,7 +110,7 @@ for (const scenario of scenarios) {
     await page.locator('select[data-atlas-weather]').selectOption('rain');
     const rainMode = await page.locator('.atlas-map-art').getAttribute('data-atlas-weather');
     if (rainMode !== 'rain') throw new Error(scenario.name + ' atlas rain mode was not applied');
-    const lightingToggle = page.locator('[data-atlas-lighting]');
+    const lightingToggle = page.locator('[data-atlas-lighting-toggle]');
     await lightingToggle.click();
     if (await page.locator('.atlas-map-art').getAttribute('data-atlas-lighting') !== 'night' || await lightingToggle.getAttribute('aria-pressed') !== 'true') {
       throw new Error(scenario.name + ' atlas night mode did not apply accessibly');
@@ -119,6 +119,10 @@ for (const scenario of scenarios) {
     if (await page.locator('.atlas-map-art').getAttribute('data-atlas-lighting') !== 'day' || await lightingToggle.getAttribute('aria-pressed') !== 'false') {
       throw new Error(scenario.name + ' atlas day mode did not restore correctly');
     }
+    await page.locator('[data-atlas-open]').first().click();
+    if (await page.locator('[data-atlas-modal]').isHidden()) throw new Error(scenario.name + ' atlas marker click did not open its region detail panel');
+    await page.locator('[data-atlas-close]').first().click();
+    if (!(await page.locator('[data-atlas-modal]').isHidden())) throw new Error(scenario.name + ' atlas region detail panel did not close');
     const encyclopediaPage = await page.goto(baseUrl + '/ansiklopedi', { waitUntil: 'domcontentloaded', timeout: 45000 });
     if (!encyclopediaPage || encyclopediaPage.status() !== 200) throw new Error(scenario.name + ' character encyclopedia HTTP ' + (encyclopediaPage?.status() || 'no response'));
     await page.waitForLoadState('networkidle', { timeout: 15000 });
