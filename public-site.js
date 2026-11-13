@@ -741,8 +741,8 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       res.writeHead(201,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
     }catch(error){
       const code=String(error?.message||'');
-      const status=code==='CHAT_MEDIA_STORAGE_NOT_CONFIGURED'?503:code==='CHAT_MEDIA_DAILY_QUOTA'?429:code.includes('SCOPE')?403:400;
-      const message=code==='CHAT_MEDIA_STORAGE_NOT_CONFIGURED'?'media_storage_not_configured':code==='CHAT_MEDIA_DAILY_QUOTA'?'media_daily_quota':code==='CHAT_MEDIA_SIZE_INVALID'?'media_size_invalid':code==='CHAT_MEDIA_TYPE_INVALID'||code==='CHAT_MEDIA_SIGNATURE_INVALID'?'media_type_invalid':'media_upload_failed';
+      const status=code==='CHAT_MEDIA_STORAGE_NOT_CONFIGURED'?503:code==='CHAT_MEDIA_DAILY_QUOTA'||code==='CHAT_MEDIA_STORAGE_QUOTA'?429:code.includes('SCOPE')?403:400;
+      const message=code==='CHAT_MEDIA_STORAGE_NOT_CONFIGURED'?'media_storage_not_configured':code==='CHAT_MEDIA_DAILY_QUOTA'?'media_daily_quota':code==='CHAT_MEDIA_STORAGE_QUOTA'?'media_storage_quota':code==='CHAT_MEDIA_SIZE_INVALID'?'media_size_invalid':code==='CHAT_MEDIA_TYPE_INVALID'||code==='CHAT_MEDIA_SIGNATURE_INVALID'?'media_type_invalid':'media_upload_failed';
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify({error:message}));return true;
     }
   }
