@@ -1128,3 +1128,11 @@ html[data-a11y-contrast=high] :where(.card,.accessibility-panel-content,.accessi
 html[data-a11y-contrast=high] :where(.muted,.market-meta,.eyebrow,small){color:#fff!important}
 html[data-a11y-motion=reduce] *,html[data-a11y-motion=reduce] *::before,html[data-a11y-motion=reduce] *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 @media(max-width:560px){.accessibility-panel{top:66px;right:10px;width:min(320px,calc(100vw - 20px))}.accessibility-panel-content{padding:13px}}
+
+.spellbook-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:end;margin-bottom:14px}
+.spellbook-toolbar label{display:grid;gap:6px;font-weight:650}
+.spellbook-toolbar input,.spellbook-toolbar select{width:100%;min-width:0;padding:11px 12px;border:1px solid rgba(207,181,255,.25);border-radius:10px;background:rgba(12,10,23,.8);color:#faf6ff}
+.spellbook-toolbar output{grid-column:1/-1;color:var(--frieren-muted,#c9c1dc);font-size:.86rem}
+.spellbook-empty{margin-top:12px}
+.spellbook-entry[hidden]{display:none!important}
+@media(max-width:600px){.spellbook-toolbar{grid-template-columns:minmax(0,1fr)}.spellbook-toolbar output{grid-column:auto}}
