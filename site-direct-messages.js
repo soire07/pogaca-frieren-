@@ -54,7 +54,7 @@ export async function sendSiteDirectMessage(db,{senderAccountId,recipientAccount
  return tx(db,async c=>{
   await c.query('SELECT pg_advisory_xact_lock(hashtext($1))',[[sender,recipient].sort().join(':')]);
   if(!await canMessage(c,sender,recipient))return{status:'not_allowed'};
-  const rate=await c.query("SELECT COUNT(*)::int AS count FROM frieren_site_direct_messages WHERE sender_account_id=$1 AND created_at>NOW()-INTERVAL '10 minutes'",[sender]);
+  const rate=await c.query(`SELECT (SELECT COUNT(*) FROM frieren_site_direct_messages WHERE sender_account_id=$1 AND created_at>NOW()-INTERVAL '10 minutes')+(SELECT COUNT(*) FROM frieren_site_dm_group_messages WHERE sender_account_id=$1 AND created_at>NOW()-INTERVAL '10 minutes') AS count`,[sender]);
   if(Number(rate.rows[0]?.count||0)>=20)return{status:'rate_limited'};
   const id=randomUUID();
   await c.query('INSERT INTO frieren_site_direct_messages(message_id,sender_account_id,recipient_account_id,body) VALUES($1,$2,$3,$4)',[id,sender,recipient,message]);
@@ -91,6 +91,8 @@ export async function createSiteDmGroup(db,{creatorAccountId,memberAccountIds=[]
  await ensureSiteDirectMessageSchema(db);
  return tx(db,async client=>{
   const lock=members.slice().sort().join(':');await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',[lock]);
+  const groupRate=await client.query("SELECT COUNT(*)::int AS count FROM frieren_site_dm_groups WHERE created_by=$1 AND created_at>NOW()-INTERVAL '1 day'",[creator]);
+  if(Number(groupRate.rows[0]?.count||0)>=5)return{status:'rate_limited'};
   for(const member of members){if(member!==creator&&!await canMessage(client,creator,member))return{status:'not_allowed'};}
   const groupId=randomUUID();
   await client.query('INSERT INTO frieren_site_dm_groups(group_id,created_by,title) VALUES($1,$2,$3)',[groupId,creator,name]);
