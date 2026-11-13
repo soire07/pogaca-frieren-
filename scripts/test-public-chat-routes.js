@@ -76,3 +76,32 @@ test('Discord-linked bot owner can pin and pause chat without an environment acc
   assert.equal(seen.filter(x=>x.sql.includes('FROM site_discord_links')&&x.params?.[1]==='1553794496234262641').length,2);
  }finally{if(previous===undefined)delete process.env.FRIEREN_OWNER_ACCOUNT_IDS;else process.env.FRIEREN_OWNER_ACCOUNT_IDS=previous;}
 });
+
+
+test('site direct-message history is authenticated, friend-scoped and does not mutate on GET',async()=>{
+ const other='site_123e4567-e89b-12d3-a456-426614174001';const seen=[];
+ const db={async query(sql,params){seen.push({sql,params});
+  if(sql.includes('SELECT 1 FROM frieren_account_friend_requests'))return{rows:[{}],rowCount:1};
+  if(sql.includes('SELECT 1 FROM frieren_public_chat_blocks'))return{rows:[],rowCount:0};
+  if(sql.startsWith('SELECT message_id,sender_account_id'))return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174002',sender_account_id:other,recipient_account_id:account.id,body:'Gizli selam',created_at:new Date().toISOString(),read_at:null,is_own:false}],rowCount:1};
+  return{rows:[],rowCount:0};
+ }};
+ const anonymous=response();await handlePublicSiteRequest(get('/api/site-dm/messages?with='+other),anonymous,{db});assert.equal(anonymous.status,302);
+ const res=response();await handlePublicSiteRequest(get('/api/site-dm/messages?with='+other,account),res,{db});assert.equal(res.status,200);assert.match(res.body,/Gizli selam/);assert.ok(!seen.some(x=>x.sql.startsWith('UPDATE frieren_site_direct_messages')),'GET must not mutate read receipts');
+ const invalid=response();await handlePublicSiteRequest(get('/api/site-dm/messages?with=bad',account),invalid,{db});assert.equal(invalid.status,400);
+});
+test('site direct-message sends require CSRF and an accepted unblocked friendship',async()=>{
+ const other='site_123e4567-e89b-12d3-a456-426614174001';let inserted=0;
+ const db={async query(sql,params){
+  if(sql.includes('SELECT 1 FROM frieren_account_friend_requests'))return{rows:[{}],rowCount:1};
+  if(sql.includes('SELECT 1 FROM frieren_public_chat_blocks'))return{rows:[],rowCount:0};
+  if(sql.includes('SELECT COUNT(*)::int AS count FROM frieren_site_direct_messages WHERE sender_account_id'))return{rows:[{count:0}],rowCount:1};
+  if(sql.startsWith('INSERT INTO frieren_site_direct_messages')){inserted++;return{rows:[],rowCount:1};}
+  return{rows:[],rowCount:0};
+ }};
+ const bad=Readable.from([Buffer.from('csrf=bad&recipientAccountId='+other+'&message=Merhaba')]);Object.assign(bad,{method:'POST',url:'/api/site-dm/messages',headers:{cookie:cookieFor(account),'content-type':'application/x-www-form-urlencoded'}});
+ const denied=response();await handlePublicSiteRequest(bad,denied,{db});assert.equal(denied.status,403);assert.equal(inserted,0);
+ const form=new URLSearchParams({csrf:createSiteCsrfToken(secret),recipientAccountId:other,message:'Merhaba'});
+ const req=Readable.from([Buffer.from(form.toString())]);Object.assign(req,{method:'POST',url:'/api/site-dm/messages',headers:{cookie:cookieFor(account),'content-type':'application/x-www-form-urlencoded'}});
+ const res=response();await handlePublicSiteRequest(req,res,{db});assert.equal(res.status,201);assert.match(res.body,/"status":"sent"/);assert.equal(inserted,1);
+});
