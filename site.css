@@ -1573,3 +1573,6 @@ body.atlas-modal-open{overflow:hidden}
 .atlas-pin[hidden]{display:none}
 @media(max-width:700px){.atlas-map-viewport{min-height:300px}.atlas-map-tools{top:8px;right:8px;gap:3px;padding:4px}.atlas-map-tools button{min-width:31px;height:31px}.atlas-layer-controls{gap:6px}.atlas-layer-controls button{padding:6px 9px}}
 @media(prefers-reduced-motion:reduce){.atlas-map-camera{will-change:auto}}
+
+.atlas-fog-layer{position:absolute;inset:0;z-index:2;width:100%;height:100%;pointer-events:none}
+.atlas-pin-layer{z-index:3}
