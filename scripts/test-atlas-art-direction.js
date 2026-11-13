@@ -140,7 +140,7 @@ test('Frieren atlas adds subtle northern snowfall and forest mist without changi
   assert.match(css, /atlas-northfall/);
   assert.match(css, /atlas-forest-mist/);
   assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-atmosphere-layer::before/);
-  assert.match(site, /site\.css\?v=atlas-366-1/);
+  assert.match(site, /site\.css\?v=atlas-367-1/);
 });
 
 
