@@ -161,6 +161,7 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
   const client = await readFile(new URL('../public-assets/exploration-atlas.js', import.meta.url), 'utf8');
   const locations = await readFile(new URL('../exploration-world-locations.js', import.meta.url), 'utf8');
+  const site = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
   for (const layer of ['waterways', 'trails', 'settled-land']) {
     assert.match(atlas, new RegExp('data-atlas-geography-layer="' + layer + '"'));
   }
@@ -178,6 +179,7 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   }
   assert.match(client, /data-atlas-geography/);
   assert.match(atlas, /atlas-362-1/);
+  assert.match(site, /exploration-atlas\.js\?v=atlas-362-1/);
   assert.match(locations, /x:39, y:79/);
   assert.match(locations, /level_1: Object\.freeze\(\{ regionKey:'merkez', x:43, y:72/);
 });
