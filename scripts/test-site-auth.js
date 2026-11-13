@@ -236,6 +236,12 @@ test('public registration and password recovery routes redirect to Discord-only 
   assert.equal(login.status, 200);
   assert.match(login.body, /Discord ile giriş yap/);
   assert.match(login.body, /<meta name="robots" content="noindex,follow">/);
+  assert.match(login.body, /property="og:title" content="Poğaça Frieren \| Frieren Evrenine Yolculuk"/);
+  assert.match(login.body, /property="og:description"/);
+  assert.match(login.body, /property="og:image" content="https:\/\/frierenbot\.vercel\.app\/assets\/site-banner\.webp"/);
+  assert.match(login.body, /name="twitter:card" content="summary_large_image"/);
+  assert.match(login.body, /name="twitter:image"/);
+  assert.match(login.body, /name="description"/);
   assert.match(login.body, /href="\/tanitim">Poğaça Frieren özelliklerini ve RPG sistemlerini incele<\/a>/);
   assert.match(login.body, /<head>[\s\S]*<meta name="google-site-verification" content="zQvll4lo6fEkpcbHjwSdQeMbJggVxdAviEDKvLC0Ebc"\s*\/?\s*>[\s\S]*<\/head>/);
   assert.equal((login.body.match(/name="google-site-verification"/g) || []).length, 1);

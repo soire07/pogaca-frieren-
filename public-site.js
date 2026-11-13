@@ -141,8 +141,9 @@ function playerXpProgress(profile, isVip = false, isOwner = false) {
 function page(title, content, user, seo = {}) {
   const description = seo.description || 'Frieren evreninde büyülü bir Discord RPG yolculuğu.';
   const robots = seo.indexable ? 'index,follow' : 'noindex,nofollow';
+  const shareImage = seo.image || 'https://frierenbot.vercel.app/assets/site-banner.webp';
   const seoTags = seo.canonical
-    ? '<link rel="canonical" href="' + esc(seo.canonical) + '"><meta property="og:type" content="website"><meta property="og:title" content="' + esc(title) + '"><meta property="og:description" content="' + esc(description) + '"><meta property="og:url" content="' + esc(seo.canonical) + '"><meta property="og:image" content="' + esc(seo.image || 'https://frierenbot.vercel.app/assets/site-banner.webp') + '"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' + esc(title) + '"><meta name="twitter:description" content="' + esc(description) + '">'
+    ? '<link rel="canonical" href="' + esc(seo.canonical) + '"><meta property="og:type" content="website"><meta property="og:site_name" content="Poğaça Frieren"><meta property="og:locale" content="tr_TR"><meta property="og:title" content="' + esc(title) + '"><meta property="og:description" content="' + esc(description) + '"><meta property="og:url" content="' + esc(seo.canonical) + '"><meta property="og:image" content="' + esc(shareImage) + '"><meta property="og:image:secure_url" content="' + esc(shareImage) + '"><meta property="og:image:alt" content="Poğaça Frieren — Frieren temalı fantastik Discord RPG"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' + esc(title) + '"><meta name="twitter:description" content="' + esc(description) + '"><meta name="twitter:image" content="' + esc(shareImage) + '">'
     : '';
   const structuredData = seo.structuredData
     ? '<script type="application/ld+json">' + JSON.stringify(seo.structuredData).replace(/</g, '\\u003c') + '</script>'
