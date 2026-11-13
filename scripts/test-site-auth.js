@@ -307,7 +307,9 @@ test('Discord OAuth callback provisions one persistent site account and issues a
     assert.equal(session.id, 'site_' + accountId);
     assert.equal(session.username, 'Frieren');
     assert.ok(queries.some(item => item.sql.includes('INSERT INTO frieren_site_accounts')));
-    assert.ok(queries.some(item => item.sql.includes('INSERT INTO frieren_site_discord_accounts')));
+    const discordInsert = queries.find(item => item.sql.includes('INSERT INTO frieren_site_discord_accounts'));
+    assert.ok(discordInsert);
+    assert.equal(discordInsert.params[3], 'avatarhash');
     assert.ok(queries.some(item => item.sql === 'COMMIT'));
   } finally {
     globalThis.fetch = previousFetch;
@@ -352,4 +354,49 @@ test('Discord account avatar schema upgrades existing links additively', async (
   assert.ok(db.calls.some(call => call.sql.includes('CREATE TABLE IF NOT EXISTS frieren_site_discord_accounts')));
   assert.ok(db.calls.some(call => call.sql.includes('ADD COLUMN IF NOT EXISTS discord_avatar_hash TEXT')));
   assert.ok(db.calls.every(call => !/DROP TABLE|TRUNCATE|DELETE FROM/i.test(call.sql)));
+});
+
+
+test('Discord OAuth refreshes the stored avatar hash for an already linked account', async () => {
+  const previous = { CLIENT_ID: process.env.CLIENT_ID, DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET, SITE_DISCORD_REDIRECT_URI: process.env.SITE_DISCORD_REDIRECT_URI };
+  const previousFetch = globalThis.fetch;
+  process.env.CLIENT_ID = 'test-discord-client';
+  process.env.DISCORD_CLIENT_SECRET = 'test-discord-secret';
+  process.env.SITE_DISCORD_REDIRECT_URI = 'https://frierenbot.vercel.app/site/discord/callback';
+  globalThis.fetch = async url => String(url).includes('/oauth2/token')
+    ? { ok: true, json: async () => ({ access_token: 'temporary-discord-token' }) }
+    : { ok: true, json: async () => ({ id: '123456789012345678', username: 'Frieren', avatar: 'new-avatar-hash' }) };
+  const accountId = '123e4567-e89b-42d3-a456-426614174000';
+  const queries = [];
+  const client = {
+    async query(sql, params = []) {
+      queries.push({ sql: String(sql), params });
+      if (String(sql).includes('SELECT account_id FROM frieren_site_discord_accounts')) return { rows: [{ account_id: accountId }], rowCount: 1 };
+      return { rows: [], rowCount: 1 };
+    },
+    release() {}
+  };
+  const db = { async query(sql, params) { return client.query(sql, params); }, async connect() { return client; } };
+  try {
+    const stateRes = response();
+    await handleSiteAuthRequest({ method: 'GET', url: '/site/discord/login', headers: {} }, stateRes, { db, sessionSecret: secret });
+    const stateCookie = decodeURIComponent(stateRes.headers['Set-Cookie'].split(';')[0].split('=').slice(1).join('='));
+    const state = new URL(stateRes.headers.Location).searchParams.get('state');
+    const callback = response();
+    await handleSiteAuthRequest({
+      method: 'GET',
+      url: '/site/discord/callback?code=valid-code&state=' + encodeURIComponent(state),
+      headers: { cookie: 'frieren_site_oauth_state=' + encodeURIComponent(stateCookie) }
+    }, callback, { db, sessionSecret: secret, createSession: createPublicSiteSession });
+    assert.equal(callback.status, 303);
+    const avatarUpdate = queries.find(item => item.sql.includes('UPDATE frieren_site_discord_accounts SET discord_username=$2,discord_avatar_hash=$3'));
+    assert.ok(avatarUpdate, 'existing Discord links must refresh their avatar hash');
+    assert.deepEqual(avatarUpdate.params, ['123456789012345678', 'Frieren', 'new-avatar-hash']);
+    assert.ok(queries.some(item => item.sql === 'COMMIT'));
+  } finally {
+    globalThis.fetch = previousFetch;
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
 });
