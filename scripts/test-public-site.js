@@ -1512,3 +1512,13 @@ test('public adventurer profile renders the equipped Frieren guild banner', () =
   assert.match(html, /player-banner--frieren/);
   assert.match(html, /Maceracı profil sancağı/);
 });
+
+
+test('community chat keeps own messages readable and reactions flowing on mobile',async()=>{
+ const styles=await readFile(new URL('../site.css',import.meta.url),'utf8');
+ assert.match(styles,/\.public-chat-message\.is-own\s*\{\s*grid-template-columns:\s*40px\s+minmax\(0,1fr\)/);
+ assert.match(styles,/@media\s*\(max-width:\s*620px\)\s*\{[^}]*\.public-chat-message\.is-own\s*\{\s*grid-template-columns:\s*32px\s+minmax\(0,1fr\)/);
+ assert.match(styles,/\.public-chat-reactions\s*\{[^}]*display:\s*flex/);
+ assert.match(styles,/\.public-chat-reactions\s*\{[^}]*flex-wrap:\s*wrap/);
+ assert.ok(styles.includes('.public-chat-messages{min-height:150px;max-height:52vh;'));
+});
