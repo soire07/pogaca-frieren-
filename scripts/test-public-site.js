@@ -1170,6 +1170,7 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/Ödül alındı/);
  assert.match(response.body,/Mana araştırmacısı/);
  assert.doesNotMatch(response.body,/Ön safta nöbet/);
+ assert.ok(!calls.some(call=>/INSERT INTO daily_mission_claims|UPDATE users SET coins/i.test(call.sql)));
  assert.match(response.body,/Keşif Haritası/);
  assert.match(response.body,/Merkez Topraklar/);
  assert.match(response.body,/Büyük Orman Yolu/);
