@@ -6,11 +6,11 @@ export const FRIEREN_WORLD_SETTLEMENTS = Object.freeze([
   Object.freeze({ key:'strahl', name:'Strahl', subtitle:'Merkez Topraklar', regionKey:'merkez', x:39, y:79, kind:'city' }),
   Object.freeze({ key:'royal-capital', name:'Kraliyet Başkenti', subtitle:'Merkez Topraklar', regionKey:'merkez', x:49, y:88, kind:'city' }),
   Object.freeze({ key:'waal', name:'Waal', subtitle:'Kuzey sınır şehri', regionKey:'merkez', x:51, y:63, kind:'city' }),
-  Object.freeze({ key:'fabel-village', name:'Fabel Köyü', subtitle:'Kuzey Yaylaları', regionKey:'orman', x:25, y:51, kind:'city' }),
+  Object.freeze({ key:'fabel-village', name:'Fabel Köyü', subtitle:'Kuzey Toprakları', regionKey:'kuzey', x:51, y:48, kind:'city' }),
   Object.freeze({ key:'graf-granat', name:'Graf Granat Bölgesi', subtitle:'Kuzey Toprakları', regionKey:'harabeler', x:55, y:58, kind:'city' }),
   Object.freeze({ key:'aeusserst', name:'Äußerst', subtitle:'Kühl Bölgesi · Büyü Şehri', regionKey:'kuzey', x:68, y:42, kind:'city' }),
-  Object.freeze({ key:'village-of-sword', name:'Kılıç Köyü', subtitle:'Schwer Dağları', regionKey:'yayla', x:68, y:78, kind:'city' }),
-  Object.freeze({ key:'weise', name:'Weise', subtitle:'Altın Diyarı', regionKey:'yayla', x:81, y:51, kind:'city' }),
+  Object.freeze({ key:'village-of-sword', name:'Kılıç Köyü', subtitle:'Schwer Dağları', regionKey:'yayla', x:75, y:62, kind:'city' }),
+  Object.freeze({ key:'weise', name:'Weise', subtitle:'Kuzey Platosu · Kale Şehri', regionKey:'yayla', x:82, y:46, kind:'city' }),
   Object.freeze({ key:'ende', name:'Ende', subtitle:'Kıtanın en kuzeyi', regionKey:'aus', x:88, y:15, kind:'city' }),
   Object.freeze({ key:'demon-kings-castle', name:'İblis Kralı’nın Şatosu', subtitle:'Ende', regionKey:'aus', x:94, y:24, kind:'city' })
 ]);
