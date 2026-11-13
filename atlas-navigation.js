@@ -107,39 +107,44 @@ export const ATLAS_HISTORICAL_EVENTS = Object.freeze([
     location: 'Kraliyet Başkenti', anchorKey: 'royal-capital', regionKey: 'merkez',
     ...settlementByKey.get('royal-capital'),
     description: 'Himmel ve kahraman partisinin yolculuğunun başladığı başkent.',
-    officialSource: officialMap, locationSource: 'https://frieren-anime.jp/story/ep06/', episodeSources: Object.freeze([{ label: 'Bölüm 06', url: 'https://frieren-anime.jp/story/ep06/' }]), episodeSources: Object.freeze([{ label: 'Bölüm 01', url: 'https://frieren-anime.jp/story/1st/ep01/' }])
+    officialSource: officialMap, locationSource: locationGuide,
+    episodeSources: Object.freeze([{ label: 'Bölüm 01', url: 'https://frieren-anime.jp/story/1st/ep01/' }])
   }),
   Object.freeze({
     id: 'riegel-canyon-village-hero', title: 'Riegel Kanyonu köyünün kahramanı',
     episodeStart: 6, episodeEnd: 6, episodeLabel: '6. bölüm',
     location: 'Riegel Kanyonu kıyısındaki köy', anchorKey: 'riegel-canyon', regionKey: 'merkez',
     ...nodesById.get('riegel-canyon'),
-    description: 'Kuzey ile Merkez Toprakları arasındaki tahkim edilmiş geçiş noktası.',
-    officialSource: officialMap, locationSource: locationGuide, episodeSources: Object.freeze([{ label: 'Bölüm 23', url: 'https://frieren-anime.jp/story/ep23/' }, { label: 'Bölüm 26', url: 'https://frieren-anime.jp/story/ep26/' }]), episodeSources: Object.freeze([{ label: 'Bölüm 18', url: 'https://frieren-anime.jp/story/ep18/' }, { label: 'Bölüm 28', url: 'https://frieren-anime.jp/story/ep28/' }])
+    description: 'Resmî 6. bölüm özeti, Riegel Kanyonu boyunca uzanan köyü ve Stark’ın köyü korumasını doğrular.',
+    officialSource: officialMap, locationSource: 'https://frieren-anime.jp/story/ep06/',
+    episodeSources: Object.freeze([{ label: 'Bölüm 06', url: 'https://frieren-anime.jp/story/ep06/' }])
   }),
   Object.freeze({
     id: 'graf-granat-aura', title: 'Graf Granat bölgesinde Aura olayı',
     episodeStart: 8, episodeEnd: 9, episodeLabel: '8–9. bölümler',
     location: 'Graf Granat Bölgesi', anchorKey: 'graf-granat', regionKey: 'harabeler',
     ...settlementByKey.get('graf-granat'),
-    description: 'Aura ve iblislerinin şehri tehdit ettiği kuzey yolculuğu bölümü.',
-    officialSource: officialMap, locationSource: 'https://frieren.fandom.com/wiki/Story_Arcs', episodeSources: Object.freeze([{ label: 'Bölüm 08', url: 'https://frieren-anime.jp/story/ep08/' }, { label: 'Bölüm 09', url: 'https://frieren-anime.jp/story/ep09/' }])
+    description: 'Graf Granat ve Aura çatışmasının bölüm özetleriyle doğrulanan olay kaydı.',
+    officialSource: officialMap, locationSource: 'https://frieren.fandom.com/wiki/Story_Arcs',
+    episodeSources: Object.freeze([{ label: 'Bölüm 08', url: 'https://frieren-anime.jp/story/ep08/' }, { label: 'Bölüm 09', url: 'https://frieren-anime.jp/story/ep09/' }])
   }),
   Object.freeze({
     id: 'first-class-mage-exam', title: 'Birinci Sınıf Büyücü Sınavı',
     episodeStart: 18, episodeEnd: 28, episodeLabel: '18–28. bölümler',
     location: 'Äußerst', anchorKey: 'aeusserst', regionKey: 'kuzey',
     ...settlementByKey.get('aeusserst'),
-    description: 'Kıtasal Büyücü Birliği sınavları ve adayların karşılaşmaları.',
-    officialSource: officialMap, locationSource: locationGuide
+    description: 'Sınavın başlangıcı ve finali resmî bölüm özetleriyle kaynaklandırılmıştır.',
+    officialSource: officialMap, locationSource: locationGuide,
+    episodeSources: Object.freeze([{ label: 'Bölüm 18', url: 'https://frieren-anime.jp/story/ep18/' }, { label: 'Bölüm 28', url: 'https://frieren-anime.jp/story/ep28/' }])
   }),
   Object.freeze({
     id: 'kings-tomb-exam', title: 'Kralın Mezarı Harabeleri sınavı',
     episodeStart: 23, episodeEnd: 26, episodeLabel: '23–26. bölümler',
     location: 'Kralın Mezarı Harabeleri', anchorKey: 'harabeler', regionKey: 'harabeler',
     x: bossMapPoint.x, y: bossMapPoint.y,
-    description: 'Birinci Sınıf Büyücü Sınavı’nın zindan aşamasının geçtiği harabeler.',
-    officialSource: officialMap, locationSource: locationGuide
+    description: 'Zindan sınavı ve Spiegel karşılaşması resmî bölüm özetleriyle kaynaklandırılmıştır.',
+    officialSource: officialMap, locationSource: locationGuide,
+    episodeSources: Object.freeze([{ label: 'Bölüm 23', url: 'https://frieren-anime.jp/story/ep23/' }, { label: 'Bölüm 26', url: 'https://frieren-anime.jp/story/ep26/' }])
   })
 ]);
 
