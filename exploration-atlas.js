@@ -6,12 +6,12 @@ import {
 } from './exploration-world-locations.js';
 
 const REGIONS = Object.freeze({
-  merkez:{name:'Merkez Topraklar',type:'Güney kıta ovaları',city:'Strahl',x:35,y:75,className:'atlas-plains'},
-  orman:{name:'Größe Ormanı',type:'Kadim orman kuşağı',city:'Fabel Köyü',x:31,y:49,className:'atlas-forest'},
-  harabeler:{name:'Graf Granat Bölgesi',type:'Kuzey yerleşimleri ve harabeler',city:'Graf Granat Bölgesi',x:55,y:53,className:'atlas-highlands'},
-  kuzey:{name:'Kühl Bölgesi',type:'Göller ve dağ geçitleri',city:'Äußerst',x:68,y:38,className:'atlas-north'},
-  yayla:{name:'Schwer Dağları',type:'Yüksek dağlar',city:'Kılıç Köyü',x:76,y:65,className:'atlas-mountains'},
-  aus:{name:'Ende',type:'Kıtanın en kuzey ucu',city:'İblis Kralı’nın Şatosu',x:88,y:19,className:'atlas-ende'}
+  merkez:{name:'Merkez Topraklar',type:'Güney kıta ovaları',city:'Strahl',x:35,y:75,className:'atlas-plains',creatures:['mana_slime','forest_sprite']},
+  orman:{name:'Größe Ormanı',type:'Kadim orman kuşağı',city:'Fabel Köyü',x:31,y:49,className:'atlas-forest',creatures:['forest_sprite','rune_fox']},
+  harabeler:{name:'Graf Granat Bölgesi',type:'Kuzey yerleşimleri ve harabeler',city:'Graf Granat Bölgesi',x:55,y:53,className:'atlas-highlands',creatures:['mana_slime','ancient_drake']},
+  kuzey:{name:'Kühl Bölgesi',type:'Göller ve dağ geçitleri',city:'Äußerst',x:68,y:38,className:'atlas-north',creatures:['frost_hare','rune_fox']},
+  yayla:{name:'Schwer Dağları',type:'Yüksek dağlar',city:'Kılıç Köyü',x:76,y:65,className:'atlas-mountains',creatures:['frost_hare','ancient_drake']},
+  aus:{name:'Ende',type:'Kıtanın en kuzey ucu',city:'İblis Kralı’nın Şatosu',x:88,y:19,className:'atlas-ende',creatures:['ancient_drake','mana_slime']}
 });
 const REGION_ANCHORS = Object.freeze({
   merkez:{x:35,y:75},orman:{x:31,y:49},harabeler:{x:55,y:53},
@@ -29,7 +29,7 @@ const FOG_PATHS = Object.freeze({
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const position = (x,y) => 'left:'+x+'%;top:'+y+'%;';
 
-function pin({key,label,type,icon,x,y,focus='region',extraClass='',subtitle=''}) {
+function pin({key,targetKey=key,label,type,icon,x,y,focus='region',extraClass='',subtitle=''}) {
   const title = subtitle ? label+' · '+subtitle : label;
   return '<button type="button" class="atlas-pin atlas-pin-'+type+' '+extraClass+'" style="'+position(x,y)+'" data-atlas-layer-item="'+type+'" data-atlas-open="'+escapeHtml(key)+'" data-atlas-focus="'+focus+'" data-atlas-target-key="'+escapeHtml(key)+'" aria-label="'+escapeHtml(title)+'" title="'+escapeHtml(title)+'"><span class="atlas-pin-glyph" aria-hidden="true">'+icon+'</span><span class="atlas-pin-label">'+escapeHtml(label)+'</span></button>';
 }
@@ -107,18 +107,18 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
     key:item.region.key,label:geo.name,type:'region',icon:'✦',x:geo.x,y:geo.y,focus:'region',extraClass:geo.className
   })).join('');
   const cityPins=FRIEREN_WORLD_SETTLEMENTS.map(place=>pin({
-    key:place.regionKey,label:place.name,type:'city',icon:'⌂',x:place.x,y:place.y,focus:'city',subtitle:place.subtitle
+    key:place.regionKey,targetKey:place.key,label:place.name,type:'city',icon:'⌂',x:place.x,y:place.y,focus:'city',subtitle:place.subtitle
   })).join('');
   const bossPins=points.flatMap(({item,geo})=>item.bosses.map(boss=>{
     const location=boss.location||FRIEREN_WORLD_BOSS_LOCATIONS[boss.key];
     const anchor=REGION_ANCHORS[item.region.key]||REGION_ANCHORS.merkez;
     const point=location||{x:anchor.x,y:anchor.y,place:'Bölge boss alanı'};
-    return pin({key:item.region.key,label:boss.name,type:'boss',icon:'☠',x:point.x,y:point.y,focus:'boss',extraClass:boss.defeated?'is-defeated':'',subtitle:point.place});
+    return pin({key:item.region.key,targetKey:boss.key,label:boss.name,type:'boss',icon:'☠',x:point.x,y:point.y,focus:'boss',extraClass:boss.defeated?'is-defeated':'',subtitle:point.place});
   })).join('');
   const dungeonPins=points.flatMap(({item})=>item.dungeons.map(dungeon=>{
     const point=dungeon.location||FRIEREN_WORLD_DUNGEON_LOCATIONS[dungeon.key];
     if(!point)return '';
-    return pin({key:item.region.key,label:dungeon.name,type:'dungeon',icon:'◇',x:point.x,y:point.y,focus:'dungeon',subtitle:point.place});
+    return pin({key:item.region.key,targetKey:dungeon.key,label:dungeon.name,type:'dungeon',icon:'◇',x:point.x,y:point.y,focus:'dungeon',subtitle:point.place});
   })).join('');
   const fogPaths=points.filter(point=>!point.item.discovered).map(point=>{
     const path=FOG_PATHS[point.item.region.key];
