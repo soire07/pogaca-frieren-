@@ -1608,9 +1608,14 @@ test('character encyclopedia uses the existing catalog with closed spoilers and 
  assert.match(script,/addEventListener\('input'/);
  assert.match(script,/data-character-spoiler-toggle/);
  assert.match(script,/aria-expanded/);
- const asset=res();
- assert.equal(await handlePublicSiteRequest(request('/assets/character-encyclopedia.js'),asset,{db:null}),true);
- assert.equal(asset.status,200);
- assert.match(asset.headers['Content-Type'],/javascript/);
- assert.match(asset.body.toString('utf8'),/applyFilters/);
+ for(const assetPath of ['/assets/site-navigation.js','/assets/site-actions.js','/assets/profile-interactions.js','/assets/character-encyclopedia.js']){
+  const asset=res();
+  assert.equal(await handlePublicSiteRequest(request(assetPath),asset,{db:null}),true,assetPath);
+  assert.equal(asset.status,200,assetPath);
+  assert.match(asset.headers['Content-Type'],/javascript/,assetPath);
+  assert.ok(asset.body.length>0,assetPath);
+ }
+ const encyclopediaAsset=res();
+ assert.equal(await handlePublicSiteRequest(request('/assets/character-encyclopedia.js'),encyclopediaAsset,{db:null}),true);
+ assert.match(encyclopediaAsset.body.toString('utf8'),/applyFilters/);
 });
