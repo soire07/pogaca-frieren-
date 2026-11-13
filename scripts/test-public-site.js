@@ -1825,7 +1825,7 @@ test('exploration map keeps the map visually uncluttered and moves detail marker
  assert.match(mapBuilder,/data-region-key=/);
  assert.doesNotMatch(mapBuilder,/exploration-map-node-visits|exploration-map-label/);
  assert.doesNotMatch(mapSection,/\+mapNodes\+mapMarkers\+/);
- assert.match(mapSection,/\+mapNodes\+<\/svg>/);
+ assert.match(mapSection,/\+mapNodes\+'<\/svg>/);
  assert.match(mapSection,/class="exploration-region-grid"/);
  assert.match(mapSection,/mapCards/);
 });
