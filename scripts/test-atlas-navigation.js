@@ -82,7 +82,7 @@ test('rendered atlas exposes route, event and zoom-level controls accessibly', (
   assert.match(html, /data-atlas-route-submit/);
   assert.match(html, /data-atlas-route-path/);
   assert.match(html, /data-atlas-event=/);
-  assert.match(html, /data-atlas-detail-level="overview"/);
+  assert.match(html, /data-atlas-zoom-detail="overview"/);
   assert.match(html, /data-atlas-detail-level="regional"/);
   assert.match(html, /data-atlas-detail-level="local"/);
   assert.match(html, /kilometre ölçeği belirtilmemiştir/i);
