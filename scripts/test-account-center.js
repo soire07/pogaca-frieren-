@@ -75,6 +75,7 @@ test('account deletion requires the explicit confirmation phrase and removes acc
  assert.ok(calls.some(call=>call.sql.includes('DELETE FROM frieren_site_direct_messages WHERE sender_account_id=$1 OR recipient_account_id=$1')));
  assert.ok(calls.some(call=>call.sql.includes('DELETE FROM frieren_site_dm_group_messages WHERE sender_account_id=$1')));
  assert.ok(calls.some(call=>call.sql.includes('DELETE FROM frieren_site_dm_group_members WHERE account_id=$1')));
+ assert.ok(calls.some(call=>call.sql.includes('DELETE FROM frieren_site_dm_group_reads WHERE reader_account_id=$1')));
 });
 
 
