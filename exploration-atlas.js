@@ -1,5 +1,6 @@
 import { CREATURE_CATALOG } from './creatures.js';
 import { declutterAtlasPins } from './atlas-pin-layout.js';
+import { ATLAS_HISTORICAL_EVENTS, ATLAS_ROUTE_STOPS, findAtlasRoute } from './atlas-navigation.js';
 import {
   FRIEREN_WORLD_SETTLEMENTS,
   FRIEREN_WORLD_BOSS_LOCATIONS,
@@ -39,7 +40,7 @@ function detailRow({key,name,description,icon,state='',focus=''}) {
   return '<li class="exploration-detail-row '+state+'" '+(focus?'data-atlas-focus-target="'+focus+'"':'')+' data-atlas-target-key="'+escapeHtml(key)+'"><span class="exploration-detail-icon" aria-hidden="true">'+icon+'</span><span><strong>'+escapeHtml(name)+'</strong><small>'+escapeHtml(description)+'</small></span></li>';
 }
 
-function panel(item,index,settlements,esc) {
+function panel(item,index,settlements,events,esc) {
   const region=item.region;
   const geography=REGIONS[region.key]||REGIONS.merkez;
   const encounterLevels=[...item.bosses,...item.dungeons].map(entry=>Number(entry.minLevel)||0);
@@ -66,8 +67,9 @@ function panel(item,index,settlements,esc) {
     description:(entry.ownedQuantity?'Envanterinde ×'+entry.ownedQuantity:'Henüz bulunmadı')+' · '+entry.sources.map(source=>source==='dungeon'?'Zindan':source==='boss_material'?'Boss malzemesi':'Boss').join(' / '),
     icon:'✧',state:entry.ownedQuantity?'is-owned':'is-unowned'
   })).join('');
+  const eventRows=events.filter(event=>event.regionKey===region.key).map(event=>'<li class="exploration-detail-row atlas-event-row" data-atlas-focus-target="event" data-atlas-target-key="'+esc(event.id)+'"><span class="exploration-detail-icon" aria-hidden="true">◷</span><span><strong>'+esc(event.title)+'</strong><small>'+esc(event.episodeLabel)+' · '+esc(event.location)+'</small><a href="'+esc(event.officialSource)+'" target="_blank" rel="noopener noreferrer">Resmî anime bölüm haritası</a> · <a href="'+esc(event.locationSource)+'" target="_blank" rel="noopener noreferrer">Konum kaynağı</a></span></li>').join('');
   const section=(heading,rows,empty='Bu bölgede kayıtlı nokta bulunmuyor.')=>'<section><h4>'+heading+'</h4><ul>'+(rows||'<li class="atlas-empty-row">'+empty+'</li>')+'</ul></section>';
-  return '<section class="atlas-panel" data-atlas-panel="'+esc(region.key)+'" hidden><div class="atlas-hero"><small>BÖLGE '+(index+1)+' · '+esc(geography.type)+'</small><h3>'+esc(geography.name)+'</h3><p>'+esc(region.name)+' · '+esc(geography.city)+'</p><div><span>'+(item.discovered?'Keşfedildi':item.unlocked?'Keşfe açık':'Kilitli · Seviye '+region.minLevel)+'</span><span>RPG tehlikesi: '+dangerLabel+' · Seviye '+dangerLevel+'+</span><span>'+item.visits+' keşif ziyareti</span><span>Ustalık '+item.masteryLevel+'</span></div></div><div class="atlas-detail-grid">'+section('Anime yerleşimleri ve önemli noktalar',settlementRows)+section('Biyom canlıları',creatureRows)+section('Boss karşılaşmaları',bossRows)+section('Zindanlar',dungeonRows)+section('Nadir ganimet',lootRows)+'</div></section>';
+  return '<section class="atlas-panel" data-atlas-panel="'+esc(region.key)+'" hidden><div class="atlas-hero"><small>BÖLGE '+(index+1)+' · '+esc(geography.type)+'</small><h3>'+esc(geography.name)+'</h3><p>'+esc(region.name)+' · '+esc(geography.city)+'</p><div><span>'+(item.discovered?'Keşfedildi':item.unlocked?'Keşfe açık':'Kilitli · Seviye '+region.minLevel)+'</span><span>RPG tehlikesi: '+dangerLabel+' · Seviye '+dangerLevel+'+</span><span>'+item.visits+' keşif ziyareti</span><span>Ustalık '+item.masteryLevel+'</span></div></div><div class="atlas-detail-grid">'+section('Anime yerleşimleri ve önemli noktalar',settlementRows)+section('Biyom canlıları',creatureRows)+section('Boss karşılaşmaları',bossRows)+section('Zindanlar',dungeonRows)+section('Nadir ganimet',lootRows)+section('Anime tarihçesi',eventRows,'Bu bölgede doğrulanmış tarihsel olay kaydı yok.')+'</div></section>';
 }
 
 function renderRegionList(rows,esc) {
@@ -126,7 +128,8 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
       const slots=fallback[item.region.key]||fallback.merkez;
       const point=dungeon.location||FRIEREN_WORLD_DUNGEON_LOCATIONS[dungeon.key]||slots[index%slots.length];
       return {id:'dungeon:'+dungeon.key,key:item.region.key,targetKey:dungeon.key,label:dungeon.name,type:'dungeon',icon:'◇',x:point.x,y:point.y,focus:'dungeon',subtitle:point.place};
-    }))
+    })),
+    ...ATLAS_HISTORICAL_EVENTS.map(event=>({id:'event:'+event.id,key:event.regionKey,targetKey:event.id,label:event.title,type:'event',icon:'◷',x:event.x,y:event.y,focus:'event',subtitle:event.episodeLabel}))
   ];
   const markerPins=declutterAtlasPins(markerConfigs).map(marker=>pin(marker)).join('');
   const fogPaths=points.filter(point=>!point.item.discovered).map(point=>{
@@ -134,7 +137,7 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
     return path?'<path d="'+path+'" fill="#243647" opacity=".18" stroke="#d4c4a1" stroke-opacity=".16" stroke-width=".35"/>':'';
   }).join('');
   const fog='<svg class="atlas-fog-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><filter id="atlas-fog-soft"><feGaussianBlur stdDeviation="1.2"/></filter></defs><g filter="url(#atlas-fog-soft)">'+fogPaths+'</g></svg>';
-  const panels=points.map(point=>panel(point.item,point.index,FRIEREN_WORLD_SETTLEMENTS,esc)).join('');
+  const panels=points.map(point=>panel(point.item,point.index,FRIEREN_WORLD_SETTLEMENTS,ATLAS_HISTORICAL_EVENTS,esc)).join('');
   const geographyOverlay = `<svg class="atlas-geography-overlay" viewBox="0 0 1800 1200" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="atlas-inline-land-clip"><path d="M206 292C259 221 371 179 492 198 585 133 718 129 832 163 940 100 1075 119 1170 157 1304 107 1442 167 1524 248 1632 309 1665 412 1618 516 1677 625 1634 741 1582 826 1631 929 1521 1033 1390 1038 1284 1104 1160 1073 1073 1043 948 1118 825 1086 739 1032 624 1092 505 1057 414 1000 300 989 220 901 233 793 159 708 160 590 192 501 139 412 151 339 206 292Z"/></clipPath></defs><g clip-path="url(#atlas-inline-land-clip)" pointer-events="none"><g data-atlas-geography-layer="waterways" class="atlas-waterways">
   <path d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="#385d67" stroke-opacity=".48" stroke-width="18" stroke-linecap="round"/>
   <path class="atlas-river-main" d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="url(#river)" stroke-width="8" stroke-linecap="round"/>
