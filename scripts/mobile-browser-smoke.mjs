@@ -68,6 +68,25 @@ for (const scenario of scenarios) {
     }
     const playerPage = await page.goto(baseUrl + '/kesfet', { waitUntil: 'domcontentloaded', timeout: 45000 });
     if (!playerPage || playerPage.status() !== 200) throw new Error(scenario.name + ' authenticated site page HTTP ' + (playerPage?.status() || 'no response'));
+    const encyclopediaPage = await page.goto(baseUrl + '/ansiklopedi', { waitUntil: 'domcontentloaded', timeout: 45000 });
+    if (!encyclopediaPage || encyclopediaPage.status() !== 200) throw new Error(scenario.name + ' character encyclopedia HTTP ' + (encyclopediaPage?.status() || 'no response'));
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+    await page.locator('[data-character-search]').fill('frieren');
+    const frierenAnimeOption = await page.locator('[data-character-anime] option').evaluateAll(options => options.map(option => option.value).find(value => value.includes('Frieren')));
+    if (!frierenAnimeOption) throw new Error(scenario.name + ' character encyclopedia is missing the Frieren series filter');
+    await page.locator('[data-character-anime]').selectOption(frierenAnimeOption);
+    await page.locator('[data-character-rarity]').selectOption('Efsanevi');
+    const visibleCharacterCount = await page.locator('[data-character-card]:visible').count();
+    if (visibleCharacterCount < 1) throw new Error(scenario.name + ' character encyclopedia filters returned no expected Frieren character');
+    const spoilerButton = page.locator('[data-character-card]:visible').first().locator('[data-character-spoiler-toggle]');
+    const spoilerDetails = page.locator('[data-character-card]:visible').first().locator('[data-character-spoiler]');
+    if (!(await spoilerDetails.isHidden())) throw new Error(scenario.name + ' character encyclopedia exposed spoiler details by default');
+    await spoilerButton.click();
+    if (await spoilerDetails.isHidden() || await spoilerButton.getAttribute('aria-expanded') !== 'true') throw new Error(scenario.name + ' character spoiler reveal did not open accessibly');
+    await spoilerButton.click();
+    if (!(await spoilerDetails.isHidden()) || await spoilerButton.getAttribute('aria-expanded') !== 'false') throw new Error(scenario.name + ' character spoiler toggle did not close');
+    const encyclopediaLayout = await page.evaluate(() => ({ width: window.innerWidth, documentWidth: document.documentElement.scrollWidth }));
+    if (encyclopediaLayout.documentWidth > encyclopediaLayout.width + 1) throw new Error(scenario.name + ' character encyclopedia horizontal overflow: ' + JSON.stringify(encyclopediaLayout));
     await page.setContent('<main class="profile-page"><input data-profile-achievement-search><select data-profile-achievement-sort><option value="date-desc">Yeni</option><option value="name-asc">Ad</option></select><output id="profile-achievement-count"></output><div id="profile-achievement-list"><article data-achievement-name="frieren" data-achievement-date="2" data-achievement-reward="20">Frieren</article><article data-achievement-name="fern" data-achievement-date="1" data-achievement-reward="10">Fern</article></div><div id="profile-activity-list"><li data-activity-type="macera">Macera</li><li data-activity-type="başarım">Başarım</li></div><button type="button" data-profile-activity-filter="all">Tümü</button><button type="button" data-profile-activity-filter="başarım">Başarım</button><form id="profile-settings-form"><select name="showStats"><option value="false" selected>Gizli</option><option value="true">Açık</option></select><select name="showAchievements"><option value="true" selected>Açık</option><option value="false">Gizli</option></select><select name="showCollections"><option value="true" selected>Açık</option><option value="false">Gizli</option></select><select name="showActivity"><option value="false" selected>Gizli</option><option value="true">Açık</option></select><select name="showCosmetics"><option value="true" selected>Açık</option><option value="false">Gizli</option></select><select name="activeTitle"><option value="">Varsayılan</option></select></form><section data-profile-privacy="showStats">İstatistik</section><section data-profile-privacy="showActivity">Günlük</section><button type="button" id="profile-preview-toggle">Önizleme</button><button type="button" id="profile-settings-reset">Sıfırla</button><p id="profile-preview-note" hidden>Önizleme notu</p></main>');
     await page.addScriptTag({ url: baseUrl + '/assets/profile-interactions.js' });
     await page.locator('[data-profile-achievement-search]').fill('frieren');
