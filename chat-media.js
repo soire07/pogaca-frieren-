@@ -60,7 +60,7 @@ export function signChatMediaUrl(method,objectKey,mimeType,expiresIn=300){
  const uri='/'+[cfg.bucket,...key.split('/')].map(encode).join('/');
  const headers=verb==='PUT'?'content-type;host':'host';
  const canonicalHeaders=verb==='PUT'?'content-type:'+String(mimeType||'application/octet-stream')+'\nhost:'+cfg.host+'\n':'host:'+cfg.host+'\n';
- const params=[['X-Amz-Algorithm','AWS4-HMAC-SHA256'],['X-Amz-Credential',credential],['X-Amz-Date',amzDate],['X-Amz-Expires',String(expires)],['X-Amz-SignedHeaders',headers]];
+ const params=[['X-Amz-Algorithm','AWS4-HMAC-SHA256'],['X-Amz-Content-Sha256','UNSIGNED-PAYLOAD'],['X-Amz-Credential',credential],['X-Amz-Date',amzDate],['X-Amz-Expires',String(expires)],['X-Amz-SignedHeaders',headers]];
  if(verb==='GET'&&mimeType){params.push(['response-content-type',String(mimeType)],['response-content-disposition','inline']);}
  const canonicalQuery=params.slice().sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0).map(([k,v])=>encode(k)+'='+encode(v)).join('&');
  const canonicalRequest=[verb,uri,canonicalQuery,canonicalHeaders,headers,'UNSIGNED-PAYLOAD'].join('\n');
