@@ -1679,6 +1679,16 @@ test('exploration map content maps real boss, dungeon, rare loot and player prog
  assert.equal(result.summary.dungeonWins,3);
 });
 
+test('map boss completion follows the same journal-key rules as the live solo boss reward flow', () => {
+ const renamed=buildExplorationMapContent({
+  level:20,
+  journalEntries:[{collection_key:'bosses',entry_key:'schattenwolf'}],
+  bosses:[{key:'level_1',minLevel:1,name:'Gece Kurdu',region:'Merkez Topraklar'}],
+  dungeons:[]
+ });
+ assert.equal(renamed.regions.find(region=>region.region.key==='merkez').bosses[0].defeated,false);
+});
+
 test('web exploration atlas and Discord /kesif share one region catalog', async () => {
  const catalog=await readFile(new URL('../exploration-regions.js',import.meta.url),'utf8');
  const command=await readFile(new URL('../commands/rpg/kesif.js',import.meta.url),'utf8');
