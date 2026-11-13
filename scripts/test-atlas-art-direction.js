@@ -142,7 +142,7 @@ test('Frieren atlas adds subtle northern snowfall and forest mist without changi
   assert.match(css, /atlas-northfall/);
   assert.match(css, /atlas-forest-mist/);
   assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-atmosphere-layer::before/);
-  assert.match(site, /site\.css\?v=atlas-368-1/);
+  assert.match(site, /site\.css\?v=atlas-370-1/);
 });
 
 
@@ -170,7 +170,7 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   }
   assert.match(atlas, /const geographyOverlay = `</);
   assert.match(atlas, /atlas-geography-overlay/);
-  assert.ok(atlas.includes("geographyOverlay+routeOverlay+'<div class="), 'inline geography and route overlays must be inserted into map markup');
+  assert.ok(atlas.includes("geographyOverlay+localDetailOverlay+routeOverlay+'<div class="), 'inline geography and route overlays must be inserted into map markup');
   assert.match(atlas, /atlas-inline-land-clip/);
   assert.match(atlas, /atlas-river-main/);
   assert.match(atlas, /atlas-lake/);
@@ -181,7 +181,7 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   assert.match(atlas, /atlas-regional-flora/);
   assert.match(atlas, /atlas-settlement-architecture/);
   assert.match(atlas, /atlas-ruin-remnants/);
-  assert.match(atlas, /data-atlas-weather="clear"/);
+  assert.match(atlas, /data-atlas-weather="clear"/);\n  assert.match(atlas, /data-atlas-season="summer"/);\n  assert.match(atlas, /buildAtlasLocalDetailLayer/);
   assert.match(atlas, /data-atlas-lighting="day"/);
   assert.match(atlas, /data-atlas-lighting-toggle/);
   assert.match(atlas, /data-atlas-weather/);
@@ -203,7 +203,7 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   assert.ok(client.includes("querySelectorAll('[data-atlas-geography-layer="), 'client must locate the SVG layer rendered by the server module');
   assert.match(client, /toggleAttribute\('hidden',!enabled\)/, 'SVG layer visibility must use a real hidden attribute');
   assert.match(atlas, /atlas-362-1/);
-  assert.match(site, /exploration-atlas\.js\?v=atlas-369-1/);
+  assert.match(site, /exploration-atlas\.js\?v=atlas-370-1/);
   assert.match(locations, /x:39, y:79/);
   assert.match(locations, /level_1: Object\.freeze\(\{ regionKey:'merkez', x:43, y:72/);
 });
