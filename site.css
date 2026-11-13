@@ -1680,3 +1680,21 @@ body.atlas-modal-open{overflow:hidden}
 @keyframes atlas-forest-mist{from{transform:translate3d(-1.5%,0,0);opacity:.38}to{transform:translate3d(2%,1.5%,0);opacity:.68}}
 @media(max-width:700px){.atlas-atmosphere-layer{opacity:.72}.atlas-atmosphere-layer::before{opacity:.14}.atlas-atmosphere-layer::after{filter:blur(8px);opacity:.34}}
 @media(prefers-reduced-motion:reduce){.atlas-atmosphere-layer::before,.atlas-atmosphere-layer::after{animation:none}}
+
+
+/* Geography overlays remain subtle so terrain reads as one continuous landscape. */
+.atlas-waterways,.atlas-trails,.atlas-settled-land{transition:opacity .18s ease}
+.atlas-waterways[hidden],.atlas-trails[hidden],.atlas-settled-land[hidden]{display:none}
+.atlas-waterways{opacity:.92}
+.atlas-trails{opacity:.7}
+.atlas-settled-land{opacity:.88}
+.atlas-foothill-transition{filter:url(#terrain-soft)}
+.atlas-layer-controls button[data-atlas-geography]{border-style:dashed}
+@media(max-width:700px){
+ .atlas-waterways{opacity:.82}
+ .atlas-trails{opacity:.56}
+ .atlas-settled-land{opacity:.74}
+}
+@media(prefers-reduced-motion:reduce){
+ .atlas-waterways,.atlas-trails,.atlas-settled-land{transition:none}
+}
