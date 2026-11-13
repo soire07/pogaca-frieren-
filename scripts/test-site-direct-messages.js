@@ -63,7 +63,7 @@ test('site group conversations require friendship with every invited member and 
   if(sql.startsWith('INSERT INTO frieren_site_dm_group_members'))return{rows:[],rowCount:1};
   if(sql.startsWith('SELECT account_id FROM frieren_site_dm_group_members WHERE group_id=$1 AND account_id<>$2'))return{rows:[{account_id:b},{account_id:c}],rowCount:2};
   if(sql.startsWith('SELECT 1 FROM frieren_site_dm_group_members'))return{rows:[{}],rowCount:1};
-  if(sql.includes('SELECT m.message_id')&&sql.includes('frieren_site_dm_group_messages'))return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174004',sender_account_id:a,username:'Fern',body:'Grup selamı',created_at:new Date().toISOString(),is_own:false,is_read:false}],rowCount:1};
+  if(sql.includes('frieren_site_dm_group_messages')&&sql.includes('LIMIT $3'))return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174004',sender_account_id:a,username:'Fern',body:'Grup selamı',created_at:new Date().toISOString(),is_own:false,is_read:false}],rowCount:1};
   if(sql.startsWith('INSERT INTO frieren_site_dm_group_messages'))return{rows:[],rowCount:1};
   if(sql.startsWith('INSERT INTO frieren_site_dm_group_reads'))return{rows:[{}],rowCount:1};
   if(sql.startsWith('SELECT created_by FROM frieren_site_dm_groups'))return{rows:[{created_by:a}],rowCount:1};
