@@ -156,3 +156,18 @@ test('community chat falls back to initials when an avatar image cannot be loade
  const {readFile}=await import('node:fs/promises');const script=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');
  assert.match(script,/avatar\.onerror\s*=/);assert.match(script,/avatar\.replaceWith\(fallback\)/);assert.match(script,/fallback\.dataset\.online=avatar\.dataset\.online/);
 });
+
+test('public chat accepts an attachment-only message and binds media to its new message id',async()=>{
+ const {sendPublicChatMessage}=await import('../public-chat.js');
+ const account='site_123e4567-e89b-12d3-a456-426614174000',media='123e4567-e89b-12d3-a456-426614174099';const seen=[];
+ const db={async query(sql,params=[]){seen.push({sql,params});
+  if(sql.includes('SELECT is_paused'))return{rows:[{is_paused:false}],rowCount:1};
+  if(sql.includes('SELECT COUNT(*)::int AS count FROM frieren_public_chat_messages'))return{rows:[{count:0}],rowCount:1};
+  if(sql.startsWith('INSERT INTO frieren_public_chat_messages'))return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174088'}],rowCount:1};
+  if(sql.startsWith('UPDATE frieren_site_chat_media'))return{rows:[{media_id:media}],rowCount:1};
+  return{rows:[],rowCount:1};
+ }};
+ const result=await sendPublicChatMessage(db,{accountId:account,username:'Gezgin',body:'',mediaId:media});
+ assert.equal(result.status,'sent');const attach=seen.find(x=>x.sql.startsWith('UPDATE frieren_site_chat_media'));
+ assert.deepEqual(attach.params,[media,account,'public','public','123e4567-e89b-12d3-a456-426614174088']);
+});
