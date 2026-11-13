@@ -5,7 +5,7 @@
  if(!modal||!viewport||!camera)return;
  let last=null,scale=1,x=0,y=0,pointers=new Map(),drag=null,pinchDistance=0;
  const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
- const paint=()=>{camera.style.transform='translate3d('+x+'px,'+y+'px,0) scale('+scale+')';const output=root.querySelector('[data-atlas-zoom-value]');if(output)output.value=Math.round(scale*100)+'%';};
+ const paint=()=>{camera.style.transform='translate3d('+x+'px,'+y+'px,0) scale('+scale+')';const output=root.querySelector('[data-atlas-zoom-value]');if(output)output.value=Math.round(scale*100)+'%';const mapArt=root.querySelector('.atlas-map-art');if(mapArt)mapArt.dataset.atlasZoomDetail=scale>=2.2?'local':scale>=1.35?'regional':'overview';};
  const bounds=()=>{const rect=viewport.getBoundingClientRect();return {x:Math.max(0,(rect.width*(scale-1))/2),y:Math.max(0,(rect.height*(scale-1))/2)};};
  const constrain=()=>{const limit=bounds();x=clamp(x,-limit.x,limit.x);y=clamp(y,-limit.y,limit.y);};
  const zoom=delta=>{scale=clamp(scale*delta,.85,3.2);constrain();paint();};
@@ -19,6 +19,20 @@
   const layerButton=event.target.closest('[data-atlas-layer]');if(layerButton){const layer=layerButton.dataset.atlasLayer,enabled=layerButton.getAttribute('aria-pressed')!=='true';layerButton.setAttribute('aria-pressed',String(enabled));root.querySelectorAll('[data-atlas-layer-item="'+layer+'"]').forEach(pin=>{pin.hidden=!enabled;});return;}
   const geographyButton=event.target.closest('[data-atlas-geography]');
   if(geographyButton){const layer=geographyButton.dataset.atlasGeography,enabled=geographyButton.getAttribute('aria-pressed')!=='true';geographyButton.setAttribute('aria-pressed',String(enabled));root.querySelectorAll('[data-atlas-geography-layer="'+layer+'"]').forEach(node=>node.toggleAttribute('hidden',!enabled));return;}
+  const routeSubmit=event.target.closest('[data-atlas-route-submit]');
+  if(routeSubmit){
+   const planner=root.querySelector('[data-atlas-route-planner]'),from=planner?.querySelector('[data-atlas-route-from]')?.value,to=planner?.querySelector('[data-atlas-route-to]')?.value,summary=planner?.querySelector('[data-atlas-route-summary]'),routeSvg=root.querySelector('.atlas-route-overlay');
+   let routes={};try{routes=JSON.parse(planner?.dataset.atlasRouteCatalog||'{}');}catch{routes={};}
+   const route=routes[from+':'+to];if(!route){if(summary)summary.textContent='Bu iki nokta arasında kayıtlı bir yol veya geçit bağlantısı bulunamadı.';if(routeSvg)routeSvg.hidden=true;return;}
+   const path=route.nodes.map((node,index)=>(index?'L':'M')+(Number(node.x)*18).toFixed(1)+' '+(Number(node.y)*12).toFixed(1)).join(' '),line=routeSvg?.querySelector('[data-atlas-route-path]'),glow=routeSvg?.querySelector('[data-atlas-route-glow]');
+   if(line)line.setAttribute('d',path);if(glow)glow.setAttribute('d',path);
+   const start=routeSvg?.querySelector('[data-atlas-route-start]'),end=routeSvg?.querySelector('[data-atlas-route-end]'),first=route.nodes[0],lastNode=route.nodes[route.nodes.length-1];
+   if(start){start.setAttribute('cx',Number(first.x)*18);start.setAttribute('cy',Number(first.y)*12);}if(end){end.setAttribute('cx',Number(lastNode.x)*18);end.setAttribute('cy',Number(lastNode.y)*12);}
+   if(routeSvg)routeSvg.hidden=false;
+   const via=route.nodes.slice(1,-1).map(node=>node.label);if(summary)summary.textContent=route.nodes[0].label+' → '+lastNode.label+' · '+Number(route.distanceUnits).toFixed(1)+' harita birimi'+(via.length?' · Geçitler: '+via.join(' → '):' · Doğrudan bağlantı');
+   return;
+  }
+  const routeClear=event.target.closest('[data-atlas-route-clear]');if(routeClear){const routeSvg=root.querySelector('.atlas-route-overlay'),summary=root.querySelector('[data-atlas-route-summary]');if(routeSvg)routeSvg.hidden=true;if(summary)summary.textContent='Rota temizlendi. Yeni bir başlangıç ve varış noktası seç.';return;}
   const lightingButton=event.target.closest('[data-atlas-lighting-toggle]');if(lightingButton){const enabled=lightingButton.getAttribute('aria-pressed')!=='true',mapArt=root.querySelector('.atlas-map-art');lightingButton.setAttribute('aria-pressed',String(enabled));if(mapArt)mapArt.dataset.atlasLighting=enabled?'night':'day';lightingButton.textContent=enabled?'Gündüz görünümü':'Gece görünümü';return;}
   const trigger=event.target.closest('[data-atlas-open]');if(trigger){event.preventDefault();open(trigger.dataset.atlasOpen,trigger.dataset.atlasFocus,trigger.dataset.atlasTargetKey,trigger);}
  });
