@@ -884,3 +884,8 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
  .public-chat-dm,.public-chat-dm-group{padding:12px}
 }
 @media(prefers-reduced-motion:reduce){.public-chat-reaction,.public-chat-action{transition:none}}
+
+.public-chat-reaction-label{display:inline-flex;align-items:center;min-height:30px;padding:4px 9px;border:1px solid rgba(199,174,237,.16);border-radius:999px;background:rgba(255,255,255,.045);color:#d8cce9;font-size:12px}
+.public-chat-avatar-link{display:block;width:40px;height:40px;line-height:0}
+.public-chat-message.is-own>.public-chat-avatar-link{width:40px;height:40px}
+@media(max-width:620px){.public-chat-avatar-link,.public-chat-message.is-own>.public-chat-avatar-link{width:32px;height:32px}}
