@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { ensureProfileMediaSchema } from './profile-media.js';
 import { ensureSiteDiscordAccountSchema, buildDiscordAvatarUrl } from './site-auth.js';
 import { createAccountNotification, ensureAccountProfileSchema } from './account-profile.js';
-import { attachChatMedia, ensureChatMediaSchema, getChatMediaReadUrl } from './chat-media.js';
+import { attachChatMedia, ensureChatMediaSchema, getChatMediaReadUrl, deleteChatMediaForMessage } from './chat-media.js';
 
 const publicChatSchemaReady=new WeakMap();
 const ACCOUNT_ID=/^site_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -147,6 +147,7 @@ export async function deletePublicChatMessage(db,{accountId,messageId,isOwner=fa
  if(!/^[0-9a-f-]{36}$/i.test(String(messageId||'')))throw new Error('PUBLIC_CHAT_MESSAGE_INVALID');
  await ensurePublicChatSchema(db);
  const result=await db.query('DELETE FROM frieren_public_chat_messages WHERE message_id=$1 RETURNING message_id',[messageId]);
+ if(result.rowCount)await deleteChatMediaForMessage(db,messageId);
  return{status:result.rowCount?'deleted':'not_found'};
 }
 
@@ -154,6 +155,7 @@ export async function deletePublicChatMessage(db,{accountId,messageId,isOwner=fa
 export async function deleteOwnPublicChatMessage(db,{accountId,messageId}){
  assertAccount(accountId);if(!/^[0-9a-f-]{36}$/i.test(String(messageId||'')))throw new Error('PUBLIC_CHAT_MESSAGE_INVALID');await ensurePublicChatSchema(db);
  const r=await db.query("UPDATE frieren_public_chat_messages SET body='Bu mesaj silindi',deleted_at=NOW(),edited_at=NULL WHERE message_id=$1 AND account_id=$2 AND hidden=FALSE AND deleted_at IS NULL AND created_at>NOW()-INTERVAL '15 minutes' RETURNING message_id",[messageId,accountId]);
+ if(r.rowCount)await deleteChatMediaForMessage(db,messageId);
  return{status:r.rowCount?'deleted':'not_found'};
 }
 
