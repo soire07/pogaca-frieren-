@@ -208,7 +208,7 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
  </g>
  <g data-atlas-detail-level="local" class="atlas-zoom-detail-layer atlas-zoom-detail-local">
   <g fill="#f5edda" stroke="#263a3d" stroke-opacity=".82" stroke-width="2" paint-order="stroke" font-family="Georgia,serif" font-size="16" letter-spacing="1.5">
-   <text x="850" y="520">KÜÇÜK GEÇİT YOLU</text><text x="1060" y="600">ESKİ HARABE DUVARLARI</text><text x="690" y="940">YERLEŞİM TARLALARI</text>
+   <text x="850" y="520">KÜÇÜK GEÇİT YOLU</text><text x="1060" y="600">KRALIN MEZARI HARABELERİ</text><text x="690" y="940">YERLEŞİM TARLALARI</text>
   </g>
   <g fill="none" stroke="#f1e6c8" stroke-opacity=".52" stroke-width="2"><path d="M830 535q28-24 58-4t62-3M1010 615q30-20 58-3t52-2M650 980q40-18 80-4t70-2"/></g>
  </g>
