@@ -251,6 +251,7 @@ test('painterly terrain avoids tiled forest stamps and identical repeated mounta
   }
   assert.doesNotMatch(artwork, /<use href="#atlas-canopy" transform="translate\(\d+ \d+\) scale\([^)]+\)"\/>/);
   assert.doesNotMatch(artwork, /<use href="#atlas-peak" transform="translate\(\d+ \d+\) scale\([^)]+\)"\/>/);
+  assert.match(artwork, /fill="url\(#forest-canopy\)" filter="url\(#biome-edge\)" opacity="\.22"/, 'the tiled forest underpainting must not overpower the individual canopy crowns');
   const colorGrade = css.slice(css.lastIndexOf('Painterly atlas color grade'));
   assert.match(colorGrade, /\.atlas-map-viewport\{[^}]*aspect-ratio:3\/2/, '3:2 viewport ratio must remain authoritative');
   assert.match(colorGrade, /@media\(max-width:700px\)/, 'mobile map treatment must remain explicit');
