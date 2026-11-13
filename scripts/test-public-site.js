@@ -1525,3 +1525,14 @@ test('community chat keeps own messages readable and reactions flowing on mobile
  assert.match(styles,/\.public-chat-reactions\s*\{[^}]*flex-wrap:\s*wrap/);
  assert.ok(styles.includes('.public-chat-messages{min-height:150px;max-height:52vh;'));
 });
+
+
+test('unified Frieren visual system defines consistent glass surfaces and accessible focus states', async () => {
+ const styles=await readFile(new URL('../site.css',import.meta.url),'utf8');
+ assert.match(styles,/\/\* Unified Frieren platform surface system v1\./);
+ assert.match(styles,/--frieren-panel:rgba\(30,24,48,\.72\)/);
+ assert.match(styles,/backdrop-filter:blur\(14px\)/);
+ assert.match(styles,/outline:2px solid #d9c3ff/);
+ assert.match(styles,/@media\(prefers-reduced-motion:reduce\)/);
+ assert.match(styles,/@media\(max-width:560px\)/);
+});
