@@ -1800,3 +1800,11 @@ body.atlas-modal-open{overflow:hidden}
 .atlas-pin-boss.is-defeated .atlas-pin-glyph{background:linear-gradient(145deg,#c7b88f,#777054);color:#f9f0d7;box-shadow:0 1px 4px #1118;filter:saturate(.55)}
 @media(max-width:700px){.atlas-pin-boss .atlas-pin-glyph{width:20px;height:20px;font-size:11px}.atlas-pin-boss:hover .atlas-pin-glyph,.atlas-pin-boss:focus-visible .atlas-pin-glyph{transform:scale(1.1)}}
 @media(prefers-reduced-motion:reduce){.atlas-pin-boss .atlas-pin-glyph{transition:none}}
+
+
+/* Keep landmark labels inside the atlas viewport at every coastline edge. */
+.atlas-pin-label-left .atlas-pin-label{left:auto;right:calc(100% + 7px);top:50%;transform:translateY(-50%)}
+.atlas-pin-label-right .atlas-pin-label{left:calc(100% + 7px);right:auto;top:50%;transform:translateY(-50%)}
+.atlas-pin-label-top .atlas-pin-label{top:auto;bottom:calc(100% + 5px);transform:translateX(-50%)}
+.atlas-pin-label-left.atlas-pin-label-top .atlas-pin-label,
+.atlas-pin-label-right.atlas-pin-label-top .atlas-pin-label{top:auto;bottom:calc(100% + 5px);transform:none}

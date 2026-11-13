@@ -105,7 +105,7 @@ test('settlement labels open horizontally beside the village pin and flip inward
 
 
 test('current canon and RPG map coordinates are collision-adjusted as one visual layer', async () => {
-  const { declutterAtlasPins } = await import('../atlas-pin-layout.js');
+  const { declutterAtlasPins, isInsideAtlasLand } = await import('../atlas-pin-layout.js');
   const {
     FRIEREN_WORLD_SETTLEMENTS,
     FRIEREN_WORLD_BOSS_LOCATIONS,
@@ -122,6 +122,9 @@ test('current canon and RPG map coordinates are collision-adjusted as one visual
     ...ATLAS_HISTORICAL_EVENTS.map(event=>({id:'event:'+event.id,type:'event',x:event.x,y:event.y}))
   ];
   const arranged = declutterAtlasPins(markers);
+  for (const marker of arranged) {
+    assert.ok(isInsideAtlasLand(marker.x, marker.y), 'marker must stay on the illustrated landmass: ' + marker.id);
+  }
   for (let i = 0; i < arranged.length; i++) {
     for (let j = i + 1; j < arranged.length; j++) {
       const dx = arranged[i].x - arranged[j].x;
@@ -137,12 +140,12 @@ test('Frieren atlas adds subtle northern snowfall and forest mist without changi
   const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
   const site = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
   assert.match(atlas, /<div class="atlas-atmosphere-layer" aria-hidden="true"><\/div>/);
-  assert.match(atlas, /frieren-world-map\.svg\?v=atlas-375-1/);
+  assert.match(atlas, /frieren-world-map\.svg\?v=atlas-376-1/);
   assert.match(css, /\.atlas-atmosphere-layer::before/);
   assert.match(css, /atlas-northfall/);
   assert.match(css, /atlas-forest-mist/);
   assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-atmosphere-layer::before/);
-  assert.match(site, /site\.css\?v=atlas-375-1/);
+  assert.match(site, /site\.css\?v=atlas-376-1/);
 });
 
 
@@ -204,8 +207,8 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   assert.match(client, /data-atlas-geography/);
   assert.ok(client.includes("querySelectorAll('[data-atlas-geography-layer="), 'client must locate the SVG layer rendered by the server module');
   assert.match(client, /toggleAttribute\('hidden',!enabled\)/, 'SVG layer visibility must use a real hidden attribute');
-  assert.match(atlas, /atlas-375-1/);
-  assert.match(site, /exploration-atlas\.js\?v=atlas-375-1/);
+  assert.match(atlas, /atlas-376-1/);
+  assert.match(site, /exploration-atlas\.js\?v=atlas-376-1/);
   assert.match(locations, /x:39, y:79/);
   assert.match(locations, /level_1: Object\.freeze\(\{ regionKey:'merkez', x:43, y:72/);
 });
@@ -294,4 +297,17 @@ test('each major biome has its own painterly signature without changing the 3:2 
   assert.match(artwork, /pointer-events="none"/);
   assert.match(artwork, /GRÖSSE ORMANI/);
   assert.match(artwork, /KUZEY PLATOSU/);
+});
+
+test('atlas decluttering keeps bosses, settlements and dungeons inside the illustrated landmass', async () => {
+  const { declutterAtlasPins, isInsideAtlasLand } = await import('../atlas-pin-layout.js');
+  const source = [
+    { id: 'boss:zeldeila', type: 'boss', x: 95, y: 36 },
+    { id: 'city:demon-kings-castle', type: 'city', x: 94, y: 24 },
+    { id: 'dungeon:level_30', type: 'dungeon', x: 92, y: 44 }
+  ];
+  const arranged = declutterAtlasPins(source);
+  assert.deepEqual(source.map(pin => [pin.x, pin.y]), [[95,36],[94,24],[92,44]], 'canonical catalog coordinates must not be mutated');
+  assert.ok(arranged.every(pin => isInsideAtlasLand(pin.x, pin.y)), 'every rendered pin must remain within the land silhouette');
+  assert.notDeepEqual(arranged.map(pin => [pin.x,pin.y]), source.map(pin => [pin.x,pin.y]));
 });
