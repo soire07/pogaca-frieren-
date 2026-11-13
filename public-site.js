@@ -35,7 +35,7 @@ import { achievements as RPG_ACHIEVEMENTS } from './basarimlar.js';
 import { JOURNAL_COLLECTIONS, getJournalCollectionProgress } from './gameplay-depth.js';
 import { getJournalEntries, getClaimedJournalCollections } from './gameplay-journal.js';
 import { EXPLORATION_REGION_CATALOG } from './exploration-regions.js';
-import { getDailyQuestObjectiveSql, listOwnerDailyQuests } from './owner-rpg-quests.js';
+import { DEFAULT_DAILY_QUESTS, getDailyQuestObjectiveSql } from './owner-rpg-quests.js';
 import { listCardVariants } from './card-variants.js';
 import { listGuildEmbedTemplates, listGuildCustomCommands, listGuildSpellAutomations, saveGuildEmbedTemplate, saveGuildCustomCommand, saveGuildSpellAutomation } from './guild-workshop.js';
 import { HOME_ROOMS, HOME_DECORATIONS, HOME_STATIONS, ALCHEMY_RECIPES, PLAYER_COSMETICS, getPlayerHome, unlockHomeRoom, saveHomeLayout, purchaseCosmetic, equipCosmetic, saveCosmeticPreset, applyCosmeticPreset, checkInGuildEvent, getCosmeticAcquisitionHistory, getHomeTrophies, placeHomeTrophy, setHomeVisibility, getPublicPlayerHome, brewHomePotion, claimEventMilestone, getPlayerProfileSettings, setPlayerProfileSettings } from './player-experience.js';
@@ -480,18 +480,19 @@ export function publicHomeShowcasePage(user,data){
 }
 
 async function loadPlayerDailyQuestBoard(db,guildId,userId,className){
- const catalog=await listOwnerDailyQuests(db,{guildId});
- const available=(catalog||[]).filter(quest=>quest.active===true&&(!quest.class_name||quest.class_name===className));
+ const result=await db.query('SELECT quest_key,title,description,objective_type,class_name,reward_coins,active,is_system FROM guild_daily_quests WHERE guild_id=$1 ORDER BY is_system DESC,title ASC LIMIT 100',[guildId]);
+ const catalog=result.rows?.length?result.rows:DEFAULT_DAILY_QUESTS.map(quest=>({...quest,active:true,is_system:true}));
+ const available=catalog.filter(quest=>quest.active===true&&(!quest.class_name||quest.class_name===className));
  const [claims,objectiveRows]=await Promise.all([
   db.query('SELECT mission_key FROM daily_mission_claims WHERE guild_id=$1 AND user_id=$2 AND mission_date=CURRENT_DATE',[guildId,userId]),
   Promise.all([...new Set(available.map(quest=>quest.objective_type))].map(async objectiveType=>{
-   const result=await db.query(getDailyQuestObjectiveSql(objectiveType),[guildId,userId]);
-   return [objectiveType,Boolean(result.rows?.[0]?.done)];
+   const progress=await db.query(getDailyQuestObjectiveSql(objectiveType),[guildId,userId]);
+   return [objectiveType,Boolean(progress.rows?.[0]?.done)];
   }))
  ]);
  const claimed=new Set((claims.rows||[]).map(row=>row.mission_key));
- const progress=new Map(objectiveRows);
- return available.map(quest=>({...quest,done:progress.get(quest.objective_type)===true,claimed:claimed.has(quest.quest_key)}));
+ const progressByType=new Map(objectiveRows);
+ return available.map(quest=>({...quest,done:progressByType.get(quest.objective_type)===true,claimed:claimed.has(quest.quest_key)}));
 }
 
 function playerProfilePage(user,profile,data,status){
