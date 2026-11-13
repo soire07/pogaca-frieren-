@@ -190,6 +190,7 @@ function page(title, content, user, seo = {}) {
           navLink('/pogaca', '⚔', 'Poğaça Frieren', 'RPG botunu keşfet'),
           navLink('/komutlar', '⌘', 'Komut Rehberi', 'Komutlar ve seçenekler'),
           navLink('/ansiklopedi', '✧', 'Karakter Ansiklopedisi', 'Karakterleri keşfet ve spoiler ayrıntılarını aç'),
+          navLink('/ara', '⌕', 'Site Araması', 'Sayfa, komut, karakter ve büyü ara'),
           navLink('/frieren-ai', '✧', 'Frieren AI', 'Yapay zekâ asistanı'),
           navLink('/pazar', '◈', 'Kuzey Pazarı', 'Oyuncu pazarı ve takas'),
           navLink('/lonca', '♜', 'Maceracı Loncası', 'Discord sunucu modülleri')
@@ -337,6 +338,48 @@ function getPublicCommandPermissionLabel(data) {
   } catch {
     return 'Discord izin gereksinimi tanımlı';
   }
+}
+
+function siteSearchPage(client,user,query,categoryFilter) {
+  const q=String(query||'').trim().slice(0,80);
+  const category=String(categoryFilter||'').trim();
+  const normalize=value=>String(value||'').toLocaleLowerCase('tr-TR');
+  const pages=[
+    {title:'Poğaça Frieren',description:'Botun özellikleri, RPG ve topluluk deneyimi.',href:'/pogaca'},
+    {title:'Frieren AI',description:'Frieren yapay zekâ özellikleri ve durum bilgisi.',href:'/frieren-ai'},
+    {title:'Komut Rehberi',description:'Discord komutları, kullanımları ve seçenekleri.',href:'/komutlar'},
+    {title:'Karakter Ansiklopedisi',description:'Anime karakterleri, seri ve nadirlik filtreleri.',href:'/ansiklopedi'},
+    {title:'Maceracı Profili',description:'Seviye, başarımlar, büyüler ve RPG ilerlemesi.',href:'/maceraci/profil'},
+    {title:'Bildirim Merkezi',description:'Hesap bildirimleri ve okunmamış mesajlar.',href:'/bildirimler'},
+    {title:'Macera Pazarı',description:'RPG eşyaları ve oyuncu ilanları.',href:'/pazar'},
+    {title:'Keşfet',description:'Frieren portalı ve topluluk sayfaları.',href:'/kesfet'}
+  ].map(item=>({...item,category:'page',search:item.title+' '+item.description}));
+  const commands=Array.from(client?.commands?.values?.()||[]).map(command=>{
+    const data=typeof command?.data?.toJSON==='function'?command.data.toJSON():(command?.data||{});
+    const name=String(data.name||command?.name||'').trim();
+    if(!name)return null;
+    const description=String(data.description||'Discord komutu');
+    return {category:'command',title:'/'+name,description:'Discord komutu · '+description,href:'/komutlar',search:name+' '+description};
+  }).filter(Boolean);
+  const characters=ANIME_CHARACTERS.map(character=>({
+    category:'character',title:character.name,description:character.anime+' · '+character.rarity,
+    href:'/ansiklopedi?q='+encodeURIComponent(character.name),
+    search:[character.name,character.anime,character.rarity].join(' ')
+  }));
+  const spells=Object.entries(RPG_SPELL_DETAILS).map(([key,spell])=>({
+    category:'spell',title:spell.name,description:spell.cost+' · '+spell.effect+' · Discord /buyular',
+    href:'/komutlar',search:[key,spell.name,spell.cost,spell.effect,'buyular'].join(' ')
+  }));
+  const index=[...pages,...commands,...characters,...spells];
+  const results=(q?index.filter(item=>(!category||item.category===category)&&normalize(item.search).includes(normalize(q))):pages.slice(0,6)).slice(0,60);
+  const labels={page:'Sayfa',command:'Discord komutu',character:'Karakter',spell:'Büyü'};
+  const resultCards=results.map(item=>'<a class="card site-search-result" href="'+esc(item.href)+'" data-search-category="'+item.category+'"><span class="eyebrow">'+labels[item.category]+'</span><h2>'+esc(item.title)+'</h2><p>'+esc(item.description)+'</p></a>').join('');
+  const content='<main class="wrap site-search-page"><header class="section-head"><span class="eyebrow">FRIEREN PORTALI · EVRENSEL ARAMA</span><h1>Site Araması</h1><p>Sayfaları, Discord komutlarını, karakterleri ve büyüleri tek yerden bul.</p></header><form class="card site-search-form" method="get" action="/ara"><label>Ne arıyorsun?<input type="search" name="q" value="'+esc(q)+'" maxlength="80" placeholder="Örn. Frieren, /kesif, Alev Küresi…" autofocus></label><label>İçerik türü<select name="category"><option value="">Tüm içerikler</option><option value="page"'+(category==='page'?' selected':'')+'>Sayfalar</option><option value="command"'+(category==='command'?' selected':'')+'>Discord komutları</option><option value="character"'+(category==='character'?' selected':'')+'>Karakterler</option><option value="spell"'+(category==='spell'?' selected':'')+'>Büyüler</option></select></label><button class="btn primary" type="submit">Ara</button></form><div class="site-search-summary" aria-live="polite">'+(q?results.length+' sonuç bulundu':'Popüler içerikler')+'</div><section class="site-search-results" aria-label="Arama sonuçları">'+(resultCards||'<article class="card site-search-empty">Bu aramayla eşleşen içerik bulunamadı. Farklı bir kelime veya içerik türü dene.</article>')+'</section></main>';
+  return page('Site Araması',content,user,{
+    description:'Frieren portalında sayfaları, Discord komutlarını, anime karakterlerini ve büyüleri tek yerden ara.',
+    canonical:'https://frierenbot.vercel.app/ara',
+    indexable:false
+  });
 }
 
 function characterEncyclopediaPage(user) {
@@ -1316,12 +1359,12 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci/oyuncu', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/profil', '/profil/media', '/profil/media/public', '/hesap-merkezi', '/bildirimler', '/pazar', '/ansiklopedi']);
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci/oyuncu', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/profil', '/profil/media', '/profil/media/public', '/hesap-merkezi', '/bildirimler', '/pazar', '/ansiklopedi', '/ara']);
   const isPublicProfilePath=url.pathname.startsWith('/u/');
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname) && !isPublicProfilePath) return false;
   const sessionUser = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
-  const user = await enrichSiteUser(db,client,sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : (url.pathname === '/kesfet' || url.pathname === '/ansiklopedi' || url.pathname === '/maceraci/oyuncu' || isPublicProfilePath) ? { id: '', username: 'Gezgin', avatarUrl: '/assets/site-avatar.webp' } : null));
-  if (!user && url.pathname !== '/kesfet' && url.pathname !== '/ansiklopedi' && url.pathname !== '/maceraci/oyuncu' && !isPublicProfilePath && url.pathname !== '/profil/media/public') {
+  const user = await enrichSiteUser(db,client,sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : (url.pathname === '/kesfet' || url.pathname === '/ansiklopedi' || url.pathname === '/ara' || url.pathname === '/maceraci/oyuncu' || isPublicProfilePath) ? { id: '', username: 'Gezgin', avatarUrl: '/assets/site-avatar.webp' } : null));
+  if (!user && url.pathname !== '/kesfet' && url.pathname !== '/ansiklopedi' && url.pathname !== '/ara' && url.pathname !== '/maceraci/oyuncu' && !isPublicProfilePath && url.pathname !== '/profil/media/public') {
     res.writeHead(302, { Location: '/login', 'Cache-Control': 'no-store' });
     res.end();
     return true;
@@ -1595,7 +1638,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
     res.end(html);return true;
   }
-  const routes = new Map([['/kesfet', () => home(client, user, createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET))], ['/pogaca', () => pogaca(client, user)], ['/komutlar', () => commandCatalog(client, user)], ['/frieren-ai', () => aiPage(user)], ['/ansiklopedi', () => characterEncyclopediaPage(user)]]);
+  const routes = new Map([['/kesfet', () => home(client, user, createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET))], ['/pogaca', () => pogaca(client, user)], ['/komutlar', () => commandCatalog(client, user)], ['/frieren-ai', () => aiPage(user)], ['/ansiklopedi', () => characterEncyclopediaPage(user)], ['/ara', () => siteSearchPage(client,user,url.searchParams.get('q'),url.searchParams.get('category'))]]);
   const render = routes.get(url.pathname);
   if (!render) return false;
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
