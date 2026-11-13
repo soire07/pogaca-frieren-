@@ -38,7 +38,7 @@ import { JOURNAL_COLLECTIONS, getJournalCollectionProgress } from './gameplay-de
 import { getJournalEntries, getClaimedJournalCollections } from './gameplay-journal.js';
 import { buildExplorationMapContent } from './exploration-map-content.js';
 import { renderExplorationAtlas } from './exploration-atlas.js';
-import { DEFAULT_DUNGEON_TIERS, DEFAULT_SOLO_BOSSES } from './rpg-content-catalog.js';
+import { DEFAULT_DUNGEON_TIERS, DEFAULT_SOLO_BOSSES, DEFAULT_RAID_BOSSES } from './rpg-content-catalog.js';
 import { getGuildRpgContent } from './owner-rpg-content.js';
 import { DEFAULT_DAILY_QUESTS, getDailyQuestObjectiveSql } from './owner-rpg-quests.js';
 import { listCardVariants } from './card-variants.js';
@@ -607,7 +607,7 @@ function playerProfilePage(user,profile,data,status){
  const journalSection='<section class="section" id="journey-journal"><div class="section-head"><h2>Keşif ve Büyü Günlüğü</h2><p>Discord maceralarında bulduğun keşifleri, boss izlerini, büyüleri ve yadigârları burada takip et. İlerleme seçili sunucu karakterine aittir.</p></div><div class="profile-board-grid">'+(journalRows||'<article class="card">Henüz günlük kaydı yok. Discord’da keşif, büyü ve boss maceralarına katıldıkça burada ilerlemen görünür.</article>')+'</div><p class="market-meta">Tamamlanan koleksiyonların ödülünü Discord’da /gunluk komutuyla alabilirsin.</p></section>';
  const mapContent=buildExplorationMapContent({
   level:levelForXp(profile.xp),regionVisits:data.regionMastery||[],journalEntries:data.journalEntries||[],
-  inventory:data.inventory||[],bosses:data.mapBosses||DEFAULT_SOLO_BOSSES,
+  inventory:data.inventory||[],bosses:[...(data.mapBosses||DEFAULT_SOLO_BOSSES),...(data.mapRaidBosses||DEFAULT_RAID_BOSSES)],
   dungeons:data.mapDungeons||DEFAULT_DUNGEON_TIERS,dungeonWins:stats.dungeon_wins
  });
  const dailyQuestRows=(data.dailyQuests||[]).map(quest=>{
@@ -1537,7 +1537,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const profile=await getLinkedAdventurer(db,user.id,guildId);
     if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter web hesabına bağlı değil.');return true;}
     const settings=await getPlayerProfileSettings(db,{guildId,userId:profile.user_id});
-    const [stats,titles,earned,activity,collections,arena,rankings,home,loadout,xpHistory,journalEntries,claimedJournalCollections,regionMastery,learnedSpells,spellMastery,inventory,mapBosses,mapDungeons]=await Promise.all([
+    const [stats,titles,earned,activity,collections,arena,rankings,home,loadout,xpHistory,journalEntries,claimedJournalCollections,regionMastery,learnedSpells,spellMastery,inventory,mapBosses,mapDungeons,mapRaidBosses]=await Promise.all([
       db.query('SELECT created_at,boss_defeats,dungeon_wins,exploration_count,items_used_count,daily_streak,best_daily_streak FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,profile.user_id]),
       db.query('SELECT title,unlocked_at FROM user_titles WHERE guild_id=$1 AND user_id=$2 ORDER BY unlocked_at DESC,title',[guildId,profile.user_id]),
       db.query('SELECT a.achievement_key,a.claimed_at,h.display_slot FROM achievement_claims a LEFT JOIN player_home_trophies h ON h.guild_id=a.guild_id AND h.user_id=a.user_id AND h.achievement_key=a.achievement_key WHERE a.guild_id=$1 AND a.user_id=$2 ORDER BY a.claimed_at DESC,a.achievement_key',[guildId,profile.user_id]),
@@ -1569,7 +1569,8 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       db.query('SELECT spell_key,casts,mastery_level FROM spell_mastery WHERE guild_id=$1 AND user_id=$2 ORDER BY mastery_level DESC,casts DESC,spell_key ASC',[guildId,profile.user_id]),
       db.query('SELECT item_key,quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND quantity>0 ORDER BY item_key',[guildId,profile.user_id]),
       getGuildRpgContent(db,guildId,'solo_boss').catch(()=>DEFAULT_SOLO_BOSSES),
-      getGuildRpgContent(db,guildId,'dungeon').catch(()=>DEFAULT_DUNGEON_TIERS)
+      getGuildRpgContent(db,guildId,'dungeon').catch(()=>DEFAULT_DUNGEON_TIERS),
+      getGuildRpgContent(db,guildId,'raid_boss').catch(()=>DEFAULT_RAID_BOSSES)
     ]);
     let bannerUrl='/assets/site-profile-banner.svg';
     try{const banner=await getProfileMedia(db,user.id,'banner');if(banner)bannerUrl='/maceraci/profil/media?kind=banner';}catch{}
@@ -1581,7 +1582,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       home:home.rows[0]||{is_public:false},loadout:loadout.rows,xpHistory:xpHistory.rows,bannerUrl,
       journalProgress,claimedJournalCollections:[...claimedJournalCollections],regionMastery:regionMastery.rows,dailyQuests,
       learnedSpells:learnedSpells.rows,spellMastery:spellMastery.rows,
-      journalEntries:journalEntries.rows,inventory:inventory.rows,mapBosses,mapDungeons
+      journalEntries:journalEntries.rows,inventory:inventory.rows,mapBosses,mapDungeons,mapRaidBosses
     },url.searchParams.get('status'));
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
     res.end(html);return true;
