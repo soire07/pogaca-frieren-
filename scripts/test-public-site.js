@@ -1192,6 +1192,14 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/Keşif Haritası/);
  assert.match(response.body,/exploration-map-scene/);
  assert.match(response.body,/exploration-map-terrain/);
+ assert.match(response.body,/exploration-map-parchment/);
+ assert.match(response.body,/exploration-map-coastline/);
+ assert.match(response.body,/exploration-map-compass-rose/);
+ assert.match(response.body,/exploration-map-route-segment is-open/);
+ assert.match(response.body,/exploration-map-route-segment is-locked/);
+ assert.match(response.body,/exploration-map-fog/);
+ assert.match(response.body,/Boss zaferleri · karakter geneli/);
+ assert.match(response.body,/Zindan zaferleri · karakter geneli/);
  assert.match(response.body,/exploration-map-landmark/);
  assert.match(response.body,/data-region-key="merkez"/);
  assert.match(response.body,/href="#region-merkez"/);
