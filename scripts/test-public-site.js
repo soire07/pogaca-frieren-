@@ -1814,6 +1814,14 @@ test('spellbook search and mastery filters update visible entries and empty stat
 });
 
 
+test('exploration atlas JavaScript is publicly served without requiring a Discord session', async () => {
+ const response=res();
+ assert.equal(await handlePublicSiteRequest({method:'GET',url:'/assets/exploration-atlas.js',headers:{}},response,{db:null}),true);
+ assert.equal(response.status,200);
+ assert.match(response.headers['Content-Type'],/javascript/);
+ assert.match(response.body.toString('utf8'),/data-atlas-open/);
+});
+
 test('illustrated atlas background is served as a first-party image asset', async () => {
  const response=res();
  assert.equal(await handlePublicSiteRequest(request('/assets/frieren-world-map.svg'),response,{db:null}),true);
