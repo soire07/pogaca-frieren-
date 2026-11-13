@@ -1536,3 +1536,20 @@ test('unified Frieren visual system defines consistent glass surfaces and access
  assert.match(styles,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(styles,/@media\(max-width:560px\)/);
 });
+
+test('account notification center renders unread state and neutralizes unsafe stored destinations', async () => {
+ const accountId='site_123e4567-e89b-12d3-a456-426614174000';
+ const db={async query(sql){
+  if(sql.includes('SELECT notification_id,notification_type,title,body,href,created_at,read_at FROM frieren_account_notifications'))return{rows:[{notification_id:'123e4567-e89b-12d3-a456-426614174000',notification_type:'friend_request',title:'<img src=x onerror=alert(1)>',body:'Yeni istek',href:'javascript:alert(1)',created_at:new Date('2026-11-13T10:00:00Z'),read_at:null}],rowCount:1};
+  return{rows:[],rowCount:0};
+ }};
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/bildirimler',{id:accountId,username:'Gezgin'}),response,{db}),true);
+ assert.equal(response.status,200);
+ assert.match(response.body,/Okunmamış: 1/);
+ assert.match(response.body,/notification-card is-unread/);
+ assert.match(response.body,/Okunmadı/);
+ assert.doesNotMatch(response.body,/href="javascript:alert\(1\)"/);
+ assert.match(response.body,/href="\/profil">Aç/);
+ assert.match(response.body,/&lt;img src=x onerror=alert\(1\)&gt;/);
+});
