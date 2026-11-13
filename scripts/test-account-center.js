@@ -136,6 +136,8 @@ test('owner support actions require the fixed owner identity and append staff re
 
 test('account export includes account-owned tables that also contain a user_id column', async () => {
   const db = { async query(sql, params) {
+    if (sql.includes("to_regclass('frieren_site_chat_media')")) return { rows: [{ table_name: null }], rowCount: 1 };
+    if (sql.includes("to_regclass('frieren_public_chat_messages')")) return { rows: [{ table_name: null }], rowCount: 1 };
     if (sql.includes("to_regclass('frieren_site_direct_messages')")) return { rows: [{ table_name: null }], rowCount: 1 };
     if (sql.includes("to_regclass('frieren_site_dm_groups')")) return { rows: [{ table_name: null }], rowCount: 1 };
     if (sql.includes('FROM frieren_site_accounts')) return { rows: [{ id: '123e4567-e89b-12d3-a456-426614174000', username: 'Gezgin' }], rowCount: 1 };
