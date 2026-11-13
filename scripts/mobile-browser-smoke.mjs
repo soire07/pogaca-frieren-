@@ -106,6 +106,13 @@ for (const scenario of scenarios) {
     if (!routeSummary.includes('harita birimi') || !routeSummary.includes('Kraliyet Başkenti') || !routeSummary.includes('Ende')) throw new Error(scenario.name + ' atlas route summary is incomplete or implies unsupported scale: ' + routeSummary);
     await page.locator('[data-atlas-route-clear]').click();
     if (!(await page.locator('.atlas-route-overlay').isHidden())) throw new Error(scenario.name + ' atlas route clear did not hide the route');
+    await routeFrom.selectOption('strahl');
+    await routeTo.selectOption('strahl');
+    await page.locator('[data-atlas-route-submit]').click();
+    if (!(await page.locator('[data-atlas-route-summary]').textContent()).includes('0.0 harita birimi')) throw new Error(scenario.name + ' atlas same-stop route should report zero distance');
+    await page.locator('[data-atlas-route-clear]').click();
+    const routeControlHeights = await page.locator('.atlas-route-planner select, .atlas-route-planner button').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
+    if (routeControlHeights.some(height => height < 44)) throw new Error(scenario.name + ' atlas route controls are below the 44px touch target: ' + JSON.stringify(routeControlHeights));
     await page.locator('[data-atlas-zoom="1"]').click();
     await page.locator('[data-atlas-zoom="1"]').click();
     if (await page.locator('.atlas-map-art').getAttribute('data-atlas-zoom-detail') !== 'regional') throw new Error(scenario.name + ' atlas regional detail level did not activate on zoom');
