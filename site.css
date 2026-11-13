@@ -1548,7 +1548,7 @@ body.atlas-modal-open{overflow:hidden}
 
 
 /* Genshin-style atlas navigation: zoom, pan, compact pins and selectable map layers. */
-.atlas-map-viewport{touch-action:none;cursor:grab;min-height:clamp(260px,48vw,620px);background:#315b63}
+.atlas-map-viewport{touch-action:none;cursor:grab;aspect-ratio:3/2;min-height:0;max-width:1100px;margin-inline:auto;background:#315b63}
 .atlas-map-viewport:active{cursor:grabbing}
 .atlas-map-camera{position:absolute;inset:0;transform-origin:center center;will-change:transform}
 .atlas-map-art{width:100%;height:100%;aspect-ratio:auto;overflow:visible}
@@ -1571,7 +1571,7 @@ body.atlas-modal-open{overflow:hidden}
 .atlas-layer-controls button[aria-pressed="false"]{opacity:.55;text-decoration:line-through}
 .atlas-layer-controls small{flex-basis:100%;color:#a99e8c;font-size:10px}
 .atlas-pin[hidden]{display:none}
-@media(max-width:700px){.atlas-map-viewport{min-height:300px}.atlas-map-tools{top:8px;right:8px;gap:3px;padding:4px}.atlas-map-tools button{min-width:31px;height:31px}.atlas-layer-controls{gap:6px}.atlas-layer-controls button{padding:6px 9px}}
+@media(max-width:700px){.atlas-map-tools{top:8px;right:8px;gap:3px;padding:4px}.atlas-map-tools button{min-width:31px;height:31px}.atlas-layer-controls{gap:6px}.atlas-layer-controls button{padding:6px 9px}}
 @media(prefers-reduced-motion:reduce){.atlas-map-camera{will-change:auto}}
 
 .atlas-fog-layer{position:absolute;inset:0;z-index:2;width:100%;height:100%;pointer-events:none}
