@@ -175,9 +175,11 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   assert.match(atlas, /atlas-field-mosaic/);
   for (const layer of ['waterways', 'trails', 'settled-land']) {
     assert.match(atlas, new RegExp('data-atlas-geography="' + layer + '"'));
-    assert.match(client, new RegExp('data-atlas-geography-layer="' + layer + '"'));
+
   }
   assert.match(client, /data-atlas-geography/);
+  assert.match(client, /querySelectorAll\\('\[data-atlas-geography-layer=/, 'client must locate the SVG layer rendered by the server module');
+  assert.match(client, /toggleAttribute\\('hidden',!enabled\\)/, 'SVG layer visibility must use a real hidden attribute');
   assert.match(atlas, /atlas-362-1/);
   assert.match(site, /exploration-atlas\.js\?v=atlas-362-1/);
   assert.match(locations, /x:39, y:79/);
