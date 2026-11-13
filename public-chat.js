@@ -11,7 +11,7 @@ export function isValidPublicChatReactionEmoji(value){
  if(!emoji||Array.from(emoji).length>16||/\s/u.test(emoji)||/[\u0000-\u001f\u007f]/u.test(emoji))return false;
  if(typeof Intl.Segmenter!=='function')return false;
  const segments=[...new Intl.Segmenter('en',{granularity:'grapheme'}).segment(emoji)];
- return segments.length===1&&(/[\p{Extended_Pictographic}\p{Regional_Indicator}]/u.test(emoji)||/^[#*0-9]\uFE0F?\u20E3$/u.test(emoji));
+ return segments.length===1&&(/\p{Extended_Pictographic}/u.test(emoji)||/^\p{Regional_Indicator}{2}$/u.test(emoji)||/^[#*0-9]\uFE0F?\u20E3$/u.test(emoji));
 }
 const clean=(value,max,code,{optional=false}={})=>{const text=String(value??'').normalize('NFC').trim();if(!text&&optional)return '';if(!text||Array.from(text).length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text))throw new Error(code);return text;};
 function assertAccount(accountId){if(!ACCOUNT_ID.test(String(accountId||'')))throw new Error('PUBLIC_CHAT_ACCOUNT_INVALID');}
