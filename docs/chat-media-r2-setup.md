@@ -1,41 +1,48 @@
-# Frieren chat media storage (Cloudflare R2)
+# Frieren chat media storage (Supabase Free)
 
-Chat attachments use a private Cloudflare R2 bucket. The application uploads the raw file through the existing Render service, so the browser never receives an R2 API key and the bucket does not need public access or browser CORS rules.
+Chat attachments use a dedicated Supabase Storage project on the **Free** plan. The bucket stays private. The Render service signs S3-compatible upload/download/delete requests; the browser never receives storage credentials. Neon stores only attachment metadata and message relationships.
 
-## One-time setup
+## Free-plan setup (one time)
 
-1. In Cloudflare, open **R2 Object Storage** and create a **Standard** bucket, for example `frieren-chat-media`.
-2. Keep public access disabled.
-3. Create an R2 API token restricted to this bucket with **Object Read & Write** permissions. Do not create an account-wide administrator token.
-4. In the Render service `pogaca-frieren`, add these environment variables. Store the secret key only in Render; never commit it to GitHub or paste it into chat.
+1. Open https://supabase.com/dashboard and create a new organization/project using the **Free** plan. Name the project **frieren-chat-media**.
+2. Keep this project dedicated to chat media. Do not store unrelated application data in it.
+3. Open **Storage → Buckets → New bucket** and create **frieren-chat-media**.
+4. Keep **Public bucket** disabled. Set the maximum file size to 24 MB (the app's largest supported file). Restrict allowed MIME types to:
+   - image/jpeg, image/png, image/webp, image/gif
+   - video/mp4, video/webm
+   - audio/mpeg, audio/ogg, audio/wav, audio/flac, audio/webm
+5. Open **Storage → Settings → S3 Connection**. Enable the S3 protocol and generate an Access Key ID and Secret Access Key. Copy the endpoint and region shown there. The endpoint should use the direct storage hostname and end in /storage/v1/s3, for example https://<project-ref>.storage.supabase.co/storage/v1/s3.
+6. In Render service **pogaca-frieren**, add these environment variables. Keep the secret key only in Render; never commit it to GitHub or paste it into chat.
 
 | Environment variable | Value |
 | --- | --- |
-| `CHAT_MEDIA_R2_ACCOUNT_ID` | Cloudflare account ID (32 hexadecimal characters) |
-| `CHAT_MEDIA_R2_BUCKET` | Exact bucket name |
-| `CHAT_MEDIA_R2_ACCESS_KEY_ID` | R2 token access key ID |
-| `CHAT_MEDIA_R2_SECRET_ACCESS_KEY` | R2 token secret access key |
+| CHAT_MEDIA_SUPABASE_ENDPOINT | Supabase S3 endpoint from Storage settings |
+| CHAT_MEDIA_SUPABASE_REGION | Region shown in S3 settings |
+| CHAT_MEDIA_SUPABASE_BUCKET | frieren-chat-media |
+| CHAT_MEDIA_SUPABASE_ACCESS_KEY_ID | Generated S3 Access Key ID |
+| CHAT_MEDIA_SUPABASE_SECRET_ACCESS_KEY | Generated S3 Secret Access Key |
 
-5. Save the environment changes and allow the normal Render service restart. No Vercel environment variables are required because Vercel forwards site requests to Render.
+7. Save the environment changes and allow the normal Render restart. No Vercel environment variables are required.
 
-Until all four variables are present, the chat upload route deliberately returns `503 media_storage_not_configured`; text chat continues to work.
+## Free-only and security safeguards
 
-## Limits and safeguards
-
-- Private bucket; downloads use short-lived, signed GET URLs.
-- Only allowlisted image, video and audio MIME types with file-signature checks.
-- Per-file limits: images 8 MiB, video 24 MiB, audio 16 MiB.
-- Per-account upload ceiling: 150 MiB per rolling 24 hours.
-- Application-wide metadata ceiling: 8.5 GB, leaving headroom below R2's 10 GB-month free storage allowance.
-- Files are not stored as BYTEA in Neon PostgreSQL. PostgreSQL stores only metadata and the message relationship.
-- Signed download URLs are bearer links valid for up to two hours and use a one-hour private browser cache. Account exports include temporary download links when R2 is configured; do not share those links publicly.
-- The 8.5 GB cap applies to this app's metadata table and dedicated bucket; Cloudflare's free allowance is shared across the entire Cloudflare account, including any other R2 buckets. Existing account usage can therefore reduce the remaining free allowance.
-- No automatic billing or paid upgrade is configured by this code. R2 usage beyond the free allowance is billable at Cloudflare's published rates, so monitor storage and operation usage in the Cloudflare dashboard.
-
-Cloudflare currently lists Standard R2 free allowances of 10 GB-month storage, 1 million Class A requests, 10 million Class B requests and free egress: https://developers.cloudflare.com/r2/pricing/
-
-Presigned upload/download URLs follow Cloudflare's S3-compatible API and are generated server-side: https://developers.cloudflare.com/r2/api/s3/presigned-urls/
+- Keep the Supabase organization/project on **Free**. Do not add paid compute, add-ons, or upgrade the plan.
+- Supabase Free currently includes 1 GB file storage, 5 GB uncached egress and 5 GB cached egress; its Free projects can pause after one week of inactivity.
+- Free-plan quota overruns trigger service restrictions after notice/grace handling; do not upgrade to clear them. The app's own object metadata ceiling is lower: 900 MiB, leaving headroom below the 1 GB storage quota.
+- The app rejects further uploads when its 900 MiB total metadata ceiling or 150 MiB per-account rolling 24-hour limit is reached. Per-file limits remain: images 8 MiB, video 24 MiB, audio 16 MiB.
+- Supabase S3 access keys have full access to all buckets in their Supabase project and bypass Storage RLS. This is why the project must be dedicated to this one private chat bucket; never reuse its credentials elsewhere.
+- Only the Render backend holds the S3 keys. Existing chat account, friend, group membership, CSRF, file signature and MIME checks remain in force.
+- Downloads use time-limited signed URLs. They are bearer links while valid; do not share them outside the authorized conversation.
+- Files are not stored as BYTEA in Neon PostgreSQL. PostgreSQL stores only metadata and message relationships.
+- Keep the bucket private; do not make it public to work around a failed upload.
 
 ## Validation
 
-After adding the environment variables, test one image, one video and one audio file in the test account before enabling this on the production site. Confirm that direct messages are visible only to the two participants and group attachments only to group members. Do not make the bucket public to work around a failed upload.
+After adding the environment variables, test one image, one video and one audio file using test accounts. Confirm direct-message attachments are visible only to the two participants and group attachments only to group members. Confirm upload rejection at the app's configured quota. Then verify Vercel-to-Render SSE separately; SSE does not depend on the media provider.
+
+Official references:
+- https://supabase.com/pricing
+- https://supabase.com/docs/guides/storage/s3/authentication
+- https://supabase.com/docs/guides/storage/s3/compatibility
+- https://supabase.com/docs/guides/storage/serving/downloads
+- https://supabase.com/docs/guides/platform/billing-faq
