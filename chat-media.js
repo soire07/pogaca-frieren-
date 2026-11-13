@@ -120,3 +120,22 @@ export function getChatMediaReadUrl({object_key,mime_type}={}){
  if(!object_key||!mime_type||!SPECS[mime_type]||!config())return null;
  return signChatMediaUrl('GET',object_key,mime_type,3600);
 }
+
+export async function deleteChatMediaForAccount(db,accountId){
+ if(!ACCOUNT.test(String(accountId||'')))throw new Error('CHAT_MEDIA_ACCOUNT_INVALID');
+ await ensureChatMediaSchema(db);
+ const direct=await db.query("SELECT to_regclass('frieren_site_direct_messages') AS table_name");
+ const rows=direct.rows?.[0]?.table_name
+  ?await db.query(`SELECT cm.media_id,cm.object_key FROM frieren_site_chat_media cm
+    WHERE cm.owner_account_id=$1 OR EXISTS(SELECT 1 FROM frieren_site_direct_messages m WHERE m.message_id=cm.message_id AND (m.sender_account_id=$1 OR m.recipient_account_id=$1))`,[accountId])
+  :await db.query('SELECT media_id,object_key FROM frieren_site_chat_media WHERE owner_account_id=$1',[accountId]);
+ if(!rows.rowCount)return{status:'empty',deleted:0};
+ if(!config())throw new Error('CHAT_MEDIA_STORAGE_NOT_CONFIGURED');
+ for(const row of rows.rows){
+  const response=await fetch(signChatMediaUrl('DELETE',row.object_key,null,300),{method:'DELETE'});
+  if(!response.ok&&response.status!==404)throw new Error('CHAT_MEDIA_STORAGE_DELETE_FAILED');
+ }
+ const ids=rows.rows.map(row=>row.media_id);
+ await db.query('DELETE FROM frieren_site_chat_media WHERE media_id=ANY($1::uuid[])',[ids]);
+ return{status:'deleted',deleted:ids.length};
+}
