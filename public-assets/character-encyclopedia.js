@@ -31,16 +31,17 @@
   anime?.addEventListener('change', applyFilters);
   rarity?.addEventListener('change', applyFilters);
 
-  root.addEventListener('click', event => {
-    const button = event.target.closest('[data-character-spoiler-toggle]');
-    if (!button || !root.contains(button)) return;
-    const card = button.closest('[data-character-card]');
-    const details = card?.querySelector('[data-character-spoiler]');
-    if (!details) return;
-    details.hidden = !details.hidden;
-    button.setAttribute('aria-expanded', String(!details.hidden));
-    button.textContent = details.hidden ? 'Gizli bilgileri göster' : 'Gizli bilgileri gizle';
-  });
+  root.dataset.characterEncyclopediaReady = 'true';
+  for (const button of root.querySelectorAll('[data-character-spoiler-toggle]')) {
+    button.addEventListener('click', () => {
+      const card = button.closest('[data-character-card]');
+      const details = card?.querySelector('[data-character-spoiler]');
+      if (!details) return;
+      details.hidden = !details.hidden;
+      button.setAttribute('aria-expanded', String(!details.hidden));
+      button.textContent = details.hidden ? 'Gizli bilgileri göster' : 'Gizli bilgileri gizle';
+    });
+  }
 
   applyFilters();
 })();
