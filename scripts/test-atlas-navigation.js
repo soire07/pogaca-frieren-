@@ -63,8 +63,8 @@ test('route, history and zoom controls have responsive and reduced-motion stylin
   assert.match(css, /\.atlas-pin-event \.atlas-pin-glyph/);
   assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-zoom-detail-layer/);
   assert.match(client, /data-atlas-route-submit/);
-  assert.match(client, /select\\[data-atlas-season\\]/, 'season control must not collide with map data attributes');
-  assert.match(client, /select\\[data-atlas-weather\\]/, 'weather control must not collide with map data attributes');
+  assert.match(client, /select\[data-atlas-season\]/, 'season control must not collide with map data attributes');
+  assert.match(client, /select\[data-atlas-weather\]/, 'weather control must not collide with map data attributes');
   assert.match(client, /atlasZoomRegional/);
   assert.match(atlas, /data-atlas-event=/);
   assert.match(atlas, /data-atlas-zoom-regional="1\.35"/);
