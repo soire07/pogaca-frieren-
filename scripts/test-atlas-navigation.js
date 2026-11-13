@@ -75,7 +75,7 @@ test('historical event markers are anchored to known places and carry episode/so
     assert.ok(Number.isInteger(event.episodeEnd) && event.episodeEnd >= event.episodeStart);
     assert.match(event.officialSource, /^https:\/\/frieren-anime\.jp\//);
     assert.match(event.locationSource, /^https:\/\//);
-    assert.ok(Number.isFinite(event.x) && Number.isFinite(event.y));\n    assert.ok(event.episodeSources?.length);\n    assert.ok(event.episodeSources.every(source => /^https:\\/\\/frieren-anime\\.jp\\/story\\//.test(source.url)));
+    assert.ok(Number.isFinite(event.x) && Number.isFinite(event.y));\n    assert.ok(event.episodeSources?.length);\n    assert.ok(event.episodeSources.every(source => source.url.startsWith('https://frieren-anime.jp/story/')));
   }
   assert.ok(ATLAS_HISTORICAL_EVENTS.some(event => event.anchorKey === 'royal-capital' && event.episodeStart === 1));
   assert.ok(ATLAS_HISTORICAL_EVENTS.some(event => event.anchorKey === 'riegel-canyon' && event.episodeStart === 6));
