@@ -19,12 +19,17 @@ const sha256=value=>createHash('sha256').update(value).digest('hex');
 const hmac=(key,value)=>createHmac('sha256',key).update(value).digest();
 const encode=value=>encodeURIComponent(String(value)).replace(/[!'()*]/g,char=>'%'+char.charCodeAt(0).toString(16).toUpperCase());
 function config(){
- const account=String(process.env.CHAT_MEDIA_R2_ACCOUNT_ID||'').trim();
- const bucket=String(process.env.CHAT_MEDIA_R2_BUCKET||'').trim();
- const accessKey=String(process.env.CHAT_MEDIA_R2_ACCESS_KEY_ID||'').trim();
- const secret=String(process.env.CHAT_MEDIA_R2_SECRET_ACCESS_KEY||'').trim();
- if(!/^[a-f0-9]{32}$/i.test(account)||!/^[a-z0-9-]{3,63}$/i.test(bucket)||!accessKey||!secret)return null;
- return{account,bucket,accessKey,secret,host:account+'.r2.cloudflarestorage.com'};
+ const endpointValue=String(process.env.CHAT_MEDIA_SUPABASE_ENDPOINT||'').trim();
+ const region=String(process.env.CHAT_MEDIA_SUPABASE_REGION||'').trim();
+ const bucket=String(process.env.CHAT_MEDIA_SUPABASE_BUCKET||'').trim();
+ const accessKey=String(process.env.CHAT_MEDIA_SUPABASE_ACCESS_KEY_ID||'').trim();
+ const secret=String(process.env.CHAT_MEDIA_SUPABASE_SECRET_ACCESS_KEY||'').trim();
+ let endpoint;
+ try{endpoint=new URL(endpointValue);}catch{return null;}
+ const basePath=endpoint.pathname.replace(/\\/+$/,'');
+ if(endpoint.protocol!=='https:'||! /^[a-z0-9-]+\\.storage\\.supabase\\.co$/i.test(endpoint.hostname)||basePath!=='/storage/v1/s3'||endpoint.search||endpoint.hash||endpoint.username||endpoint.password)return null;
+ if(!/^[a-z0-9-]{3,63}$/i.test(bucket)||!/^[a-z0-9-]{2,32}$/i.test(region)||!accessKey||!secret)return null;
+ return{bucket,accessKey,secret,host:endpoint.host,basePath,region};
 }
 export function isChatMediaConfigured(){return Boolean(config());}
 
@@ -56,8 +61,8 @@ export function signChatMediaUrl(method,objectKey,mimeType,expiresIn=300,issuedA
  const key=String(objectKey||'');if(!/^chat\/(public|dm|group)\/[0-9a-f-]{36}\.[a-z0-9]+$/i.test(key))throw new Error('CHAT_MEDIA_KEY_INVALID');
  const expires=Math.max(1,Math.min(7200,Math.floor(Number(expiresIn)||300)));
  const now=issuedAt instanceof Date?issuedAt:new Date(),amzDate=now.toISOString().replace(/[:-]|\.\d{3}/g,''),date=amzDate.slice(0,8);
- const credentialScope=date+'/auto/s3/aws4_request',credential=cfg.accessKey+'/'+credentialScope;
- const uri='/'+[cfg.bucket,...key.split('/')].map(encode).join('/');
+ const credentialScope=date+'/'+cfg.region+'/s3/aws4_request',credential=cfg.accessKey+'/'+credentialScope;
+ const uri='/'+[...cfg.basePath.split('/').filter(Boolean),cfg.bucket,...key.split('/')].map(encode).join('/');
  const headers=verb==='PUT'?'content-type;host':'host';
  const canonicalHeaders=verb==='PUT'?'content-type:'+String(mimeType||'application/octet-stream')+'\nhost:'+cfg.host+'\n':'host:'+cfg.host+'\n';
  const params=[['X-Amz-Algorithm','AWS4-HMAC-SHA256'],['X-Amz-Content-Sha256','UNSIGNED-PAYLOAD'],['X-Amz-Credential',credential],['X-Amz-Date',amzDate],['X-Amz-Expires',String(expires)],['X-Amz-SignedHeaders',headers]];
@@ -65,7 +70,7 @@ export function signChatMediaUrl(method,objectKey,mimeType,expiresIn=300,issuedA
  const canonicalQuery=params.slice().sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0).map(([k,v])=>encode(k)+'='+encode(v)).join('&');
  const canonicalRequest=[verb,uri,canonicalQuery,canonicalHeaders,headers,'UNSIGNED-PAYLOAD'].join('\n');
  const stringToSign=['AWS4-HMAC-SHA256',amzDate,credentialScope,sha256(canonicalRequest)].join('\n');
- const dateKey=hmac('AWS4'+cfg.secret,date),regionKey=hmac(dateKey,'auto'),serviceKey=hmac(regionKey,'s3'),signingKey=hmac(serviceKey,'aws4_request');
+ const dateKey=hmac('AWS4'+cfg.secret,date),regionKey=hmac(dateKey,cfg.region),serviceKey=hmac(regionKey,'s3'),signingKey=hmac(serviceKey,'aws4_request');
  const signature=createHmac('sha256',signingKey).update(stringToSign).digest('hex');
  return 'https://'+cfg.host+uri+'?'+canonicalQuery+'&X-Amz-Signature='+signature;
 }
@@ -100,7 +105,7 @@ export async function uploadChatMedia(db,{accountId,scope,scopeKey,mimeType,buff
  await pruneExpiredPendingMedia(db);
  const [usage,storage]=await Promise.all([db.query("SELECT COALESCE(SUM(size_bytes),0)::bigint AS bytes FROM frieren_site_chat_media WHERE owner_account_id=$1 AND created_at>NOW()-INTERVAL '24 hours'",[accountId]),db.query('SELECT COALESCE(SUM(size_bytes),0)::bigint AS bytes FROM frieren_site_chat_media')]);
  if(Number(usage.rows[0]?.bytes||0)+media.size>150*1024*1024)throw new Error('CHAT_MEDIA_DAILY_QUOTA');
- if(Number(storage.rows[0]?.bytes||0)+media.size>8_500_000_000)throw new Error('CHAT_MEDIA_STORAGE_QUOTA');
+ if(Number(storage.rows[0]?.bytes||0)+media.size>900*1024*1024)throw new Error('CHAT_MEDIA_STORAGE_QUOTA');
  const mediaId=randomUUID(),objectKey='chat/'+scope+'/'+mediaId+'.'+media.extension;
  const putUrl=signChatMediaUrl('PUT',objectKey,media.mimeType,600);
  const response=await fetch(putUrl,{method:'PUT',headers:{'Content-Type':media.mimeType},body:media.buffer,signal:AbortSignal.timeout(60000)});
