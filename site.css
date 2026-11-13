@@ -1595,7 +1595,6 @@ body.atlas-modal-open{overflow:hidden}
 /* Premium atlas art direction: quiet cartographic detail, compact landmarks, no toy-like badges. */
 .atlas-map-shell{padding:8px;border:1px solid #8c7859;background:linear-gradient(145deg,#1a2730,#101a22);box-shadow:0 22px 58px #02080d88}
 .atlas-map-paper{inset:4px;border-color:#c8b58b55;border-radius:11px}
-.atlas-map-viewport{border-radius:8px;background:#142d3b}
 .atlas-map-image{object-fit:cover}
 .atlas-pin{min-width:22px;min-height:22px;filter:drop-shadow(0 1px 3px #07151dcc);transition:transform .16s ease,filter .16s ease}
 .atlas-pin-glyph{width:18px;height:18px;clip-path:none;border:1.5px solid #f1e8d0;border-radius:50%;background:#263b43;color:#f5edd8;font:700 11px/1 system-ui,sans-serif;text-shadow:none;box-shadow:0 1px 5px #06141caa,0 0 0 2px #172d36aa}
