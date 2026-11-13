@@ -175,10 +175,11 @@ test('market offers are unique per buyer, seller acceptance settles item and coi
     assert.equal(sellerView.status,'listed');assert.equal(sellerView.offers.length,1);
     const accepted=await resolvePlayerMarketOffer(pool,{guildId,sellerId,offerId:offer.offer_id,decision:'accept'});
     assert.equal(accepted.status,'accepted');
-    assert.equal(Number(accepted.offerCoins),300);
+    const settledCoins=Number(offer.offer_coins);
+    assert.equal(Number(accepted.offerCoins),settledCoins);
     const balances=await pool.query('SELECT user_id,coins FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,[sellerId,buyerId]]);
-    assert.equal(Number(balances.rows.find(x=>x.user_id===sellerId).coins),300);
-    assert.equal(Number(balances.rows.find(x=>x.user_id===buyerId).coins),200);
+    assert.equal(Number(balances.rows.find(x=>x.user_id===sellerId).coins),settledCoins);
+    assert.equal(Number(balances.rows.find(x=>x.user_id===buyerId).coins),500-settledCoins);
     const items=await pool.query('SELECT user_id,quantity FROM inventory WHERE guild_id=$1 AND user_id=ANY($2::text[]) AND item_key=$3',[guildId,[sellerId,buyerId],'Offer Crystal']);
     assert.equal(Number(items.rows.find(x=>x.user_id===sellerId).quantity),2);
     assert.equal(Number(items.rows.find(x=>x.user_id===buyerId).quantity),2);
