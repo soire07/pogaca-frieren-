@@ -5,6 +5,7 @@ import { handlePublicSiteRequest, publicHomeShowcasePage } from '../public-site.
 import { createPublicSiteSession, buildPublicSiteSessionCookie } from '../owner-dashboard.js';
 import { createSiteCsrfToken } from '../site-auth.js';
 import { buildExplorationMapContent } from '../exploration-map-content.js';
+import { renderExplorationAtlas } from '../exploration-atlas.js';
 
 const secret = 'test-public-site-session-secret-at-least-32-characters';
 process.env.ADMIN_SESSION_SECRET = secret;
@@ -1811,21 +1812,10 @@ test('spellbook search and mastery filters update visible entries and empty stat
 });
 
 
-test('exploration map keeps the map visually uncluttered and moves detail markers into region cards', async () => {
- const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
- const site=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
- const refined=css.slice(css.lastIndexOf('/* Refined Frieren exploration map UI */'));
- const mapBuilder=site.slice(site.indexOf('const mapNodes='),site.indexOf('const mapTerrain='));
- const mapSection=site.slice(site.indexOf('const explorationMapSection='),site.indexOf('const notices='));
- assert.match(refined,/\.exploration-map-scroll\s*\{[^}]*overflow-x:\s*auto/s);
- assert.match(refined,/\.exploration-map-svg\s*\{[^}]*min-width:\s*0/s);
- assert.match(refined,/\.exploration-region-grid\s*\{[^}]*grid-template-columns/s);
- assert.match(refined,/@media\s*\(max-width:\s*560px\)/);
- assert.match(refined,/prefers-reduced-motion/);
- assert.match(mapBuilder,/data-region-key=/);
- assert.doesNotMatch(mapBuilder,/exploration-map-node-visits|exploration-map-label/);
- assert.doesNotMatch(mapSection,/\+mapNodes\+mapMarkers\+/);
- assert.match(mapSection,/\+mapNodes\+'<\/svg>/);
- assert.match(mapSection,/class="exploration-region-grid"/);
- assert.match(mapSection,/mapCards/);
+test('interactive parchment atlas renders biome regions, settlements, NPCs, creatures, boss and dungeon pins with live discovery percentage',()=>{
+ const mapContent=buildExplorationMapContent({level:50,regionVisits:[{region_key:'merkez',visits:3},{region_key:'orman',visits:1},{region_key:'harabeler',visits:1}],bosses:[{key:'test_boss',name:'Schattenwolf',minLevel:1,region:'Merkez Topraklar'}],dungeons:[{key:'test_dungeon',name:'Merkez Topraklar Mahzeni',minLevel:1,loot:'Schattenwolfzahn'}]});
+ const html=renderExplorationAtlas({mapContent,stats:{boss_defeats:2,dungeon_wins:1}});
+ for(const text of ['50% keşfedildi','Fısıltılı Mistik Orman','Kızıl Kum ve Kadim Harabeler','Ayaz Geçidi','Buzul Tacı Yaylaları','Kül Ateşi Volkan Kuşağı','Linden Meydanı','Sylvan Köyü','Aren Taş Şehri','Frostholm','Hrafn Kalesi','Emberwatch','Mira','Gezgin büyücü','Mana Slime','Orman Perisi','Schattenwolf','Merkez Topraklar Mahzeni','Sandıklar ve nadir ganimet','atlas-pin-paper','atlas-forest','atlas-volcano'])assert.ok(html.includes(text),'atlas should include '+text);
+ assert.match(html,/data-atlas-focus="city"/);assert.match(html,/data-atlas-focus="boss"/);assert.match(html,/data-atlas-focus="dungeon"/);assert.match(html,/role="dialog"/);assert.match(html,/data-atlas-close/);
+ assert.doesNotMatch(html,/exploration-map-node-pin/);
 });
