@@ -94,7 +94,31 @@ for (const scenario of scenarios) {
       stats: {}
     });
     await page.setContent('<!doctype html><html lang="tr"><body>' + atlasMarkup + '</body></html>');
-    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-365-1' });
+    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-367-1' });
+    const routeFrom = page.locator('[data-atlas-route-from]');
+    const routeTo = page.locator('[data-atlas-route-to]');
+    await routeFrom.selectOption('royal-capital');
+    await routeTo.selectOption('ende');
+    await page.locator('[data-atlas-route-submit]').click();
+    const routePath = page.locator('[data-atlas-route-path]');
+    if (await page.locator('.atlas-route-overlay').isHidden() || !(await routePath.getAttribute('d'))?.startsWith('M')) throw new Error(scenario.name + ' atlas route did not render its calculated path');
+    const routeSummary = await page.locator('[data-atlas-route-summary]').textContent();
+    if (!routeSummary.includes('harita birimi') || !routeSummary.includes('Kraliyet Başkenti') || !routeSummary.includes('Ende')) throw new Error(scenario.name + ' atlas route summary is incomplete or implies unsupported scale: ' + routeSummary);
+    await page.locator('[data-atlas-route-clear]').click();
+    if (!(await page.locator('.atlas-route-overlay').isHidden())) throw new Error(scenario.name + ' atlas route clear did not hide the route');
+    await page.locator('[data-atlas-zoom="1"]').click();
+    await page.locator('[data-atlas-zoom="1"]').click();
+    if (await page.locator('.atlas-map-art').getAttribute('data-atlas-zoom-detail') !== 'regional') throw new Error(scenario.name + ' atlas regional detail level did not activate on zoom');
+    await page.locator('[data-atlas-zoom="1"]').click();
+    await page.locator('[data-atlas-zoom="1"]').click();
+    if (await page.locator('.atlas-map-art').getAttribute('data-atlas-zoom-detail') !== 'local') throw new Error(scenario.name + ' atlas local detail level did not activate on zoom');
+    await page.locator('[data-atlas-reset]').click();
+    if (await page.locator('.atlas-map-art').getAttribute('data-atlas-zoom-detail') !== 'overview') throw new Error(scenario.name + ' atlas reset did not restore overview detail');
+    const eventPin = page.locator('[data-atlas-layer-item="event"][data-atlas-open]').first();
+    if (await eventPin.count() === 0) throw new Error(scenario.name + ' atlas historical event markers are missing');
+    await eventPin.click();
+    if (await page.locator('[data-atlas-modal]').isHidden() || await page.locator('.atlas-event-row.is-highlighted').count() !== 1) throw new Error(scenario.name + ' atlas historical event did not open and highlight its sourced detail');
+    await page.locator('[data-atlas-close]').first().click();
     const terrainLayer = page.locator('[data-atlas-geography-layer="terrain-details"]');
     const terrainToggle = page.locator('[data-atlas-geography="terrain-details"]');
     if (await terrainLayer.count() !== 1 || await terrainLayer.getAttribute('hidden') !== null) {
