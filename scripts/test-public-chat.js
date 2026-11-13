@@ -10,12 +10,10 @@ test('public chat schema is additive and never destroys existing data',async()=>
  assert.ok(statements.some(sql=>sql.includes('frieren_public_chat_recent_idx')));
  assert.ok(statements.every(sql=>! /DROP TABLE|TRUNCATE|DELETE FROM/i.test(sql)));
 });
-test('reaction schema upgrades the fixed emoji allowlist to bounded Unicode reaction storage',async()=>{
+test('reaction schema atomically replaces the fixed emoji allowlist with bounded Unicode storage',async()=>{
  const statements=[];await ensurePublicChatSchema({query:async sql=>{statements.push(sql);return{rows:[],rowCount:0};}});
- const upgrade=statements.find(sql=>sql.includes('pg_get_constraintdef')&&sql.includes('frieren_public_chat_reactions_emoji_check'));
- assert.ok(upgrade.includes('DO '+String.fromCharCode(36)+String.fromCharCode(36)+' BEGIN'));
- assert.ok(upgrade.includes('END; '+String.fromCharCode(36)+String.fromCharCode(36)));
- assert.ok(upgrade,'schema must inspect and upgrade the existing emoji constraint');
+ const upgrade=statements.find(sql=>sql.includes('DROP CONSTRAINT IF EXISTS')&&sql.includes('frieren_public_chat_reactions_emoji_check'));
+ assert.ok(upgrade,'schema must replace the old emoji constraint');
  assert.match(upgrade,/DROP CONSTRAINT IF EXISTS frieren_public_chat_reactions_emoji_check/);
  assert.match(upgrade,/ADD CONSTRAINT frieren_public_chat_reactions_emoji_check CHECK/);
  assert.match(upgrade,/char_length\(emoji\) BETWEEN 1 AND 16/);
