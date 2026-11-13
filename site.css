@@ -1781,3 +1781,22 @@ body.atlas-modal-open{overflow:hidden}
 .atlas-map-viewport{touch-action:none;cursor:grab;aspect-ratio:3/2;min-height:0;max-width:1100px;margin-inline:auto;border-radius:8px;background:radial-gradient(ellipse at 48% 45%,#365a60 0%,#203f49 62%,#132b35 100%);box-shadow:inset 0 0 0 1px #e2d1a044,0 12px 32px #02080d66}
 .atlas-map-shell{border-color:#c4a66d;background:linear-gradient(145deg,#253a3b,#12252d);box-shadow:0 28px 68px #02080dbb}
 @media(max-width:700px){.atlas-map-image{filter:saturate(1.1) contrast(1.045) brightness(1.015)}}
+
+
+/* Boss visual identities: distinct silhouettes and restrained biome-aligned palettes. */
+.atlas-pin-boss .atlas-pin-glyph{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:12px;line-height:1;border:1.4px solid #f0dfc5;box-shadow:0 2px 7px #080c12b8,0 0 0 2px #261b1b88;transition:transform .18s ease,box-shadow .18s ease}
+.atlas-pin-boss:hover .atlas-pin-glyph,.atlas-pin-boss:focus-visible .atlas-pin-glyph{transform:scale(1.18);box-shadow:0 3px 10px #080c12d9,0 0 0 3px #e7c68c55}
+.atlas-pin-boss.boss-archetype-wildbeast .atlas-pin-glyph{border-radius:48% 48% 38% 38%;background:linear-gradient(145deg,#9a7855,#514334);color:#fff0cf}
+.atlas-pin-boss.boss-archetype-ancient .atlas-pin-glyph{border-radius:4px;background:linear-gradient(145deg,#a99b80,#615b51);color:#f6ead1;clip-path:polygon(12% 0,88% 0,100% 78%,50% 100%,0 78%)}
+.atlas-pin-boss.boss-archetype-demon .atlas-pin-glyph{border-radius:45% 45% 6px 6px;background:linear-gradient(145deg,#b65f54,#5d2834);color:#fff0e5;clip-path:polygon(50% 0,64% 15%,100% 10%,87% 100%,13% 100%,0 10%,36% 15%)}
+.atlas-pin-boss.boss-archetype-warlord .atlas-pin-glyph{border-radius:50%;background:linear-gradient(145deg,#b56c63,#542d38);color:#fff0e5;border-style:double}
+.atlas-pin-boss.boss-archetype-arcane .atlas-pin-glyph{border-radius:50%;background:radial-gradient(circle,#e4c88c 0 18%,#9275a6 20% 60%,#3f355f 100%);color:#fff7e8;box-shadow:0 0 8px #b89bdc99}
+.atlas-pin-boss.boss-archetype-general .atlas-pin-glyph{border-radius:3px;background:linear-gradient(145deg,#687e88,#263b49);color:#e9f3f0;clip-path:polygon(50% 0,100% 28%,83% 100%,17% 100%,0 28%)}
+.atlas-pin-boss.boss-archetype-wyrm .atlas-pin-glyph{border-radius:50% 50% 35% 35%;background:linear-gradient(145deg,#82a9ad,#315e68);color:#f0ffff;box-shadow:0 0 7px #82c6d088}
+.atlas-pin-boss.boss-archetype-fallen .atlas-pin-glyph{border-radius:50% 50% 7px 7px;background:linear-gradient(145deg,#d3c5d7,#51445f);color:#fff7ff;box-shadow:0 0 8px #c3a4d888}
+.atlas-pin-boss.boss-archetype-apex .atlas-pin-glyph{border-radius:50%;background:radial-gradient(circle,#f2e3b7 0 15%,#8c5b8f 18% 52%,#302343 100%);color:#fff;box-shadow:0 0 10px #bd84d5aa,0 0 0 2px #e4c8ee55}
+.atlas-pin-boss.boss-archetype-executioner .atlas-pin-glyph{border-radius:3px 3px 50% 50%;background:linear-gradient(145deg,#9a8c80,#433a3a);color:#fff0e8;clip-path:polygon(50% 0,100% 22%,82% 100%,18% 100%,0 22%)}
+.atlas-pin-boss.boss-archetype-trickster .atlas-pin-glyph{border-radius:50%;background:conic-gradient(from 30deg,#d9bb7a,#7d668f,#c46f61,#d9bb7a);color:#29213b}
+.atlas-pin-boss.is-defeated .atlas-pin-glyph{background:linear-gradient(145deg,#c7b88f,#777054);color:#f9f0d7;box-shadow:0 1px 4px #1118;filter:saturate(.55)}
+@media(max-width:700px){.atlas-pin-boss .atlas-pin-glyph{width:20px;height:20px;font-size:11px}.atlas-pin-boss:hover .atlas-pin-glyph,.atlas-pin-boss:focus-visible .atlas-pin-glyph{transform:scale(1.1)}}
+@media(prefers-reduced-motion:reduce){.atlas-pin-boss .atlas-pin-glyph{transition:none}}
