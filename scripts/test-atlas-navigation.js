@@ -148,7 +148,12 @@ test('local zoom plans are anchored to existing settlements and explicitly schem
 
 test('rendered atlas exposes user-calibrated scale, seasonal ecology and local detail controls', () => {
   const html = renderExplorationAtlas({
-    mapContent: { regions: [], summary: {} },
+    mapContent: { regions: [{
+      region: { key: 'merkez', name: 'Merkez Topraklar', minLevel: 1, emoji: '✧' },
+      visits: 0, discovered: true, unlocked: true, state: 'discovered',
+      masteryLevel: 0, visitsToNextMastery: 1, masteryProgressPercent: 0,
+      bosses: [], dungeons: [], rareItems: [], dungeonWins: 0
+    }], summary: { discoveredRegions: 1, totalRegions: 1 } },
     stats: {}
   });
   assert.match(html, /data-atlas-reference-km/);
