@@ -69,7 +69,7 @@
   }
  };
  const render=(messages,{preserveScroll=false}={})=>{
-  const previousHeight=list.scrollHeight,previousTop=list.scrollTop;
+  const previousHeight=list.scrollHeight,previousTop=list.scrollTop;const activeReaction=document.activeElement?.matches?.('[data-chat-reaction-input]')?{messageId:document.activeElement.dataset.chatReactionInput,value:document.activeElement.value}:null;
   const nearBottom=list.scrollHeight-list.scrollTop-list.clientHeight<72;
   const query=String(search?.value||'').trim().toLocaleLowerCase('tr-TR');
   const visible=query?messages.filter(item=>(String(item.username||'')+' '+String(item.body||'')).toLocaleLowerCase('tr-TR').includes(query)):messages;
@@ -109,6 +109,7 @@
    if(/^site_[0-9a-f-]{36}$/i.test(String(item.account_id||''))){const profileLink=document.createElement('a');profileLink.href='/u/'+encodeURIComponent(item.profile_slug||item.account_id);profileLink.className='public-chat-avatar-link';profileLink.setAttribute('aria-label',String(item.username||'Gezgin')+' profilini aç');profileLink.title='Profili aç';profileLink.append(avatar);li.append(profileLink,body);}else li.append(avatar,body);fragment.append(li);
   }
   list.replaceChildren(fragment);
+   if(activeReaction){const input=Array.from(list.querySelectorAll('[data-chat-reaction-input]')).find(node=>node.dataset.chatReactionInput===activeReaction.messageId);if(input){input.hidden=false;input.value=activeReaction.value;const add=input.closest('.public-chat-reactions')?.querySelector('[data-chat-react-add]');if(add)add.hidden=true;input.focus({preventScroll:true});}}
   if(!visible.length){const empty=document.createElement('li');empty.className='public-chat-empty';empty.textContent=query?'Bu aramayla eşleşen mesaj bulunamadı.':'Henüz mesaj yok. İlk selamı sen verebilirsin.';list.append(empty);}
   else if(nearBottom)list.scrollTop=list.scrollHeight;
   else if(preserveScroll)list.scrollTop=previousTop+(list.scrollHeight-previousHeight);
