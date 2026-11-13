@@ -42,6 +42,7 @@ test('homepage chat is inserted immediately after the hero and includes Frieren 
  assert.ok(pageRes.body.indexOf('public-chat-section')>pageRes.body.toLocaleLowerCase('tr-TR').indexOf('fantastik bir'));
  assert.ok(pageRes.body.indexOf('public-chat-section')<pageRes.body.indexOf('YOL ARKADAŞLARIN'));
  assert.match(pageRes.body,/data-chat-search/);assert.match(pageRes.body,/data-site-dm/);assert.match(pageRes.body,/Arkadaş seç/);assert.match(pageRes.body,/data-site-dm-group/);assert.match(pageRes.body,/Grup sohbetleri/);assert.match(pageRes.body,/data-site-dm-tab/);assert.match(pageRes.body,/data-chat-new-messages/);assert.match(pageRes.body,/data-chat-counter/);assert.match(pageRes.body,/chat-275-1/);assert.match(pageRes.body,/data-chat-owner="true"/);assert.match(pageRes.body,/data-chat-reports-refresh/);
+ assert.equal((pageRes.body.match(/id="topluluk-sohbeti"/g)||[]).length,1,'community chat section must expose exactly one unique anchor id');
 });
 
 test('chat delete, pin and pause endpoints reject non-owner even with a valid session and CSRF',async()=>{
