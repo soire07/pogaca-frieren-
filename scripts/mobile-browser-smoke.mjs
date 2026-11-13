@@ -184,7 +184,8 @@ for (const scenario of scenarios) {
     const menuStyle = await sidebar.evaluate(node => { const r=node.getBoundingClientRect(); const s=getComputedStyle(node); return {left:r.left,top:r.top,width:r.width,position:s.position,backdrop:s.backdropFilter}; });
     const maxMenuWidth = scenario.isMobile ? 340 : 440;
     if (menuStyle.position !== 'fixed' || menuStyle.left > 24 || menuStyle.top > 80 || menuStyle.width > maxMenuWidth || (!scenario.isMobile && menuStyle.width < 380)) throw new Error(scenario.name + ' navigation width or anchored popover layout is invalid: ' + JSON.stringify(menuStyle));
-    if (!(await sidebar.getByRole('link', { name: /Kullanıcı Paneli/ }).count())) throw new Error(scenario.name + ' missing player interface shortcut');
+    const playerShortcut = sidebar.locator('[data-nav-path="/"]');
+    if (await playerShortcut.count() !== 1) throw new Error(scenario.name + ' missing player interface shortcut; nav=' + await sidebar.innerText());
     if (await sidebar.locator('[data-nav-path="/kesfet"]').getAttribute('aria-current') !== 'page') throw new Error(scenario.name + ' active navigation item is not marked');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.getElementById('site-sidebar')?.hidden === true);
@@ -195,7 +196,7 @@ for (const scenario of scenarios) {
     await page.waitForFunction(() => document.getElementById('site-sidebar')?.hidden === true);
     if (await menuToggle.getAttribute('aria-expanded') !== 'false' || await sidebar.isVisible()) throw new Error(scenario.name + ' outside click did not close navigation');
     await menuToggle.click();
-    await sidebar.getByRole('link', { name: /Kullanıcı Paneli/ }).click();
+    await playerShortcut.click();
     await page.waitForURL(url => url.pathname === '/');
     if (page.url().split('?')[0] !== baseUrl + '/') throw new Error(scenario.name + ' user panel shortcut did not navigate to the account dashboard');
     if (!(await page.getByRole('heading', { name: /Maceracı Paneli/ }).count())) throw new Error(scenario.name + ' player dashboard heading is missing');
