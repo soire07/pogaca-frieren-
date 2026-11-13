@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { ensureProfileMediaSchema } from './profile-media.js';
 import { ensureSiteDiscordAccountSchema, buildDiscordAvatarUrl } from './site-auth.js';
 import { createAccountNotification, ensureAccountProfileSchema } from './account-profile.js';
+import { attachChatMedia, ensureChatMediaSchema, getChatMediaReadUrl } from './chat-media.js';
 
 const publicChatSchemaReady=new WeakMap();
 const ACCOUNT_ID=/^site_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -26,6 +27,7 @@ async function createPublicChatSchema(db){
  await db.query('CREATE INDEX IF NOT EXISTS frieren_public_chat_reports_status_idx ON frieren_public_chat_reports(status,created_at DESC)');
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_presence(account_id TEXT PRIMARY KEY,last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),typing_until TIMESTAMPTZ)');
  await db.query('ALTER TABLE frieren_public_chat_presence ADD COLUMN IF NOT EXISTS typing_until TIMESTAMPTZ');
+ await ensureChatMediaSchema(db);
  await db.query('CREATE TABLE IF NOT EXISTS frieren_public_chat_reactions(message_id UUID NOT NULL REFERENCES frieren_public_chat_messages(message_id) ON DELETE CASCADE,account_id TEXT NOT NULL,emoji VARCHAR(16) NOT NULL CHECK(emoji IN (\'❤️\',\'✨\',\'😂\')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(message_id,account_id,emoji))');
  await db.query(`DO $$ BEGIN
   PERFORM pg_advisory_xact_lock(hashtext('frieren_public_chat_schema'));
@@ -62,21 +64,23 @@ export async function listPublicChatMessages(db,{limit=100,viewerAccountId=null,
   COALESCE((SELECT jsonb_agg(jsonb_build_object('emoji',r.emoji,'count',r.count,'reacted',r.reacted)) FROM (
    SELECT emoji,COUNT(*)::int AS count,BOOL_OR(account_id=$2) AS reacted FROM frieren_public_chat_reactions WHERE message_id=m.message_id GROUP BY emoji
   ) r),'[]'::jsonb) AS reactions,
-  (SELECT jsonb_build_object('username',p.username,'body',CASE WHEN p.deleted_at IS NOT NULL THEN 'Bu mesaj silindi' ELSE LEFT(p.body,120) END) FROM frieren_public_chat_messages p WHERE p.message_id=m.reply_to_message_id) AS reply
-  FROM frieren_public_chat_messages m LEFT JOIN frieren_account_profiles ap ON ap.account_id=m.account_id
+  (SELECT jsonb_build_object('username',p.username,'body',CASE WHEN p.deleted_at IS NOT NULL THEN 'Bu mesaj silindi' ELSE LEFT(p.body,120) END) FROM frieren_public_chat_messages p WHERE p.message_id=m.reply_to_message_id) AS reply,
+  cm.media_id,cm.mime_type AS media_mime_type,cm.size_bytes AS media_size_bytes,cm.object_key AS media_object_key
+  FROM frieren_public_chat_messages m LEFT JOIN frieren_site_chat_media cm ON cm.message_id=m.message_id AND cm.scope_type='public' AND cm.scope_key='public' LEFT JOIN frieren_account_profiles ap ON ap.account_id=m.account_id
   LEFT JOIN frieren_site_discord_accounts dsa ON dsa.account_id=REPLACE(m.account_id,'site_','')::uuid
   WHERE m.hidden=FALSE AND m.created_at>=NOW()-INTERVAL '30 days'
    AND ($2::text IS NULL OR NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE b.blocker_account_id=$2 AND b.blocked_account_id=m.account_id))
    AND ($3::timestamptz IS NULL OR (m.created_at<$3 AND m.pinned_at IS NULL))
    AND ($4::text='' OR m.username ILIKE '%'||$4||'%' OR ap.display_name ILIKE '%'||$4||'%' OR m.body ILIKE '%'||$4||'%')
   ORDER BY (m.pinned_at IS NOT NULL) DESC,m.created_at DESC,m.message_id DESC LIMIT $1`,[count,viewer,cursor,term,owners]);
- return result.rows.reverse().sort((a,b)=>Number(Boolean(b.pinned_at))-Number(Boolean(a.pinned_at))).map(({discord_user_id,discord_avatar_hash,...row})=>({...row,avatar_url:row.avatar_url||buildDiscordAvatarUrl(discord_user_id,discord_avatar_hash)}));
+ return result.rows.reverse().sort((a,b)=>Number(Boolean(b.pinned_at))-Number(Boolean(a.pinned_at))).map(({discord_user_id,discord_avatar_hash,media_object_key,...row})=>({...row,avatar_url:row.avatar_url||buildDiscordAvatarUrl(discord_user_id,discord_avatar_hash),media_url:media_object_key?getChatMediaReadUrl({object_key:media_object_key,mime_type:row.media_mime_type}):null}));
 }
 
-export async function sendPublicChatMessage(db,{accountId,username,body,replyToMessageId=null}){
+export async function sendPublicChatMessage(db,{accountId,username,body,replyToMessageId=null,mediaId=null}){
  assertAccount(accountId);
  const author=clean(username,24,'PUBLIC_CHAT_USERNAME_INVALID');
- const message=clean(body,500,'PUBLIC_CHAT_MESSAGE_INVALID');
+ const message=clean(body,500,'PUBLIC_CHAT_MESSAGE_INVALID',{optional:true});
+ if(!message&&!mediaId)throw new Error('PUBLIC_CHAT_MESSAGE_INVALID');
  if(replyToMessageId&&!/^[0-9a-f-]{36}$/i.test(String(replyToMessageId)))throw new Error('PUBLIC_CHAT_REPLY_INVALID');
  await ensurePublicChatSchema(db);
  await ensureAccountProfileSchema(db);
@@ -88,6 +92,7 @@ export async function sendPublicChatMessage(db,{accountId,username,body,replyToM
   let parentAuthor=null;if(replyToMessageId){const parent=await client.query('SELECT message_id,account_id FROM frieren_public_chat_messages WHERE message_id=$1 AND hidden=FALSE AND deleted_at IS NULL',[replyToMessageId]);if(!parent.rowCount)return{status:'reply_not_found'};parentAuthor=parent.rows[0].account_id;}
   const id=randomUUID();
   const result=await client.query('INSERT INTO frieren_public_chat_messages(message_id,account_id,username,body,reply_to_message_id) VALUES($1,$2,$3,$4,$5) RETURNING message_id,username,body,created_at,reply_to_message_id',[id,accountId,author,message,replyToMessageId]);
+  if(mediaId)await attachChatMedia(client,{mediaId,accountId,scope:'public',scopeKey:'public',messageId:id});
   if(parentAuthor&&parentAuthor!==accountId)await createAccountNotification(client,{accountId:parentAuthor,type:'chat_reply',title:'Sohbet mesajına yanıt',body:author+' mesajına yanıt verdi.',href:'/kesfet#topluluk-sohbeti',schemaReady:true});
   return{status:'sent',message:result.rows[0]};
  });
