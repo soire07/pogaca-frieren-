@@ -1710,7 +1710,7 @@ test('character encyclopedia uses the existing catalog with closed spoilers and 
  assert.match(script,/addEventListener\('input'/);
  assert.match(script,/data-character-spoiler-toggle/);
  assert.match(script,/aria-expanded/);
- for(const assetPath of ['/assets/site-navigation.js','/assets/site-actions.js','/assets/profile-interactions.js','/assets/character-encyclopedia.js']){
+ for(const assetPath of ['/assets/site-navigation.js','/assets/site-actions.js','/assets/profile-interactions.js','/assets/character-encyclopedia.js','/assets/theme-gallery.js','/assets/accessibility-controls.js','/assets/spellbook-controls.js','/assets/market-preview.js']){
   const asset=res();
   assert.equal(await handlePublicSiteRequest(request(assetPath),asset,{db:null}),true,assetPath);
   assert.equal(asset.status,200,assetPath);
