@@ -78,6 +78,31 @@ for (const scenario of scenarios) {
     if (!encyclopediaPage || encyclopediaPage.status() !== 200) throw new Error(scenario.name + ' character encyclopedia HTTP ' + (encyclopediaPage?.status() || 'no response'));
     await page.waitForLoadState('networkidle', { timeout: 15000 });
     await page.waitForTimeout(300);
+    const accessibilityPanel = page.locator('[data-accessibility-panel]');
+    if (await accessibilityPanel.count() !== 1) throw new Error(scenario.name + ' accessibility controls are missing');
+    await accessibilityPanel.locator('summary').click();
+    await accessibilityPanel.locator('[data-accessibility-font="large"]').click();
+    await accessibilityPanel.locator('[data-accessibility-contrast]').click();
+    await accessibilityPanel.locator('[data-accessibility-motion]').click();
+    const accessibilityState = await page.evaluate(() => ({
+      font: document.documentElement.dataset.a11yFont,
+      contrast: document.documentElement.dataset.a11yContrast,
+      motion: document.documentElement.dataset.a11yMotion,
+      saved: Boolean(localStorage.getItem('frieren-accessibility-v1'))
+    }));
+    if (accessibilityState.font !== 'large' || accessibilityState.contrast !== 'high' || accessibilityState.motion !== 'reduce' || !accessibilityState.saved) {
+      throw new Error(scenario.name + ' accessibility controls did not apply and persist: ' + JSON.stringify(accessibilityState));
+    }
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+    const restoredAccessibility = await page.evaluate(() => ({
+      font: document.documentElement.dataset.a11yFont,
+      contrast: document.documentElement.dataset.a11yContrast,
+      motion: document.documentElement.dataset.a11yMotion
+    }));
+    if (restoredAccessibility.font !== 'large' || restoredAccessibility.contrast !== 'high' || restoredAccessibility.motion !== 'reduce') {
+      throw new Error(scenario.name + ' accessibility preferences were not restored after reload: ' + JSON.stringify(restoredAccessibility));
+    }
     const encyclopediaDiagnostics = await page.evaluate(() => ({
       root: Boolean(document.querySelector('[data-character-encyclopedia]')),
       ready: document.querySelector('[data-character-encyclopedia]')?.dataset.characterEncyclopediaReady || null,
