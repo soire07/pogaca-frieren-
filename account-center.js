@@ -453,6 +453,9 @@ export async function exportSiteAccountData(db, accountId) {
   const siteDirectMessages = dmTable.rows?.[0]?.table_name
     ? await db.query('SELECT message_id,sender_account_id,recipient_account_id,body,created_at,read_at FROM frieren_site_direct_messages WHERE sender_account_id=$1 OR recipient_account_id=$1 ORDER BY created_at,message_id',[accountId])
     : { rows: [] };
+  const groupTable = await db.query("SELECT to_regclass('frieren_site_dm_groups') AS table_name");
+  const siteDirectMessageGroups = groupTable.rows?.[0]?.table_name ? await db.query('SELECT g.group_id,g.title,g.created_by,g.created_at FROM frieren_site_dm_groups g JOIN frieren_site_dm_group_members gm ON gm.group_id=g.group_id WHERE gm.account_id=$1 ORDER BY g.created_at DESC',[accountId]) : { rows: [] };
+  const siteDirectGroupMessages = groupTable.rows?.[0]?.table_name ? await db.query('SELECT m.message_id,m.group_id,m.sender_account_id,m.body,m.created_at FROM frieren_site_dm_group_messages m JOIN frieren_site_dm_group_members gm ON gm.group_id=m.group_id WHERE gm.account_id=$1 ORDER BY m.created_at,m.message_id',[accountId]) : { rows: [] };
   const ticketsResult = await db.query(
     'SELECT ticket_id,category,subject,message,status,created_at,updated_at FROM frieren_support_tickets WHERE account_id=$1 ORDER BY created_at,ticket_id',
     [id]
@@ -471,6 +474,8 @@ export async function exportSiteAccountData(db, accountId) {
     accountData,
     linkedProfiles,
     siteDirectMessages: siteDirectMessages.rows,
+    siteDirectMessageGroups: siteDirectMessageGroups.rows,
+    siteDirectGroupMessages: siteDirectGroupMessages.rows,
     supportTickets: tickets,
     deletionScope: 'Deleting the site account removes this portal identity and its Discord links. Discord-owned RPG profiles and guild game records remain intact.'
   };
@@ -490,6 +495,13 @@ export async function deleteSiteAccount(db, accountId, confirmation) {
     const dmTable = await client.query("SELECT to_regclass('frieren_site_direct_messages') AS table_name");
     if (dmTable.rows?.[0]?.table_name) {
       await client.query('DELETE FROM frieren_site_direct_messages WHERE sender_account_id=$1 OR recipient_account_id=$1',[accountId]);
+    }
+    const groupTable = await client.query("SELECT to_regclass('frieren_site_dm_groups') AS table_name");
+    if (groupTable.rows?.[0]?.table_name) {
+      await client.query('DELETE FROM frieren_site_dm_group_messages WHERE sender_account_id=$1',[accountId]);
+      await client.query('DELETE FROM frieren_site_dm_group_members WHERE account_id=$1',[accountId]);
+      await client.query('UPDATE frieren_site_dm_groups g SET created_by=(SELECT gm.account_id FROM frieren_site_dm_group_members gm WHERE gm.group_id=g.group_id ORDER BY gm.joined_at,gm.account_id LIMIT 1) WHERE g.created_by=$1 AND EXISTS(SELECT 1 FROM frieren_site_dm_group_members gm WHERE gm.group_id=g.group_id)',[accountId]);
+      await client.query('DELETE FROM frieren_site_dm_groups g WHERE NOT EXISTS(SELECT 1 FROM frieren_site_dm_group_members gm WHERE gm.group_id=g.group_id)');
     }
     const accountTables = await client.query("SELECT table_name,data_type FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='account_id'");
     for (const table of accountTables.rows || []) {
