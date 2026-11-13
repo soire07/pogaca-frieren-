@@ -16,6 +16,7 @@ function deliver(accountId,event){
 export function subscribeChatEvents(accountId,listener){
  const account=String(accountId||'');
  if(!accountPattern.test(account)||typeof listener!=='function'||subscriberCount>=MAX_SUBSCRIBERS)return null;
+ const existing=subscribers.get(account);if(existing&&existing.size>=3)return null;
  let listeners=subscribers.get(account);
  if(!listeners){listeners=new Set();subscribers.set(account,listeners);}
  listeners.add(listener);subscriberCount++;
