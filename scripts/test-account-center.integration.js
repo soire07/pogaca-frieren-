@@ -196,6 +196,7 @@ test('account export includes linked game and support data while excluding secre
     assert.equal(exported.siteDirectGroupMessages.length,1,'group messages must be included in account export');
     assert.equal(exported.siteDirectGroupReads.length,1,'the account\'s group read receipts must be included in account export');
     assert.equal(exported.siteDirectGroupReads[0].message_id,dmGroupMessageId);
+    assert.deepEqual(exported.siteChatMedia,[],'chat media export must be present even when the account has no attachments');
         assert.equal(exported.supportTickets.length,1);
     assert.equal(exported.supportTickets[0].replies.length,1);
     assert.equal(exported.supportTickets[0].statusHistory.length,3);
