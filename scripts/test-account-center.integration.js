@@ -6,6 +6,7 @@ import { ensureAdventurerPlatformTables, ensureActiveArenaSeason } from '../adve
 import { ensureArenaTables } from '../arena-queue.js';
 import { ensurePlayerMarketTables } from '../player-market.js';
 import { ensureSocialPlatformTables } from '../social-platform.js';
+import { ensureSiteDirectMessageSchema } from '../site-direct-messages.js';
 import {
   ensureAccountCenterSchema, createSupportTicket, replySupportTicketFromOwner,
   updateSupportTicketStatusFromOwner, exportSiteAccountData, deleteSiteAccount
