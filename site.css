@@ -1619,7 +1619,6 @@ body.atlas-modal-open{overflow:hidden}
 .atlas-layer-controls button[aria-pressed="true"]{border-color:#c7ad78;background:#c7ad7822;color:#f1e5ca}
 @media(max-width:700px){
  .atlas-map-shell{padding:5px;border-radius:11px}
- .atlas-map-viewport{border-radius:6px}
  .atlas-pin{min-width:19px;min-height:19px}
  .atlas-pin-glyph{width:15px;height:15px;font-size:9px}
  .atlas-pin-region .atlas-pin-glyph{width:20px;height:20px}
