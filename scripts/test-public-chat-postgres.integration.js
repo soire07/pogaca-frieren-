@@ -72,9 +72,13 @@ test('site private messages enforce accepted friendships, block rules, receipts 
   assert.equal((await listSiteDmGroups(scoped,b)).length,1);
   const groupSent=await sendSiteDmGroupMessage(scoped,{senderAccountId:a,groupId:group.groupId,body:'Grup mesajı'});
   assert.equal(groupSent.status,'sent');
+  await markSiteDmGroupMessagesRead(scoped,{accountId:c,groupId:group.groupId});
   const groupInbox=await listSiteDmGroupMessages(scoped,{accountId:b,groupId:group.groupId});
   assert.equal(groupInbox.status,'ok');assert.equal(groupInbox.messages.length,1);assert.equal(groupInbox.messages[0].username,'Gezgin');
+  assert.equal(groupInbox.messages[0].is_read,false,'another member reading the message must not mark it read for this viewer');
   assert.equal((await markSiteDmGroupMessagesRead(scoped,{accountId:b,groupId:group.groupId})).status,'read');
+  const groupReadByViewer=await listSiteDmGroupMessages(scoped,{accountId:b,groupId:group.groupId});
+  assert.equal(groupReadByViewer.messages[0].is_read,true,'the current viewer read receipt must be reflected');
   await scoped.query('INSERT INTO frieren_public_chat_blocks(blocker_account_id,blocked_account_id,blocked_username) VALUES($1,$2,$3)',[b,a,'Gezgin']);
   assert.equal((await listSiteDmGroupMessages(scoped,{accountId:b,groupId:group.groupId})).messages.length,0);
   await scoped.query('DELETE FROM frieren_public_chat_blocks WHERE blocker_account_id=$1 AND blocked_account_id=$2',[b,a]);
