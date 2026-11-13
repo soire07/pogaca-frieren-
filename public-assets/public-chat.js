@@ -193,7 +193,7 @@
   for(const tab of dmTabs)tab.addEventListener('click',()=>setDmView(tab.dataset.siteDmTab==='group'?'group':'direct'));
   document.addEventListener('frieren-chat-update',event=>{
    const update=event.detail||{};if(document.visibilityState!=='visible')return;
-   if(update.scope==='dm'){const thread=[root.dataset.accountId||'',dmSelected].sort().join(':');if(update.conversationId===thread)dmLoad();else dmFriends();}
+   if(update.scope==='dm'){dmLoad();dmFriends();}
    if(update.scope==='group'){loadGroups();if(update.conversationId===groupSelected&&activeDmView==='group')groupLoad();}
   });
   dmFriends().then(loadGroups);window.setInterval(()=>{if(activeDmView==='direct')dmLoad();else groupLoad();},90000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(activeDmView==='direct')dmLoad();else groupLoad();}});
