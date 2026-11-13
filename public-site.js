@@ -790,7 +790,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
     try{
       const result=await sendSiteDirectMessage(db,{senderAccountId:session.id,recipientAccountId:form.get('recipientAccountId'),body:form.get('message')});
-      if(result.status==='sent')publishChatEvent({scope:'dm',accountIds:[session.id,String(form.get('recipientAccountId')||'')]});
+      if(result.status==='sent'){const recipient=String(form.get('recipientAccountId')||'');publishChatEvent({scope:'dm',conversationId:[session.id,recipient].sort().join(':'),accountIds:[session.id,recipient]});}
       const status=result.status==='sent'?201:result.status==='rate_limited'?429:result.status==='not_allowed'?403:result.status==='thread_limit'?409:400;
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
     }catch(error){
