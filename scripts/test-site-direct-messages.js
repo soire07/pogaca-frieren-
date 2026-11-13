@@ -82,7 +82,7 @@ test('site group conversations require friendship with every invited member and 
 });
 test('site group conversations reject nonmembers and require at least two invited friends',async()=>{
  const db=database({friends:false});const {createSiteDmGroup,sendSiteDmGroupMessage}=await import('../site-direct-messages.js');
- assert.throws(()=>createSiteDmGroup(db,{creatorAccountId:a,memberAccountIds:[b],title:'Küçük grup'}),/SITE_DM_GROUP_MEMBERS_INVALID/);
+ await assert.rejects(()=>createSiteDmGroup(db,{creatorAccountId:a,memberAccountIds:[b],title:'Küçük grup'}),/SITE_DM_GROUP_MEMBERS_INVALID/);
  const id='123e4567-e89b-12d3-a456-426614174003';
  assert.equal((await sendSiteDmGroupMessage(db,{senderAccountId:a,groupId:id,body:'selam'})).status,'not_allowed');
 });
