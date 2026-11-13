@@ -27,7 +27,7 @@ import { getNotificationPreferences, setNotificationPreference } from './news-bi
 import { levelForXp, xpForNextLevel } from './utils.js';
 import { listPublicChatMessages, sendPublicChatMessage, togglePublicChatReaction, blockPublicChatUser, unblockPublicChatUser, listPublicChatBlocks, deletePublicChatMessage, deleteOwnPublicChatMessage, updatePublicChatMessage, togglePublicChatPin, touchPublicChatPresence, getPublicChatPresence, setPublicChatTyping, markPublicChatMessagesRead, reportPublicChatMessage, listPublicChatReports, resolvePublicChatReport, getPublicChatControl, setPublicChatPaused } from './public-chat.js';
 import { getAccountProfile, updateAccountProfile, followAccount, unfollowAccount, recordAccountProfileVisit, listAccountProfileActivity, sendAccountFriendRequest, respondAccountFriendRequest, listAccountFriends, getAccountIdByProfileSlug, listAccountNotifications, markAccountNotificationsRead } from './account-profile.js';
-import { sendSiteDirectMessage, listSiteDirectMessages, markSiteDirectMessagesRead } from './site-direct-messages.js';
+import { sendSiteDirectMessage, listSiteDirectMessages, markSiteDirectMessagesRead, createSiteDmGroup, listSiteDmGroups, sendSiteDmGroupMessage, listSiteDmGroupMessages, markSiteDmGroupMessagesRead, leaveSiteDmGroup } from './site-direct-messages.js';
 import { ensurePersonalCenterSchema, getPersonalProfile, updatePersonalProfile, listDirectMessages, listMessageThreads, markDirectMessagesRead, sendDirectMessage, listGuestbookEntries, addGuestbookEntry, deleteGuestbookEntry, reportPlayer, createPlannerEntry, listPlannerEntries, updatePlannerEntry, deletePlannerEntry, getPersonalProgressReport, discoverPlayers, recommendPlayers, setCloseFriend, removeCloseFriend, listCloseFriends, recordProfileVisit, listProfileVisits } from './personal-center.js';
 import { achievements as RPG_ACHIEVEMENTS } from './basarimlar.js';
 import { listCardVariants } from './card-variants.js';
@@ -780,6 +780,31 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       if(String(error?.message||'').startsWith('SITE_DM_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_message'}));return true;}
       throw error;
     }
+  }
+  if(url.pathname==='/api/site-dm/groups'&&req.method==='GET'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'messages_unavailable'}));return true;}
+    const groups=await listSiteDmGroups(db,session.id);res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({groups}));return true;
+  }
+  if(url.pathname==='/api/site-dm/group-messages'&&req.method==='GET'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'messages_unavailable'}));return true;}
+    const groupId=String(url.searchParams.get('groupId')||'');if(!/^[0-9a-f-]{36}$/i.test(groupId)){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_group'}));return true;}
+    const result=await listSiteDmGroupMessages(db,{accountId:session.id,groupId,limit:60});res.writeHead(result.status==='ok'?200:403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(result));return true;
+  }
+  if(['/api/site-dm/groups','/api/site-dm/group-messages','/api/site-dm/group-read','/api/site-dm/group-leave'].includes(url.pathname)&&req.method==='POST'){
+    const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);if(!requireSiteAccount(res,session?.id))return true;
+    if(!db){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'messages_unavailable'}));return true;}
+    if(!String(req.headers['content-type']||'').toLowerCase().includes('application/x-www-form-urlencoded')){res.writeHead(415,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_content_type'}));return true;}
+    let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>4096){res.writeHead(413,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'message_too_large'}));return true;}chunks.push(chunk);}
+    const form=new URLSearchParams(Buffer.concat(chunks).toString('utf8'));if(!verifySiteCsrfToken(form.get('csrf'),process.env.ADMIN_SESSION_SECRET)){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'csrf_failed'}));return true;}
+    try{let result;if(url.pathname==='/api/site-dm/groups'){let members=[];try{members=JSON.parse(form.get('memberAccountIds')||'[]');}catch{}result=await createSiteDmGroup(db,{creatorAccountId:session.id,memberAccountIds:members,title:form.get('title')});}
+      else if(url.pathname==='/api/site-dm/group-messages')result=await sendSiteDmGroupMessage(db,{senderAccountId:session.id,groupId:form.get('groupId'),body:form.get('message')});
+      else if(url.pathname==='/api/site-dm/group-read')result=await markSiteDmGroupMessagesRead(db,{accountId:session.id,groupId:form.get('groupId')});
+      else result=await leaveSiteDmGroup(db,{accountId:session.id,groupId:form.get('groupId')});
+      const status=result.status==='created'||result.status==='sent'?201:result.status==='rate_limited'?429:result.status==='not_allowed'?403:result.status==='not_found'?404:200;
+      res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
+    }catch(error){if(String(error?.message||'').startsWith('SITE_DM_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_group_message'}));return true;}throw error;}
   }
   if(url.pathname==='/api/public-chat/reports'&&req.method==='GET'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
