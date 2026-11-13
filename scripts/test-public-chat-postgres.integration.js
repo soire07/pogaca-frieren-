@@ -8,7 +8,7 @@ import {sendSiteDirectMessage,listSiteDirectMessages,markSiteDirectMessagesRead,
 
 const {Pool}=pg;
 const account=()=> 'site_'+randomUUID();
-test('legacy three-reaction PostgreSQL constraint upgrades safely and deleted messages stay consistent',async()=>{
+test('legacy reaction constraint upgrades to native Unicode emoji and deleted messages stay consistent',async()=>{
  assertIsolatedAuditDatabase();
  const pool=new Pool({connectionString:process.env.DATABASE_URL,max:3});
  const schema='public_chat_rehearsal_'+randomUUID().replaceAll('-','');
@@ -25,9 +25,11 @@ test('legacy three-reaction PostgreSQL constraint upgrades safely and deleted me
   await scoped.query('INSERT INTO frieren_public_chat_messages(message_id,account_id,username,body) VALUES($1,$2,$3,$4)',[messageId,author,'Fern','Eski mesaj']);
   const allowed=['❤️','✨','😂','😍','🥰','😭','👀','🎉','🙌','💜','🍪','🌸'];
   for(const emoji of allowed)await scoped.query('INSERT INTO frieren_public_chat_reactions(message_id,account_id,emoji) VALUES($1,$2,$3)',[messageId,account(),emoji]);
+  const nativeReaction=await togglePublicChatReaction(scoped,{accountId:account(),messageId,emoji:'👨🏽‍🚀'});
+  assert.equal(nativeReaction.status,'added','the old fixed allowlist must accept a native keyboard emoji');
   const reactions=await scoped.query('SELECT COUNT(*)::int AS count FROM frieren_public_chat_reactions WHERE message_id=$1',[messageId]);
-  assert.equal(reactions.rows[0].count,allowed.length);
-  await assert.rejects(scoped.query('INSERT INTO frieren_public_chat_reactions(message_id,account_id,emoji) VALUES($1,$2,$3)',[messageId,account(),'🔥']),/frieren_public_chat_reactions_emoji_check|check constraint/i);
+  assert.equal(reactions.rows[0].count,allowed.length+1);
+  await assert.rejects(()=>togglePublicChatReaction(scoped,{accountId:account(),messageId,emoji:'hello'}),/PUBLIC_CHAT_REACTION_INVALID/);
   const deleted=await deleteOwnPublicChatMessage(scoped,{accountId:author,messageId});
   assert.equal(deleted.status,'deleted');
   const tombstone=await scoped.query('SELECT body,deleted_at FROM frieren_public_chat_messages WHERE message_id=$1',[messageId]);
