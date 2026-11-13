@@ -1313,6 +1313,8 @@ test('owner profile overrides VIP and renders the exclusive role, title, blood X
     if(sql.includes('SELECT collection_key,entry_key FROM adventure_journal_entries'))return{rows:[],rowCount:0};
     if(sql.includes('SELECT collection_key FROM adventure_journal_collection_claims'))return{rows:[],rowCount:0};
     if(sql.includes('FROM exploration_region_mastery'))return{rows:[],rowCount:0};
+    if(sql.includes('FROM inventory WHERE guild_id=$1 AND user_id=$2'))return{rows:[],rowCount:0};
+    if(sql.includes('FROM guild_rpg_content_overrides WHERE guild_id=$1 AND content_type=$2'))return{rows:[],rowCount:0};
     throw new Error('Unexpected profile query: '+sql);
   }};
   try {
@@ -1681,10 +1683,12 @@ test('web exploration atlas and Discord /kesif share one region catalog', async 
  const catalog=await readFile(new URL('../exploration-regions.js',import.meta.url),'utf8');
  const command=await readFile(new URL('../commands/rpg/kesif.js',import.meta.url),'utf8');
  const site=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+ const mapContent=await readFile(new URL('../exploration-map-content.js',import.meta.url),'utf8');
  for(const key of ['merkez','orman','harabeler','kuzey','yayla','aus'])assert.match(catalog,new RegExp("key: '"+key+"'"));
  assert.match(command,/EXPLORATION_REGION_CATALOG\.map/);
  assert.match(command,/configured\.minLevel = region\.minLevel/);
- assert.match(site,/EXPLORATION_REGION_CATALOG/);
+ assert.match(mapContent,/EXPLORATION_REGION_CATALOG/);
+ assert.match(site,/buildExplorationMapContent/);
 });
 
 test('character encyclopedia uses the existing catalog with closed spoilers and working filter hooks', async () => {
