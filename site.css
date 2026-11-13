@@ -1186,3 +1186,44 @@ html[data-a11y-motion=reduce] *,html[data-a11y-motion=reduce] *::before,html[dat
 .exploration-map-combat-badge.is-dungeon i{color:#c8b8e5}
 @media(max-width:560px){.exploration-map-combat-badge{min-width:0;flex:1 1 145px;padding:9px 10px}.exploration-map-combat-badge small{font-size:.68rem}}
 @media(prefers-reduced-motion:reduce){.exploration-map-node-glow{transition:none}.exploration-map-route-segment{filter:none}}
+
+
+/* RPG map encounter, treasure and discovery markers */
+.exploration-map-marker{cursor:pointer;outline:none}
+.exploration-map-marker g{transition:transform .18s ease,filter .18s ease}
+.exploration-map-marker circle{stroke-width:1.8;filter:drop-shadow(0 2px 3px rgba(35,24,17,.42))}
+.exploration-map-marker text{font:800 13px Georgia,serif;pointer-events:none}
+.exploration-map-marker.is-boss circle{fill:#542d35;stroke:#d6a0a0}
+.exploration-map-marker.is-boss text{fill:#ffe0cf}
+.exploration-map-marker.is-chest circle{fill:#775126;stroke:#f1cf82}
+.exploration-map-marker.is-chest text{fill:#fff0c2}
+.exploration-map-marker.is-relic circle{fill:#493b68;stroke:#d9b8ff}
+.exploration-map-marker.is-relic text{fill:#f0dcff}
+.exploration-map-marker .exploration-map-marker-count{font:800 8px Arial,sans-serif;fill:#fff}
+.exploration-map-marker:hover g,.exploration-map-marker:focus-visible g{transform:scale(1.16);filter:drop-shadow(0 0 7px rgba(255,213,128,.85))}
+.exploration-map-marker:focus-visible circle{stroke:#fff;stroke-width:3}
+.exploration-map-node-visits{fill:#5a442b;font:700 8px Georgia,serif;letter-spacing:.15px}
+.exploration-map-progress-summary{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 13px}
+.exploration-map-progress-summary span{display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid rgba(196,164,108,.4);border-radius:999px;background:rgba(80,57,40,.36);color:var(--muted,#d3c7b7);font-size:.78rem}
+.exploration-map-progress-summary strong{color:#f1d79f;font-variant-numeric:tabular-nums}
+.exploration-map-legend b{display:inline-grid;place-items:center;width:20px;height:20px;margin-right:4px;border:1px solid currentColor;border-radius:50%;font-size:.75rem}
+.exploration-map-legend .map-legend-boss{color:#e5b0a5}
+.exploration-map-legend .map-legend-chest{color:#edce8a}
+.exploration-map-legend .map-legend-relic{color:#d6b5ff}
+.exploration-region-details{display:grid;gap:10px;margin-top:13px;padding-top:12px;border-top:1px solid rgba(196,164,108,.25)}
+.exploration-region-details section{min-width:0}
+.exploration-region-details h4{margin:0 0 7px;color:#e8d1a2;font-size:.82rem;letter-spacing:.03em}
+.exploration-region-details ul{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.exploration-detail-row{display:flex;align-items:center;gap:9px;min-width:0;padding:8px 10px;border:1px solid rgba(190,165,125,.2);border-radius:10px;background:rgba(27,22,34,.3)}
+.exploration-detail-row>span:last-child{display:grid;gap:2px;min-width:0}
+.exploration-detail-row strong{color:#f0e2c5;font-size:.82rem;overflow-wrap:anywhere}
+.exploration-detail-row small{color:var(--muted,#c9bdac);font-size:.72rem;line-height:1.35}
+.exploration-detail-icon{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;border:1px solid rgba(213,183,129,.35);border-radius:50%;color:#e7c88c}
+.exploration-boss-row.is-defeated{border-color:rgba(214,177,103,.5);background:rgba(105,76,36,.2)}
+.exploration-boss-row.is-defeated .exploration-detail-icon{color:#f3d58c;box-shadow:0 0 10px rgba(239,193,96,.25)}
+.exploration-boss-row.is-locked,.exploration-chest-row.is-locked{opacity:.62}
+.exploration-relic-row.is-owned{border-color:rgba(175,139,224,.48);background:rgba(82,60,112,.2)}
+.exploration-relic-row.is-owned .exploration-detail-icon{color:#d8b7ff;box-shadow:0 0 10px rgba(176,136,233,.25)}
+.exploration-map-note{margin:7px 0 0;color:var(--muted,#c9bdac);font-size:.72rem;line-height:1.5}
+@media(max-width:560px){.exploration-map-progress-summary{gap:6px}.exploration-map-progress-summary span{flex:1 1 140px;justify-content:space-between;font-size:.7rem;padding:7px 9px}.exploration-region-details{gap:8px}}
+@media(prefers-reduced-motion:reduce){.exploration-map-marker g{transition:none}}
