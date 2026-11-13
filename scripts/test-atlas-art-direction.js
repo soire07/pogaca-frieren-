@@ -128,3 +128,17 @@ test('current canon and RPG map coordinates are collision-adjusted as one visual
     }
   }
 });
+
+
+test('Frieren atlas adds subtle northern snowfall and forest mist without changing map data', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const site = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
+  assert.match(atlas, /<div class="atlas-atmosphere-layer" aria-hidden="true"><\/div>/);
+  assert.match(atlas, /frieren-world-map\.svg\?v=atlas-360-1/);
+  assert.match(css, /\.atlas-atmosphere-layer::before/);
+  assert.match(css, /atlas-northfall/);
+  assert.match(css, /atlas-forest-mist/);
+  assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-atmosphere-layer::before/);
+  assert.match(site, /site\.css\?v=atlas-360-1/);
+});
