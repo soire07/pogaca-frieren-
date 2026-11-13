@@ -83,7 +83,13 @@ for (const scenario of scenarios) {
     const spoilerDetails = page.locator('[data-character-card]:visible').first().locator('[data-character-spoiler]');
     if (!(await spoilerDetails.isHidden())) throw new Error(scenario.name + ' character encyclopedia exposed spoiler details by default');
     await spoilerButton.click();
-    if (await spoilerDetails.isHidden() || await spoilerButton.getAttribute('aria-expanded') !== 'true') throw new Error(scenario.name + ' character spoiler reveal did not open accessibly');
+    const revealedSpoiler = await page.evaluate(() => {
+      const root = document.querySelector('[data-character-encyclopedia]');
+      const button = root?.querySelector('[data-character-card]:not([hidden]) [data-character-spoiler-toggle]');
+      const details = root?.querySelector('[data-character-card]:not([hidden]) [data-character-spoiler]');
+      return { ready: root?.dataset.characterEncyclopediaReady, expanded: button?.getAttribute('aria-expanded'), hidden: details?.hidden, script: [...document.scripts].some(script => script.src.includes('character-encyclopedia.js')) };
+    });
+    if (await spoilerDetails.isHidden() || await spoilerButton.getAttribute('aria-expanded') !== 'true') throw new Error(scenario.name + ' character spoiler reveal did not open accessibly: ' + JSON.stringify(revealedSpoiler));
     await spoilerButton.click();
     if (!(await spoilerDetails.isHidden()) || await spoilerButton.getAttribute('aria-expanded') !== 'false') throw new Error(scenario.name + ' character spoiler toggle did not close');
     const encyclopediaLayout = await page.evaluate(() => ({ width: window.innerWidth, documentWidth: document.documentElement.scrollWidth }));
