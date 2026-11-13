@@ -799,3 +799,10 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .public-chat-dialog-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .public-chat-dialog-actions button{min-height:42px}
 @media(max-width:620px){.public-chat-dialog form{padding:14px}.public-chat-dialog-actions button{flex:1}}
+
+
+.public-chat-dm-hub{display:grid;gap:10px;margin-top:18px}
+.public-chat-dm-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.public-chat-dm-tabs .public-chat-action{flex:1;min-height:42px}
+.public-chat-dm-tabs .is-active{background:#3a2b54;border-color:#d7b9ff;color:#fff}
+.public-chat-dm[hidden],.public-chat-dm-group[hidden]{display:none!important}
