@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ensureAccountProfileSchema,getAccountProfile,updateAccountProfile,followAccount,unfollowAccount,recordAccountProfileVisit,getAccountIdByProfileSlug,createAccountNotification,listAccountNotifications,markAccountNotificationsRead} from '../account-profile.js';
+import {ensureAccountProfileSchema,getAccountProfile,updateAccountProfile,followAccount,unfollowAccount,recordAccountProfileVisit,getAccountIdByProfileSlug,createAccountNotification,listAccountNotifications,markAccountNotificationsRead,listAccountFriends} from '../account-profile.js';
 const a='site_123e4567-e89b-12d3-a456-426614174000',b='site_123e4567-e89b-12d3-a456-426614174001';
 function dbMock(handler=()=>({rows:[],rowCount:0})){const calls=[];return{calls,async query(sql,params=[]){calls.push({sql,params});return handler(sql,params);}};}
 test('account profile schema creates global profile, follow, activity and visit stores',async()=>{const db=dbMock();await ensureAccountProfileSchema(db);assert.ok(db.calls.some(x=>x.sql.includes('frieren_account_profiles')));assert.ok(db.calls.some(x=>x.sql.includes('frieren_account_follows')));assert.ok(db.calls.some(x=>x.sql.includes('frieren_account_activity')));});
@@ -33,3 +33,5 @@ test('account notifications are private, bounded and only accept local destinati
  assert.equal((await markAccountNotificationsRead(db,a)).status,'read');
  await assert.rejects(()=>createAccountNotification(db,{accountId:a,type:'x',title:'x',href:'https://evil.example'}),/ACCOUNT_NOTIFICATION_INVALID/);
 });
+
+test('friend list includes each account profile slug for direct profile navigation',async()=>{const db=dbMock(sql=>sql.includes('frieren_account_friend_requests fr JOIN frieren_site_accounts')?{rows:[{account_id:b,username:'Fern',profile_slug:'fern'}],rowCount:1}:{rows:[],rowCount:0});const result=await listAccountFriends(db,a);assert.equal(result.friends[0].profile_slug,'fern');const query=db.calls.find(x=>x.sql.includes('frieren_account_friend_requests fr JOIN frieren_site_accounts'));assert.ok(query);assert.match(query.sql,/ap\.profile_slug/);});
