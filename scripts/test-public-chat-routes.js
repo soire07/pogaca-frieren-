@@ -84,7 +84,7 @@ test('site direct-message history is authenticated, friend-scoped and does not m
  const db={async query(sql,params){seen.push({sql,params});
   if(sql.includes('SELECT 1 FROM frieren_account_friend_requests'))return{rows:[{}],rowCount:1};
   if(sql.includes('SELECT 1 FROM frieren_public_chat_blocks'))return{rows:[],rowCount:0};
-  if(sql.startsWith('SELECT message_id,sender_account_id'))return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174002',sender_account_id:other,recipient_account_id:account.id,body:'Gizli selam',created_at:new Date().toISOString(),read_at:null,is_own:false}],rowCount:1};
+  if(sql.startsWith('SELECT m.message_id,m.sender_account_id')||sql.startsWith('SELECT message_id,sender_account_id'))return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174002',sender_account_id:other,recipient_account_id:account.id,body:'Gizli selam',created_at:new Date().toISOString(),read_at:null,is_own:false}],rowCount:1};
   return{rows:[],rowCount:0};
  }};
  const anonymous=response();await handlePublicSiteRequest(get('/api/site-dm/messages?with='+other),anonymous,{db});assert.equal(anonymous.status,302);
