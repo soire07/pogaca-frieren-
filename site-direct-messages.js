@@ -51,7 +51,7 @@ async function canMessage(db,a,b){
 }
 export async function sendSiteDirectMessage(db,{senderAccountId,recipientAccountId,body,mediaId=null}){
  const sender=account(senderAccountId),recipient=account(recipientAccountId),message=String(body??'').normalize('NFC').trim();
- if((!message&&!mediaId)||Array.from(message).length>1000||/[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(message))throw new Error('SITE_DM_MESSAGE_INVALID');
+ if((!message&&!mediaId)||Array.from(message).length>1000||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(message))throw new Error('SITE_DM_MESSAGE_INVALID');
  if(sender===recipient)throw new Error('SITE_DM_SELF_INVALID');
  await ensureSiteDirectMessageSchema(db);
  return tx(db,async c=>{
@@ -117,7 +117,7 @@ export async function listSiteDmGroups(db,accountId){
 }
 export async function sendSiteDmGroupMessage(db,{senderAccountId,groupId,body,mediaId=null}){
  const sender=account(senderAccountId),message=String(body??'').normalize('NFC').trim();
- if((!message&&!mediaId)||Array.from(message).length>1000||/[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(message))throw new Error('SITE_DM_MESSAGE_INVALID');
+ if((!message&&!mediaId)||Array.from(message).length>1000||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(message))throw new Error('SITE_DM_MESSAGE_INVALID');
  if(!/^[0-9a-f-]{36}$/i.test(String(groupId||'')))throw new Error('SITE_DM_GROUP_INVALID');
  await ensureSiteDirectMessageSchema(db);
  return tx(db,async client=>{
