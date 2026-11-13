@@ -43,8 +43,9 @@ test('public chat read is bounded and uses hidden-message filtering',async()=>{
  const db={query:async(q,p)=>{if(q.includes('SELECT m.message_id')){sql=q;params=p;return{rows,rowCount:2};}return{rows:[],rowCount:0};}};
  const result=await listPublicChatMessages(db,{limit:1000});
  assert.equal(result.length,2);assert.equal(params[0],100);
- assert.match(sql,/hidden=FALSE/);assert.match(sql,/ORDER BY \(m\.pinned_at IS NOT NULL\) DESC,m\.created_at DESC,m\.message_id DESC/);
+ assert.match(sql,/hidden=FALSE/);assert.match(sql,/ORDER BY CASE WHEN \$6::boolean THEN m\.pinned_at ELSE m\.created_at END DESC,m\.created_at DESC,m\.message_id DESC/);
 });
+test('pinned-only history returns only pinned messages',async()=>{let sql='',params;const db={async query(q,p){sql=q;params=p;return{rows:[],rowCount:0};}};await listPublicChatMessages(db,{pinnedOnly:true});assert.match(sql,/m\.pinned_at IS NOT NULL/);assert.equal(params[5],true);});
 test('public chat marks only trusted owner authors for the visible OWNER badge',async()=>{
  let sql='',params;
  const db={query:async(q,p)=>{if(q.includes('SELECT m.message_id')){sql=q;params=p;return{rows:[{message_id:'owner-message',is_owner:true}],rowCount:1};}return{rows:[],rowCount:0};}};
@@ -163,11 +164,9 @@ test('public chat prefers an uploaded avatar and otherwise resolves the linked D
 });
 
 
-test('community chat falls back to initials when an avatar image cannot be loaded',async()=>{
- const {readFile}=await import('node:fs/promises');const script=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');
- assert.match(script,/avatar\.onerror\s*=/);assert.match(script,/avatar\.replaceWith\(fallback\)/);assert.match(script,/fallback\.dataset\.online=avatar\.dataset\.online/);
-});
+test('community chat uses the Frieren fallback avatar instead of username initials',async()=>{const {readFile}=await import('node:fs/promises');const script=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');assert.match(script,/site-avatar\.webp/);assert.match(script,/avatar\.onerror\s*=/);assert.doesNotMatch(script,/fallback\.textContent=Array\.from\(String\(item\.username/);});
 
+test('pinned messages render in a separate view without changing original timeline order',async()=>{const {readFile}=await import('node:fs/promises');const client=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');const site=await readFile(new URL('../public-site.js',import.meta.url),'utf8');assert.match(client,/data-chat-pinned-top-list/);assert.match(client,/data-chat-pinned-list/);assert.match(client,/data-chat-jump/);assert.doesNotMatch(client,/sort\(\(a,b\)=>Number\(Boolean\(b\.pinned_at\)\)/);assert.match(site,/data-chat-tab="pinned"/);});
 test('public chat accepts an attachment-only message and binds media to its new message id',async()=>{
  const {sendPublicChatMessage}=await import('../public-chat.js');
  const account='site_123e4567-e89b-12d3-a456-426614174000',media='123e4567-e89b-12d3-a456-426614174099';const seen=[];
