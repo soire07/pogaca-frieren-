@@ -88,7 +88,7 @@ export async function ensureChatMediaSchema(db){
 async function pruneExpiredPendingMedia(db){
  const stale=await db.query("SELECT media_id,object_key FROM frieren_site_chat_media WHERE message_id IS NULL AND created_at<NOW()-INTERVAL '24 hours' ORDER BY created_at LIMIT 50");
  for(const row of stale.rows||[]){
-  const response=await fetch(signChatMediaUrl('DELETE',row.object_key,null,300),{method:'DELETE'});
+  const response=await fetch(signChatMediaUrl('DELETE',row.object_key,null,300),{method:'DELETE',signal:AbortSignal.timeout(15000)});
   if(response.ok||response.status===404)await db.query('DELETE FROM frieren_site_chat_media WHERE media_id=$1 AND message_id IS NULL',[row.media_id]);
  }
 }
@@ -103,7 +103,7 @@ export async function uploadChatMedia(db,{accountId,scope,scopeKey,mimeType,buff
  if(Number(storage.rows[0]?.bytes||0)+media.size>8_500_000_000)throw new Error('CHAT_MEDIA_STORAGE_QUOTA');
  const mediaId=randomUUID(),objectKey='chat/'+scope+'/'+mediaId+'.'+media.extension;
  const putUrl=signChatMediaUrl('PUT',objectKey,media.mimeType,600);
- const response=await fetch(putUrl,{method:'PUT',headers:{'Content-Type':media.mimeType},body:media.buffer});
+ const response=await fetch(putUrl,{method:'PUT',headers:{'Content-Type':media.mimeType},body:media.buffer,signal:AbortSignal.timeout(60000)});
  if(!response.ok)throw new Error('CHAT_MEDIA_STORAGE_UPLOAD_FAILED');
  try{
   await db.query('INSERT INTO frieren_site_chat_media(media_id,owner_account_id,scope_type,scope_key,object_key,mime_type,size_bytes) VALUES($1,$2,$3,$4,$5,$6,$7)',[mediaId,accountId,scope,scopeKey,objectKey,media.mimeType,media.size]);
