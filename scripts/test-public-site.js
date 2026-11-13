@@ -1665,3 +1665,28 @@ test('universal site search indexes pages, Discord commands, characters and spel
  assert.match(commands.body,/buyular/);
  assert.match(commands.body,/Discord komutu/);
 });
+
+test('public pages expose persistent and keyboard-accessible reading controls', async () => {
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/ansiklopedi'),response,{db:null}),true);
+ assert.match(response.body,/data-accessibility-panel/);
+ assert.match(response.body,/data-accessibility-font/);
+ assert.match(response.body,/data-accessibility-contrast/);
+ assert.match(response.body,/data-accessibility-motion/);
+ assert.match(response.body,/accessibility-controls\.js/);
+ const asset=res();
+ assert.equal(await handlePublicSiteRequest(request('/assets/accessibility-controls.js'),asset,{db:null}),true);
+ assert.equal(asset.status,200);
+ const script=asset.body.toString('utf8');
+ assert.match(script,/localStorage/);
+ assert.match(script,/prefers-reduced-motion/);
+ assert.match(script,/aria-pressed/);
+ assert.match(script,/data-a11y-font/);
+ assert.match(script,/data-a11y-contrast/);
+ assert.match(script,/data-a11y-motion/);
+ const styles=await readFile(new URL('../site.css',import.meta.url),'utf8');
+ assert.match(styles,/data-a11y-font=large/);
+ assert.match(styles,/data-a11y-font=x-large/);
+ assert.match(styles,/data-a11y-contrast=high/);
+ assert.match(styles,/data-a11y-motion=reduce/);
+});
