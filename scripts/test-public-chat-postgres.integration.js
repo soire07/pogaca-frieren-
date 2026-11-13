@@ -86,6 +86,9 @@ test('site private messages enforce accepted friendships, block rules, receipts 
   const creatorRead=await markSiteDmGroupMessagesRead(scoped,{accountId:a,groupId:group.groupId});
   assert.equal(creatorRead.status,'read');
   assert.equal((await leaveSiteDmGroup(scoped,{accountId:a,groupId:group.groupId})).status,'left');
+  await scoped.query('INSERT INTO frieren_public_chat_blocks(blocker_account_id,blocked_account_id,blocked_username) VALUES($1,$2,$3)',[b,a,'Gezgin']);
+  const blockCheck=await scoped.query('SELECT 1 FROM frieren_public_chat_blocks WHERE (blocker_account_id=$1 AND blocked_account_id=$2) OR (blocker_account_id=$2 AND blocked_account_id=$1)',[a,b]);
+  assert.equal(blockCheck.rowCount,1,'reciprocal block must be persisted before direct-message authorization');
   assert.equal((await sendSiteDirectMessage(scoped,{senderAccountId:a,recipientAccountId:b,body:'Engel sonrası'})).status,'not_allowed');
   assert.deepEqual((await listSiteDirectMessages(scoped,{accountId:a,otherAccountId:b})),{status:'not_allowed',messages:[]});
  }finally{
