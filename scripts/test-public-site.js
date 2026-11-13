@@ -1628,3 +1628,12 @@ test('character encyclopedia uses the existing catalog with closed spoilers and 
  assert.equal(await handlePublicSiteRequest(request('/assets/character-encyclopedia.js'),encyclopediaAsset,{db:null}),true);
  assert.match(encyclopediaAsset.body.toString('utf8'),/applyFilters/);
 });
+
+test('web spellbook and Discord /buyular share the same spell display catalog', async () => {
+ const catalog=await readFile(new URL('../rpg-spell-catalog.js',import.meta.url),'utf8');
+ const command=await readFile(new URL('../commands/rpg/buyular.js',import.meta.url),'utf8');
+ const site=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+ for(const key of ['zoltraak','alev_kuresi','buz_mizragi','koruyucu_bariyer','sifa_isigi','yildirim_zinciri','tas_duvar','mana_patlamasi'])assert.match(catalog,new RegExp(key));
+ assert.match(command,/rpg-spell-catalog\.js/);
+ assert.match(site,/rpg-spell-catalog\.js/);
+});
