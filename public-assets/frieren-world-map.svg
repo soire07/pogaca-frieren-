@@ -14,8 +14,9 @@
  <radialGradient id="land-light"><stop stop-color="#f4e7c6" stop-opacity=".44"/><stop offset="1" stop-color="#f4e7c6" stop-opacity="0"/></radialGradient>
  <pattern id="sea-depth" width="210" height="118" patternUnits="userSpaceOnUse"><path d="M-20 35C25 8 74 8 112 31s82 25 128-2M-25 72c48-28 93-26 137-3s78 25 126-4" fill="none" stroke="#8eafb0" stroke-opacity=".13" stroke-width="1.6"/></pattern>
  <pattern id="fine-contours" width="230" height="180" patternUnits="userSpaceOnUse"><path d="M-35 42C10 5 68 7 104 36s82 32 137-5M-28 78C17 39 75 43 112 71s77 31 135-6M-32 116C16 76 73 80 113 108s78 30 137-7M-28 153C20 114 80 118 118 145s75 31 132-7" fill="none" stroke="#756f55" stroke-opacity=".24" stroke-width="1.5"/><path d="M-20 54C23 20 69 21 105 48s82 28 124-5M-24 129C19 94 72 95 112 123s76 28 128-7" fill="none" stroke="#f5edcf" stroke-opacity=".25" stroke-width="1.2"/></pattern>
- <pattern id="forest-canopy" width="54" height="48" patternUnits="userSpaceOnUse"><path d="M9 28 17 11l8 17-5-3 8 13H6l8-13zM37 18l6-13 7 13-4-2 6 10H33l7-10z" fill="#173a34" opacity=".72"/><path d="M17 12l8 16M43 6l7 12" stroke="#86a17b" stroke-opacity=".3" stroke-width="1.4"/></pattern>
+ <pattern id="forest-canopy" width="88" height="76" patternUnits="userSpaceOnUse"><path d="M-8 38C-4 24 8 18 20 22 22 8 39 3 49 14 62 9 76 20 73 34 88 43 82 59 68 61 57 75 39 72 31 63 15 71 0 59-8 38Z" fill="#183a32" opacity=".58"/><path d="M12 25C19 13 32 13 40 23 50 14 64 22 62 35 76 42 66 57 54 56 44 68 28 58 29 49 15 52 6 38 12 25Z" fill="#426b50" opacity=".42"/><path d="M17 27q12-12 23-1m12 6q8-7 14 0M30 51q9 8 18 1" fill="none" stroke="#a8b58a" stroke-opacity=".28" stroke-width="2"/></pattern>
  <pattern id="rock-hatch" width="42" height="34" patternUnits="userSpaceOnUse"><path d="m4 29 12-20 9 12 8-15M-5 13 3 2" fill="none" stroke="#344f54" stroke-opacity=".35" stroke-width="2"/></pattern>
+ <pattern id="terrain-grain" width="180" height="150" patternUnits="userSpaceOnUse"><path d="M8 18q12-7 24 0m39 16q10-6 18 1M22 91q16-9 29-1m70 25q12-7 22 0M130 52q9-6 17 0" fill="none" stroke="#665c43" stroke-opacity=".22" stroke-width="1.1"/><circle cx="49" cy="58" r="1.2" fill="#594f3d" opacity=".24"/><circle cx="151" cy="18" r=".9" fill="#fff3d8" opacity=".38"/><circle cx="102" cy="82" r="1.1" fill="#554b39" opacity=".18"/><circle cx="17" cy="132" r=".8" fill="#fff" opacity=".32"/></pattern>
  <pattern id="paper-fiber" width="130" height="110" patternUnits="userSpaceOnUse"><path d="m12 17 24-4m31 37 18-3M18 89l31-5m50 9 17-3M88 16l15-2" stroke="#665c43" stroke-opacity=".1" stroke-width="1.4"/><circle cx="51" cy="70" r="1.2" fill="#5c503b" opacity=".14"/><circle cx="112" cy="43" r="1" fill="#fff" opacity=".2"/></pattern>
  <filter id="continent-shadow" x="-15%" y="-15%" width="130%" height="135%"><feGaussianBlur stdDeviation="22"/></filter>
  <filter id="terrain-soft" x="-15%" y="-15%" width="130%" height="130%"><feGaussianBlur stdDeviation="10"/></filter>
@@ -44,9 +45,18 @@
  <path d="M675 470C810 390 1000 415 1115 520 1225 622 1190 805 1040 865 900 925 735 842 680 720 640 632 635 540 675 470Z" fill="url(#rock-hatch)" opacity=".36"/>
  <!-- mountain systems with layered ridgelines, not repeated cartoon peaks -->
  <path d="M680 240C760 190 850 190 925 236 1010 190 1115 210 1185 280L1265 405C1160 465 1080 425 1000 390 900 450 795 410 715 360Z" fill="#657b7a" opacity=".5"/>
- <g opacity=".95">
-  <use href="#ridge" x="710" y="230"/><use href="#ridge" x="840" y="195"/><use href="#ridge" x="970" y="220"/><use href="#ridge" x="1100" y="265"/><use href="#ridge" x="1220" y="335"/>
-  <use href="#ridge" x="760" y="330"/><use href="#ridge" x="900" y="315"/><use href="#ridge" x="1040" y="350"/>
+ <g opacity=".96">
+  <path d="M690 357 735 304 770 321 818 242 850 275 898 208 936 249 978 218 1025 270 1065 245 1110 301 1150 286 1198 352 1242 390 1190 414 1125 385 1070 405 1012 371 958 403 900 369 844 392 788 360 730 380Z" fill="#405a5e" opacity=".56"/>
+  <path d="M700 347 748 294 780 319 820 232 852 271 900 194 939 246 982 207 1025 262 1068 238 1110 293 1154 278 1202 345 1250 387" fill="none" stroke="#e2e3d6" stroke-opacity=".55" stroke-width="7" stroke-linejoin="round"/>
+  <path d="m748 294 20 45 37-21 15-86 32 56 48-94 39 52 43-45 43 55 43-24 42 55 44-15 48 65" fill="none" stroke="#9aada7" stroke-opacity=".8" stroke-width="13" stroke-linejoin="round"/>
+  <path d="m820 232 15 48 17-9 48-77 18 57 21-5 43-39 18 48 24-3 44 39 20-17 41 52" fill="none" stroke="#d5ddd3" stroke-opacity=".72" stroke-width="4" stroke-linejoin="round"/>
+  <path d="m900 194 20 59 19-7 43-39 21 59 19-4 43 39 23-14 40 56" fill="none" stroke="#f1eee0" stroke-opacity=".7" stroke-width="2.8" stroke-linejoin="round"/>
+  <path d="M725 365q80-32 142-3t137-3 150 15 94 28" fill="none" stroke="#293f48" stroke-opacity=".45" stroke-width="17" stroke-linecap="round"/>
+  <path d="M1040 548 1080 518 1114 548 1156 510 1198 554 1234 535 1276 590 1318 575 1365 640 1400 702 1368 766 1320 802 1270 766 1230 787 1178 744 1135 758 1090 711 1050 676 1024 616Z" fill="#425d60" opacity=".42"/>
+  <path d="M1040 548 1080 518 1114 548 1156 510 1198 554 1234 535 1276 590 1318 575 1365 640 1400 702 1368 766" fill="none" stroke="#d9dfd2" stroke-opacity=".54" stroke-width="6" stroke-linejoin="round"/>
+  <path d="m1080 518 25 62 49-70 44 68 36-43 42 65 42-25 47 65 35 62" fill="none" stroke="#a8b9b1" stroke-opacity=".7" stroke-width="12" stroke-linejoin="round"/>
+  <path d="m1156 510 14 64 28-6 44-33 18 68 24-6 34 46 24-15 36 74" fill="none" stroke="#eef0e3" stroke-opacity=".62" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M1018 690q105-65 193-12t154 87" fill="none" stroke="#2c444b" stroke-opacity=".42" stroke-width="19" stroke-linecap="round"/>
  </g>
  <path d="M770 430C875 385 990 410 1080 465 1170 520 1210 610 1160 690" fill="none" stroke="#d4ded2" stroke-opacity=".46" stroke-width="6"/>
  <path d="M790 458C890 418 990 440 1070 490 1135 530 1165 590 1138 645" fill="none" stroke="#3d5b61" stroke-opacity=".35" stroke-width="12"/>
@@ -107,7 +117,15 @@
   <path d="M60 350q48-35 100-6M1625 250q45-32 88 1M1670 780q43-28 80 2M100 920q38-25 72 0"/>
   <path d="M70 390q55-28 112 5M1635 825q46-25 90 5"/>
  </g>
-</g>
+ <g clip-path="url(#land-clip)" pointer-events="none">
+  <rect x="150" y="100" width="1540" height="1030" fill="url(#terrain-grain)" opacity=".42"/>
+  <path d="M225 480C310 420 390 430 470 480S610 550 675 505M250 510C335 455 405 470 480 515S600 580 660 535M285 545C360 495 420 510 490 550S585 600 640 565" fill="none" stroke="#e7dfc2" stroke-opacity=".18" stroke-width="2"/>
+  <path d="M300 865C385 805 470 815 540 865S640 940 710 900M325 895C405 845 480 850 545 895S635 960 690 930M370 930C435 895 490 900 545 935" fill="none" stroke="#536c55" stroke-opacity=".25" stroke-width="3"/>
+  <path d="M700 440C795 395 885 405 965 448S1090 492 1170 455M720 468C810 430 895 440 970 480S1080 518 1140 485M750 495C830 462 905 472 975 510S1060 542 1115 515" fill="none" stroke="#f0e9d4" stroke-opacity=".19" stroke-width="2"/>
+  <path d="M1070 760C1150 720 1240 740 1300 790S1380 860 1430 830M1090 790C1160 760 1240 775 1295 820S1360 875 1400 855" fill="none" stroke="#e4e2d2" stroke-opacity=".23" stroke-width="2.4"/>
+ </g>
+ <path d="M205 292C259 221 371 179 492 198 585 133 718 129 832 163 940 100 1075 119 1170 157 1304 107 1442 167 1524 248 1632 309 1665 412 1618 516 1677 625 1634 741 1582 826 1631 929 1521 1033 1390 1038 1284 1104 1160 1073 1073 1043 948 1118 825 1086 739 1032 624 1092 505 1057 414 1000 300 989 220 901 233 793 159 708 160 590 192 501 139 412 151 339 206 292Z" fill="none" stroke="#d9d1b8" stroke-opacity=".22" stroke-width="11"/>
+ </g>
 <!-- cartographic annotations -->
 <g font-family="Georgia,serif" fill="#344b49" opacity=".8">
  <text x="1335" y="185" font-size="22" letter-spacing="8" text-anchor="middle">ENDE</text>
