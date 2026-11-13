@@ -914,3 +914,62 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
  .public-chat-owner-controls>[data-chat-toggle-pause]{grid-row:1}
  .public-chat-owner-controls>[data-chat-reports-refresh]{grid-row:2}
 }
+
+
+/* Unified Frieren platform surface system v1.
+   Additive layer: preserve existing page layouts and component contracts. */
+:root{
+  --frieren-night:#100d20;
+  --frieren-panel:rgba(30,24,48,.72);
+  --frieren-panel-strong:rgba(23,19,39,.9);
+  --frieren-border:rgba(207,181,255,.2);
+  --frieren-border-hover:rgba(218,194,255,.48);
+  --frieren-glow:rgba(166,126,232,.14);
+  --frieren-text:#faf6ff;
+  --frieren-muted:#c9c1dc;
+}
+:where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(.card,.account-profile-card,.personal-center-item,.user-center-metrics article,.section-card){
+  border-color:var(--frieren-border);
+  background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025)),var(--frieren-panel);
+  box-shadow:0 18px 48px rgba(4,3,12,.28),inset 0 1px rgba(255,255,255,.055);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+}
+:where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(h1,h2,h3){
+  text-wrap:balance;
+}
+:where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(input,select,textarea){
+  max-width:100%;
+  border-color:var(--frieren-border);
+  background-color:rgba(12,10,23,.78);
+  color:var(--frieren-text);
+}
+:where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(input,select,textarea):focus-visible{
+  outline:2px solid #d9c3ff;
+  outline-offset:3px;
+  border-color:var(--frieren-border-hover);
+}
+:where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(.btn,button,a[role=button]){
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+:where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(.btn,button,a[role=button]):focus-visible{
+  outline:2px solid #e6d4ff;
+  outline-offset:3px;
+}
+@media(hover:hover) and (prefers-reduced-motion:no-preference){
+  :where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(.card,.account-profile-card,.personal-center-item):hover{
+    border-color:var(--frieren-border-hover);
+    box-shadow:0 22px 54px rgba(4,3,12,.34),0 0 26px var(--frieren-glow),inset 0 1px rgba(255,255,255,.07);
+  }
+}
+@media(max-width:560px){
+  :where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(.card,.account-profile-card,.personal-center-item){
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  :where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(.btn,button,a[role=button]){
+    transition:none!important;
+  }
+}
