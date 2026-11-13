@@ -1688,7 +1688,7 @@ body.atlas-modal-open{overflow:hidden}
 .atlas-waterways{opacity:.92}
 .atlas-trails{opacity:.7}
 .atlas-settled-land{opacity:.88}
-.atlas-foothill-transition{filter:url(#terrain-soft)}
+
 .atlas-layer-controls button[data-atlas-geography]{border-style:dashed}
 @media(max-width:700px){
  .atlas-waterways{opacity:.82}
