@@ -45,6 +45,7 @@ import { handleHealthRequest } from './guardian/health-route.js';
 import { handleGuardianSecurityEventRequest } from './guardian/security-events.js';
 import { handleGithubGuardSecurityEventRequest } from './guardian/github-guard-events.js';
 import { getMaintenanceState, initOwnerAdminSchema, recordCommandUsage, recordOwnerError } from './owner-admin.js';
+import { FRIEREN_WATCHING_ACTIVITY } from './bot-presence.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 if (!process.env.DISCORD_TOKEN) throw new Error('DISCORD_TOKEN eksik. Render Environment bölümünü kontrol et.');
