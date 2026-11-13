@@ -193,6 +193,8 @@ test('account export includes linked game and support data while excluding secre
     assert.equal(exported.siteDirectMessages[0].message_id,dmMessageId);
     assert.equal(exported.siteDirectMessageGroups.length,1,'joined groups must be included in account export');
     assert.equal(exported.siteDirectGroupMessages.length,1,'group messages must be included in account export');
+    assert.equal(exported.siteDirectGroupReads.length,1,'the account\'s group read receipts must be included in account export');
+    assert.equal(exported.siteDirectGroupReads[0].message_id,dmGroupMessageId);
         assert.equal(exported.supportTickets.length,1);
     assert.equal(exported.supportTickets[0].replies.length,1);
     assert.equal(exported.supportTickets[0].statusHistory.length,3);
