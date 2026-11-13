@@ -191,13 +191,26 @@
   const dmTabs=Array.from(root.querySelectorAll('[data-site-dm-tab]'));
   const setDmView=view=>{activeDmView=view;dmRoot.hidden=view!=='direct';groupRoot.hidden=view!=='group';for(const tab of dmTabs){const active=tab.dataset.siteDmTab===view;tab.setAttribute('aria-pressed',String(active));tab.classList.toggle('is-active',active);}if(view==='direct')dmLoad();else groupLoad();};
   for(const tab of dmTabs)tab.addEventListener('click',()=>setDmView(tab.dataset.siteDmTab==='group'?'group':'direct'));
-  dmFriends().then(loadGroups);window.setInterval(()=>{if(activeDmView==='direct')dmLoad();else groupLoad();},45000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(activeDmView==='direct')dmLoad();else groupLoad();}});
+  document.addEventListener('frieren-chat-update',event=>{
+   const update=event.detail||{};if(document.visibilityState!=='visible')return;
+   if(update.scope==='dm'){const thread=[root.dataset.accountId||'',dmSelected].sort().join(':');if(update.conversationId===thread)dmLoad();else dmFriends();}
+   if(update.scope==='group'){loadGroups();if(update.conversationId===groupSelected&&activeDmView==='group')groupLoad();}
+  });
+  dmFriends().then(loadGroups);window.setInterval(()=>{if(activeDmView==='direct')dmLoad();else groupLoad();},90000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(activeDmView==='direct')dmLoad();else groupLoad();}});
  }
 
  refresh();if(isOwner)loadReports();
+ document.addEventListener('frieren-chat-update',event=>{if(event.detail?.scope==='public'&&document.visibilityState==='visible')refresh();});
+ let chatEventSource=null;
+ const connectChatEvents=()=>{
+  if(!form||!window.EventSource||document.visibilityState!=='visible')return;
+  chatEventSource?.close();chatEventSource=new EventSource('/api/chat-events');
+  chatEventSource.addEventListener('chat-update',event=>{try{document.dispatchEvent(new CustomEvent('frieren-chat-update',{detail:JSON.parse(event.data)}));}catch{}});
+ };
+ connectChatEvents();
  const heartbeat=()=>{if(form&&document.visibilityState==='visible')postAction('/api/public-chat/presence',{}).catch(()=>{});};heartbeat();window.setInterval(heartbeat,30000);
- document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){refresh();heartbeat();scheduleRefresh();}else if(refreshTimer){window.clearInterval(refreshTimer);refreshTimer=null;}});
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){refresh();heartbeat();scheduleRefresh();connectChatEvents();}else{chatEventSource?.close();chatEventSource=null;if(refreshTimer){window.clearInterval(refreshTimer);refreshTimer=null;}}});
  let refreshTimer=null;
- const scheduleRefresh=()=>{if(refreshTimer)window.clearInterval(refreshTimer);refreshTimer=window.setInterval(()=>{if(document.visibilityState==='visible')refresh();},30000);};
+ const scheduleRefresh=()=>{if(refreshTimer)window.clearInterval(refreshTimer);refreshTimer=window.setInterval(()=>{if(document.visibilityState==='visible')refresh();},60000);};
  scheduleRefresh();
 })();
