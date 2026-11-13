@@ -17,6 +17,10 @@ test('public discovery page and chat history are readable without login',async()
  const page=response();assert.equal(await handlePublicSiteRequest(get('/kesfet'),page,{db}),true);assert.equal(page.status,200);assert.match(page.body,/Yol arkadaşlarınla sohbet et/);assert.match(page.body,/Giriş yap ve sohbete katıl/);const signedPage=response();assert.equal(await handlePublicSiteRequest(get('/kesfet',account),signedPage,{db}),true);assert.equal(signedPage.status,200);assert.match(signedPage.body,/name="replyToMessageId"/);assert.match(signedPage.body,/data-chat-reply-preview/);assert.match(signedPage.body,/data-chat-reply-clear/);assert.match(signedPage.body,/data-chat-media/);
  const api=response();assert.equal(await handlePublicSiteRequest(get('/api/public-chat/messages'),api,{db}),true);assert.equal(api.status,200);assert.match(api.body,/Merhaba/);
 });
+test('public chat browser client accepts Supabase signed media URLs instead of R2-only hosts',async()=>{
+ const res=response();assert.equal(await handlePublicSiteRequest(get('/assets/public-chat.js'),res,{db:{query:async()=>({rows:[],rowCount:0})}}),true);
+ assert.equal(res.status,200);assert.match(res.body,/storage\\.supabase\\.co/);assert.doesNotMatch(res.body,/r2\\.cloudflarestorage\\.com/);
+});
 test('public chat posting requires an authenticated site account and CSRF token',async()=>{
  let queries=0;const db={async query(sql){queries++;if(sql.includes('SELECT COUNT(*)'))return{rows:[{count:0}],rowCount:1};if(sql.includes('INSERT INTO frieren_public_chat_messages'))return{rows:[{message_id:'m1',body:'Merhaba'}],rowCount:1};return{rows:[],rowCount:0};}};
  const anonymous=response();const anonymousReq=Readable.from([Buffer.from('csrf=x&message=Merhaba')]);Object.assign(anonymousReq,{method:'POST',url:'/api/public-chat/messages',headers:{'content-type':'application/x-www-form-urlencoded'}});
