@@ -17,6 +17,8 @@
   const zoomButton=event.target.closest('[data-atlas-zoom]');if(zoomButton){zoom(Number(zoomButton.dataset.atlasZoom)>0?1.25:.8);return;}
   if(event.target.closest('[data-atlas-reset]')){reset();return;}
   const layerButton=event.target.closest('[data-atlas-layer]');if(layerButton){const layer=layerButton.dataset.atlasLayer,enabled=layerButton.getAttribute('aria-pressed')!=='true';layerButton.setAttribute('aria-pressed',String(enabled));root.querySelectorAll('[data-atlas-layer-item="'+layer+'"]').forEach(pin=>{pin.hidden=!enabled;});return;}
+  const geographyButton=event.target.closest('[data-atlas-geography]');
+  if(geographyButton){const layer=geographyButton.dataset.atlasGeography,enabled=geographyButton.getAttribute('aria-pressed')!=='true';geographyButton.setAttribute('aria-pressed',String(enabled));root.querySelectorAll('[data-atlas-geography-layer="'+layer+'"]').forEach(node=>{node.hidden=!enabled;});return;}
   const trigger=event.target.closest('[data-atlas-open]');if(trigger){event.preventDefault();open(trigger.dataset.atlasOpen,trigger.dataset.atlasFocus,trigger.dataset.atlasTargetKey,trigger);}
  });
  viewport.addEventListener('wheel',event=>{event.preventDefault();zoom(event.deltaY<0?1.12:.89);},{passive:false});
