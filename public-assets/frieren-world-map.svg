@@ -126,43 +126,6 @@
  </g>
  <path d="M205 292C259 221 371 179 492 198 585 133 718 129 832 163 940 100 1075 119 1170 157 1304 107 1442 167 1524 248 1632 309 1665 412 1618 516 1677 625 1634 741 1582 826 1631 929 1521 1033 1390 1038 1284 1104 1160 1073 1073 1043 948 1118 825 1086 739 1032 624 1092 505 1057 414 1000 300 989 220 901 233 793 159 708 160 590 192 501 139 412 151 339 206 292Z" fill="none" stroke="#d9d1b8" stroke-opacity=".22" stroke-width="11"/>
  </g>
-<!-- Unified landscape transitions: decorative geography only, clipped to the existing continent silhouette. -->
-<g clip-path="url(#land-clip)" pointer-events="none">
- <g data-atlas-geography-layer="waterways" class="atlas-waterways">
-  <path d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="#385d67" stroke-opacity=".48" stroke-width="18" stroke-linecap="round"/>
-  <path class="atlas-river-main" d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="url(#river)" stroke-width="8" stroke-linecap="round"/>
-  <path d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="#d5e5d9" stroke-opacity=".5" stroke-width="1.6" stroke-linecap="round"/>
-  <path d="M1290 280C1250 330 1210 365 1165 390S1080 445 1045 500 1000 570 960 610" fill="none" stroke="#456e78" stroke-opacity=".34" stroke-width="12" stroke-linecap="round"/>
-  <path d="M1290 280C1250 330 1210 365 1165 390S1080 445 1045 500 1000 570 960 610" fill="none" stroke="#86aeb1" stroke-width="5" stroke-linecap="round"/>
-  <path d="M690 650C650 625 615 600 580 565S520 520 485 500" fill="none" stroke="#8bb0ad" stroke-opacity=".76" stroke-width="4" stroke-linecap="round"/>
-  <g class="atlas-lake" fill="#6f9ba0" stroke="#d0ded0" stroke-opacity=".7" stroke-width="3">
-   <path d="M1125 350c24-19 58-17 75 3 13 16 2 39-22 47-26 9-57-3-65-22-7-12-2-21 12-28Z"/>
-   <path d="M790 565c18-13 42-10 54 4 9 12 1 27-17 32-20 6-43-2-48-15-4-8 1-16 11-21Z"/>
-   <path d="M1360 730c17-12 40-8 49 5 7 12-2 25-18 29-19 4-39-5-42-17-2-7 2-13 11-17Z"/>
-  </g>
-  <g fill="none" stroke="#d5e7d9" stroke-opacity=".5" stroke-width="2"><path d="M1138 365q23-15 44 0M800 578q16-10 30 0M1368 740q15-9 29 0"/></g>
- </g>
- <g data-atlas-geography-layer="trails" class="atlas-trails" fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M440 930C475 870 500 830 540 790S620 735 670 700 740 620 770 570 820 500 870 470" stroke="#655b43" stroke-opacity=".5" stroke-width="9"/>
-  <path d="M440 930C475 870 500 830 540 790S620 735 670 700 740 620 770 570 820 500 870 470" stroke="#d2b985" stroke-opacity=".85" stroke-width="4" stroke-dasharray="3 9"/>
-  <path d="M1035 285C1080 325 1105 375 1130 430S1180 520 1240 570" stroke="#655b43" stroke-opacity=".42" stroke-width="7"/>
-  <path d="M1035 285C1080 325 1105 375 1130 430S1180 520 1240 570" stroke="#d0b886" stroke-opacity=".72" stroke-width="3" stroke-dasharray="2 9"/>
-  <path d="M790 590C825 560 850 525 875 485" stroke="#e8e0c9" stroke-opacity=".8" stroke-width="2" stroke-dasharray="2 8"/>
- </g>
- <g data-atlas-geography-layer="settled-land" class="atlas-settled-land">
-  <!-- Foothills blend the Schwer highlands into the central valleys. -->
-  <path class="atlas-foothill-transition" d="M620 480C690 430 760 430 820 465S930 520 1000 500 1115 535 1140 600 1090 700 1015 730 880 690 815 730 690 700 640 640Z" fill="#8d9b78" opacity=".2" stroke="#e0d3ad" stroke-opacity=".24" stroke-width="5"/>
-  <path d="M650 510C720 465 780 475 835 505S945 555 1010 535M670 545C740 505 795 510 850 540S950 580 1035 560M700 585C760 555 815 555 870 580S960 610 1060 590" fill="none" stroke="#596e55" stroke-opacity=".24" stroke-width="3"/>
-  <!-- Small field mosaics sit around the established central settlement corridor. -->
-  <g class="atlas-field-mosaic" fill="#c6b77f" stroke="#7c805c" stroke-opacity=".55" stroke-width="2" opacity=".34">
-   <path d="M345 825q42-22 88-5l-10 42q-48 12-83-8Z"/>
-   <path d="M390 875q39-20 79-4l-9 36q-43 13-77-7Z"/>
-   <path d="M465 820q37-17 68 2l-12 35q-37 8-64-8Z"/>
-   <path d="M300 890q31-17 59-4l-8 31q-32 8-57-7Z"/>
-  </g>
-  <g fill="none" stroke="#e5d7ae" stroke-opacity=".46" stroke-width="1.5"><path d="M352 831l-5 29m20-35-5 34m25-37-4 35m35-28-5 30m-15 25-5 29m23-34-5 34m35-38-5 34"/></g>
- </g>
-</g>
 <!-- cartographic annotations -->
 <g font-family="Georgia,serif" fill="#344b49" opacity=".8">
  <text x="1335" y="185" font-size="22" letter-spacing="8" text-anchor="middle">ENDE</text>
