@@ -93,7 +93,8 @@ for (const scenario of scenarios) {
       },
       stats: {}
     });
-    await page.setContent('<!doctype html><html lang="tr"><body>' + atlasMarkup + '</body></html>');
+    await page.setContent('<!doctype html><html lang="tr"><head><link rel="stylesheet" href="' + baseUrl + '/assets/site.css?v=atlas-368-1"></head><body>' + atlasMarkup + '</body></html>');
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
     await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-369-1' });
     const routeFrom = page.locator('[data-atlas-route-from]');
     const routeTo = page.locator('[data-atlas-route-to]');
