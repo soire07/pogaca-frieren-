@@ -1754,3 +1754,23 @@ body.atlas-modal-open{overflow:hidden}
 @media(max-width:900px){.atlas-route-planner{grid-template-columns:1fr 1fr}.atlas-route-planner>div:first-child,.atlas-route-summary{grid-column:1/-1}.atlas-route-actions{grid-column:1/-1}}
 @media(max-width:520px){.atlas-route-planner{grid-template-columns:1fr;gap:9px;padding:12px}.atlas-route-planner>div:first-child,.atlas-route-summary,.atlas-route-actions{grid-column:1}.atlas-route-actions button{flex:1}.atlas-route-summary{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.atlas-zoom-detail-layer{transition:none}}
+
+
+/* Seasonal ecology profiles and settlement-scale schematics. */
+.atlas-local-detail-overlay{position:absolute;inset:0;z-index:2;width:100%;height:100%;opacity:0;pointer-events:none;transition:opacity .2s ease}
+.atlas-map-art[data-atlas-zoom-detail="local"] .atlas-local-detail-overlay{opacity:.94}
+.atlas-local-settlement-plan text{font-family:Georgia,serif;letter-spacing:.6px}
+.atlas-ecology-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:12px 0}
+.atlas-ecology-summary span{padding:8px 10px;border:1px solid #a9a17d44;border-radius:7px;background:#1b2b2b88;color:#e1ddc8;font-size:11px;line-height:1.4}
+.atlas-route-calibration{display:grid;gap:5px;color:#e3d8bf;font-size:12px}
+.atlas-route-calibration input{width:100%;min-height:44px;padding:7px 9px;border:1px solid #a9a17d77;border-radius:7px;background:#14232b;color:#f5ead0;font:inherit}
+.atlas-route-calibration-note{grid-column:1/-1!important;color:#c7c5b5!important}
+.atlas-map-art[data-atlas-season="spring"] .atlas-regional-flora{filter:hue-rotate(18deg) saturate(1.16)}
+.atlas-map-art[data-atlas-season="summer"] .atlas-regional-flora{filter:saturate(1.12) brightness(1.03)}
+.atlas-map-art[data-atlas-season="autumn"] .atlas-regional-flora{filter:hue-rotate(-28deg) saturate(1.22)}
+.atlas-map-art[data-atlas-season="winter"] .atlas-regional-flora{filter:grayscale(.48) brightness(1.2)}
+.atlas-map-art[data-atlas-season="winter"] .atlas-settled-land{filter:saturate(.55) brightness(1.15)}
+.atlas-map-art[data-atlas-season="autumn"] .atlas-settled-land{filter:hue-rotate(-20deg) saturate(1.12)}
+@media(max-width:900px){.atlas-ecology-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-route-calibration-note{grid-column:1/-1}}
+@media(max-width:520px){.atlas-ecology-summary{grid-template-columns:1fr}.atlas-local-settlement-plan text{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.atlas-local-detail-overlay{transition:none}}
