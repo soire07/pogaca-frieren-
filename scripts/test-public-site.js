@@ -1817,6 +1817,19 @@ test('spellbook search and mastery filters update visible entries and empty stat
 });
 
 
+test('illustrated atlas background is served as a first-party image asset', async () => {
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/assets/frieren-world-map.svg'),response,{db:null}),true);
+ assert.equal(response.status,200);
+ const artwork=response.body.toString('utf8');
+ assert.match(artwork,/<svg[\\s>]/);
+ assert.match(artwork,/Kuzey Kıtası|THE NORTHERN CONTINENT/);
+ const atlas=renderExplorationAtlas({mapContent:{regions:[],summary:{}}});
+ assert.match(atlas,/src="\\/assets\\/frieren-world-map\\.svg"/);
+ assert.match(atlas,/atlas-pin-layer/);
+ assert.doesNotMatch(atlas,/<svg class="atlas-world-map"/);
+});
+
 test('interactive parchment atlas renders biome regions, settlements, NPCs, creatures, boss and dungeon pins with live discovery percentage',()=>{
  const mapContent=buildExplorationMapContent({level:50,regionVisits:[{region_key:'merkez',visits:3},{region_key:'orman',visits:1},{region_key:'harabeler',visits:1}],bosses:[{key:'test_boss',name:'Schattenwolf',minLevel:1,region:'Merkez Topraklar'}],dungeons:[{key:'test_dungeon',name:'Merkez Topraklar Mahzeni',minLevel:1,loot:'Schattenwolfzahn'}]});
  const html=renderExplorationAtlas({mapContent,stats:{boss_defeats:2,dungeon_wins:1}});
