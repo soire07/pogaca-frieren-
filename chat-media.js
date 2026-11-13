@@ -50,7 +50,7 @@ export function validateChatMedia(input,mimeType){
  return{buffer,mimeType:mime,extension:spec.extension,kind:spec.kind,size:buffer.length};
 }
 
-export function signChatMediaUrl(method,objectKey,mimeType,expiresIn=300){
+export function signChatMediaUrl(method,objectKey,mimeType,expiresIn=300,issuedAt=null){
  const cfg=config();if(!cfg)throw new Error('CHAT_MEDIA_STORAGE_NOT_CONFIGURED');
  const verb=String(method||'GET').toUpperCase();if(!['GET','PUT','DELETE'].includes(verb))throw new Error('CHAT_MEDIA_METHOD_INVALID');
  const key=String(objectKey||'');if(!/^chat\/(public|dm|group)\/[0-9a-f-]{36}\.[a-z0-9]+$/i.test(key))throw new Error('CHAT_MEDIA_KEY_INVALID');
@@ -61,7 +61,7 @@ export function signChatMediaUrl(method,objectKey,mimeType,expiresIn=300){
  const headers=verb==='PUT'?'content-type;host':'host';
  const canonicalHeaders=verb==='PUT'?'content-type:'+String(mimeType||'application/octet-stream')+'\nhost:'+cfg.host+'\n':'host:'+cfg.host+'\n';
  const params=[['X-Amz-Algorithm','AWS4-HMAC-SHA256'],['X-Amz-Content-Sha256','UNSIGNED-PAYLOAD'],['X-Amz-Credential',credential],['X-Amz-Date',amzDate],['X-Amz-Expires',String(expires)],['X-Amz-SignedHeaders',headers]];
- if(verb==='GET'&&mimeType){params.push(['response-content-type',String(mimeType)],['response-content-disposition','inline']);}
+ if(verb==='GET'&&mimeType){params.push(['response-cache-control','private, max-age=3600'],['response-content-type',String(mimeType)],['response-content-disposition','inline']);}
  const canonicalQuery=params.slice().sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0).map(([k,v])=>encode(k)+'='+encode(v)).join('&');
  const canonicalRequest=[verb,uri,canonicalQuery,canonicalHeaders,headers,'UNSIGNED-PAYLOAD'].join('\n');
  const stringToSign=['AWS4-HMAC-SHA256',amzDate,credentialScope,sha256(canonicalRequest)].join('\n');
@@ -125,7 +125,8 @@ export async function attachChatMedia(db,{mediaId,accountId,scope,scopeKey,messa
 
 export function getChatMediaReadUrl({object_key,mime_type}={}){
  if(!object_key||!mime_type||!SPECS[mime_type]||!config())return null;
- return signChatMediaUrl('GET',object_key,mime_type,3600);
+ const issuedAt=new Date(Math.floor(Date.now()/3600000)*3600000);
+ return signChatMediaUrl('GET',object_key,mime_type,7200,issuedAt);
 }
 
 export async function deleteChatMediaForAccount(db,accountId){
