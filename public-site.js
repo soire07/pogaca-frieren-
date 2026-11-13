@@ -766,7 +766,9 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform','Connection':'keep-alive','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'});
     res.write('retry: 3000\\n: connected\\n\\n');
     const heartbeat=setInterval(()=>{if(!res.writableEnded)res.write(': keep-alive\\n\\n');},20000);
-    const cleanup=()=>{clearInterval(heartbeat);unsubscribe();};
+    let maxLifetime=null;
+    const cleanup=()=>{clearInterval(heartbeat);if(maxLifetime)clearTimeout(maxLifetime);unsubscribe();};
+    maxLifetime=setTimeout(()=>{cleanup();if(!res.writableEnded)res.end();},90000);
     res.on('close',cleanup);
     res.on('error',cleanup);
     return true;
