@@ -99,5 +99,6 @@ test('group message read state is scoped to the current viewer, not another memb
  const result=await listSiteDmGroupMessages(db,{accountId:b,groupId});
  assert.equal(result.messages[0].is_read,false);
  assert.match(messageSql,/rd\.reader_account_id=\$2/);
+ assert.match(messageSql,/ap\.profile_slug/,'group messages must include the sender profile slug for profile navigation');
  assert.doesNotMatch(messageSql,/rd\.reader_account_id<>m\.sender_account_id/);
 });
