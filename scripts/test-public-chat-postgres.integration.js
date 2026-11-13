@@ -114,6 +114,7 @@ test('PostgreSQL persists media metadata with public, friend and group message s
    async query(sql,params){const client=await this.connect();try{return await client.query(sql,params);}finally{client.release();}}
   };
   await ensureSiteDirectMessageSchema(scoped);
+  await scoped.query('CREATE TABLE site_discord_links(account_id UUID NOT NULL,user_id TEXT NOT NULL)');
   const a=account(),b=account(),c=account(),outsider=account();
   for(const friend of [b,c])await scoped.query("INSERT INTO frieren_account_friend_requests(request_id,requester_account_id,recipient_account_id,status) VALUES($1,$2,$3,'accepted')",[randomUUID(),a,friend]);
   const publicMedia=randomUUID(),dmMedia=randomUUID(),groupMedia=randomUUID(),wrongScopeMedia=randomUUID();
