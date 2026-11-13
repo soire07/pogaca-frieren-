@@ -1150,9 +1150,11 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
    {board:'achievements',players:[{user_id:userId,character_name:'Fern',achievements:2}]}
   ],rowCount:6};
   if(sql.includes('FROM adventure_history'))return{rows:[{activity_type:'adventure',activity_label:'Buzlu Orman',activity_at:'2026-01-04T00:00:00.000Z',xp_awarded:50}],rowCount:1};
-  if(sql.includes('FROM adventure_journal_entries'))return{rows:[{collection_key:'spells',entry_key:'alev_kuresi'},{collection_key:'discoveries',entry_key:'ancient-elf-sanctuary'}],rowCount:2};
+  if(sql.includes('FROM adventure_journal_entries'))return{rows:[{collection_key:'spells',entry_key:'alev_kuresi'},{collection_key:'discoveries',entry_key:'ancient-elf-sanctuary'},{collection_key:'bosses',entry_key:'schattenwolf'},{collection_key:'bosses',entry_key:'ruinGuardian'}],rowCount:4};
   if(sql.includes('FROM adventure_journal_collection_claims'))return{rows:[{collection_key:'spells'}],rowCount:1};
   if(sql.includes('FROM exploration_region_mastery'))return{rows:[{region_key:'merkez',visits:3},{region_key:'orman',visits:1}],rowCount:2};
+  if(sql.includes('FROM inventory WHERE guild_id=$1 AND user_id=$2'))return{rows:[{item_key:'🐺 Schattenwolfzahn',quantity:2},{item_key:'Orman Kristali',quantity:1}],rowCount:2};
+  if(sql.includes('FROM guild_rpg_content_overrides WHERE guild_id=$1 AND content_type=$2'))return{rows:[],rowCount:0};
   if(sql.includes('FROM anime_character_collection'))return{rows:[{anime_cards:14,anime_copies:22,journal_entries:9}],rowCount:1};
   if(sql.includes('FROM arena_seasons'))return{rows:[{season_name:'Kuzey Sezonu',rating:1420,wins:5,losses:2,matches:7}],rowCount:1};
   if(sql.includes('FROM player_profile_settings'))return{rows:[{show_stats:false,show_achievements:true,show_collections:false,show_activity:false,show_cosmetics:true,active_title:'Kıdemli Maceracı'}],rowCount:1};
@@ -1201,6 +1203,18 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/exploration-map-fog/);
  assert.match(response.body,/Boss zaferleri · karakter geneli/);
  assert.match(response.body,/Zindan zaferleri · karakter geneli/);
+ assert.match(response.body,/data-map-marker-type="boss"/);
+ assert.match(response.body,/data-map-marker-type="chest"/);
+ assert.match(response.body,/data-map-marker-type="relic"/);
+ assert.match(response.body,/Boss noktaları/);
+ assert.match(response.body,/Schattenwolf/);
+ assert.match(response.body,/Merkez Mahzeni/);
+ assert.match(response.body,/Nadir ganimet noktaları/);
+ assert.match(response.body,/Schattenwolfzahn/);
+ assert.match(response.body,/Envanterinde ×2/);
+ assert.match(response.body,/Keşfedilen bölgeler/);
+ assert.match(response.body,/Yenilen bosslar/);
+ assert.match(response.body,/Sandıklar mevcut zindan karşılaşmalarında rastgele bulunur/);
  assert.match(response.body,/exploration-map-landmark/);
  assert.match(response.body,/data-region-key="merkez"/);
  assert.match(response.body,/href="#region-merkez"/);
