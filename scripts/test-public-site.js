@@ -1235,6 +1235,8 @@ test('owner profile overrides VIP and renders the exclusive role, title, blood X
     if(sql.includes('SELECT is_public FROM player_homes'))return{rows:[{is_public:true}],rowCount:1};
     if(sql.includes('SELECT slot,cosmetic_key FROM player_cosmetic_loadout'))return{rows:[{slot:'profile_frame',cosmetic_key:'moon_frame'}],rowCount:1};
     if(sql.includes('SELECT TO_CHAR(date_trunc'))return{rows:[{day_label:'2026-11-04',xp:80}],rowCount:1};
+    if(sql.includes('SELECT collection_key,entry_key FROM adventure_journal_entries'))return{rows:[],rowCount:0};
+    if(sql.includes('SELECT collection_key FROM adventure_journal_collection_claims'))return{rows:[],rowCount:0};
     throw new Error('Unexpected profile query: '+sql);
   }};
   try {
