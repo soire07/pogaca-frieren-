@@ -62,7 +62,7 @@ test('account export returns linked profile, inventory, card collection and scop
 
 test('account deletion requires the explicit confirmation phrase and removes account-owned portal rows only',async()=>{
  let connected=false;const calls=[];
- const db={connect:async()=>{connected=true;return{async query(sql,params){calls.push({sql,params});if(sql.includes('SELECT id FROM frieren_site_accounts'))return{rows:[{id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};if(sql.includes("column_name='account_id'"))return{rows:[{table_name:'site_user_preferences',data_type:'uuid'},{table_name:'frieren_site_discord_links',data_type:'character varying'},{table_name:'frieren_site_sessions',data_type:'character varying'},{table_name:'frieren_support_tickets',data_type:'uuid'}],rowCount:3};return{rows:[],rowCount:1};},release(){}};}};
+ const db={connect:async()=>{connected=true;return{async query(sql,params){calls.push({sql,params});if(sql.includes('SELECT id FROM frieren_site_accounts'))return{rows:[{id:'123e4567-e89b-12d3-a456-426614174000'}],rowCount:1};if(sql.includes("to_regclass('frieren_site_direct_messages')"))return{rows:[{table_name:'frieren_site_direct_messages'}],rowCount:1};if(sql.includes("column_name='account_id'"))return{rows:[{table_name:'site_user_preferences',data_type:'uuid'},{table_name:'frieren_site_discord_links',data_type:'character varying'},{table_name:'frieren_site_sessions',data_type:'character varying'},{table_name:'frieren_support_tickets',data_type:'uuid'}],rowCount:3};return{rows:[],rowCount:1};},release(){}};}};
  assert.equal((await deleteSiteAccount(db,accountId,'')).status,'confirmation_required');
  assert.equal(connected,false);
  assert.equal((await deleteSiteAccount(db,accountId,'HESABIMI SIL')).status,'deleted');
@@ -72,6 +72,7 @@ test('account deletion requires the explicit confirmation phrase and removes acc
  assert.ok(calls.some(call=>call.sql.includes('DELETE FROM "frieren_site_sessions" WHERE account_id IN ($1,$2)')));
  assert.ok(!calls.some(call=>call.sql.includes('DELETE FROM "frieren_support_tickets" WHERE account_id IN')));
  assert.ok(calls.some(call=>call.sql.includes('DELETE FROM frieren_support_tickets WHERE account_id=$1')));
+ assert.ok(calls.some(call=>call.sql.includes('DELETE FROM frieren_site_direct_messages WHERE sender_account_id=$1 OR recipient_account_id=$1')));
 });
 
 
@@ -132,6 +133,7 @@ test('owner support actions require the fixed owner identity and append staff re
 
 test('account export includes account-owned tables that also contain a user_id column', async () => {
   const db = { async query(sql, params) {
+    if (sql.includes("to_regclass('frieren_site_direct_messages')")) return { rows: [{ table_name: null }], rowCount: 1 };
     if (sql.includes('FROM frieren_site_accounts')) return { rows: [{ id: '123e4567-e89b-12d3-a456-426614174000', username: 'Gezgin' }], rowCount: 1 };
     if (sql.includes('FROM site_discord_links')) return { rows: [], rowCount: 0 };
     if (sql.includes("column_name='account_id'")) return { rows: [{ table_name: 'site_account_player_links', column_name: 'account_id', data_type: 'uuid' }], rowCount: 1 };
