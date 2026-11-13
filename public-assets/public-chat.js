@@ -112,7 +112,7 @@
  let searchTimer=null;if(search)search.addEventListener('input',()=>{render(latestMessages);if(searchTimer)window.clearTimeout(searchTimer);searchTimer=window.setTimeout(()=>refresh({searchTerm:search.value}),300);});
  if(older)older.addEventListener('click',()=>{const dated=latestMessages.filter(x=>x.created_at&&!x.pinned_at).map(x=>new Date(x.created_at).getTime()).filter(Number.isFinite);if(dated.length)refresh({before:new Date(Math.min(...dated)).toISOString(),append:true});});
  if(counter&&form){const updateCounter=()=>{counter.textContent=String(form.elements.message.value.length)+' / 500';};form.elements.message.addEventListener('input',updateCounter);updateCounter();}
- if(form){let lastTyping=0;form.elements.message.addEventListener('input',()=>{if(Date.now()-lastTyping>3500){lastTyping=Date.now();postAction('/api/public-chat/typing',{}).catch(()=>{});}});}
+ if(form){let lastTyping=0;form.elements.message.addEventListener('input',()=>{if(Date.now()-lastTyping>8000){lastTyping=Date.now();postAction('/api/public-chat/typing',{}).catch(()=>{});}});}
  if(pauseButton)pauseButton.addEventListener('click',async()=>{try{const result=await postAction('/api/public-chat/control',{paused:String(!chatPaused)});chatPaused=Boolean(result.paused);say(chatPaused?'Sohbet durduruldu.':'Sohbet yeniden açıldı.');await refresh();}catch(error){say(error.message||'Sohbet durumu değiştirilemedi.');}});
  if(reportsRefresh)reportsRefresh.addEventListener('click',loadReports);
  if(reportsRoot)reportsRoot.addEventListener('click',async event=>{const button=event.target.closest('button[data-chat-report-resolve]');if(!button)return;button.disabled=true;try{await postAction('/api/public-chat/reports/review',{reportId:button.dataset.chatReportResolve,status:button.dataset.status});say(button.dataset.status==='reviewed'?'Bildirim incelendi.':'Bildirim reddedildi.');await loadReports();}catch(error){say(error.message||'Bildirim güncellenemedi.');button.disabled=false;}});
@@ -154,6 +154,6 @@
  const heartbeat=()=>{if(form&&document.visibilityState==='visible')postAction('/api/public-chat/presence',{}).catch(()=>{});};heartbeat();window.setInterval(heartbeat,30000);
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){refresh();heartbeat();scheduleRefresh();}else if(refreshTimer){window.clearInterval(refreshTimer);refreshTimer=null;}});
  let refreshTimer=null;
- const scheduleRefresh=()=>{if(refreshTimer)window.clearInterval(refreshTimer);refreshTimer=window.setInterval(()=>{if(document.visibilityState==='visible')refresh();},10000);};
+ const scheduleRefresh=()=>{if(refreshTimer)window.clearInterval(refreshTimer);refreshTimer=window.setInterval(()=>{if(document.visibilityState==='visible')refresh();},30000);};
  scheduleRefresh();
 })();
