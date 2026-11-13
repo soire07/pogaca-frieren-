@@ -256,3 +256,28 @@ test('painterly terrain avoids tiled forest stamps and identical repeated mounta
   assert.match(colorGrade, /\.atlas-map-viewport\{[^}]*aspect-ratio:3\/2/, '3:2 viewport ratio must remain authoritative');
   assert.match(colorGrade, /@media\(max-width:700px\)/, 'mobile map treatment must remain explicit');
 });
+
+
+test('boss map markers have distinct archetypes while canonical encounter coordinates remain untouched', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  const locations = await readFile(new URL('../exploration-world-locations.js', import.meta.url), 'utf8');
+  for (const key of ['level_1','level_10','level_20','level_35','level_50','north-general','glass-wyrm','fallen-mage','zeldeila','domaltazor','the-fool']) {
+    assert.match(atlas, new RegExp("['\\\"]?" + key.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&') + "['\\\"]?:\\['[a-z-]+','[^']+'\\]"), 'boss should have a unique map archetype: '+key);
+  }
+  assert.match(atlas, /boss-archetype-/);
+  assert.match(atlas, /icon,x:point\.x,y:point\.y/);
+  assert.match(locations, /level_1: Object\.freeze\(\{ regionKey:'merkez', x:43, y:72/);
+  assert.match(locations, /'glass-wyrm': Object\.freeze\(\{ regionKey:'kuzey', x:62, y:49/);
+});
+
+test('each major biome has its own painterly signature without changing the 3:2 map canvas', async () => {
+  const artwork = await readFile(new URL('../public-assets/frieren-world-map.svg', import.meta.url), 'utf8');
+  assert.match(artwork, /viewBox="0 0 1800 1200"/);
+  for (const layer of ['biome-central-meadow','biome-great-forest','biome-ancient-ruins','biome-northern-ice','biome-schwer-highlands','biome-ausserst-arcana']) {
+    assert.ok(artwork.includes(layer), 'missing regional biome signature: '+layer);
+  }
+  assert.match(artwork, /atlas-biome-signatures/);
+  assert.match(artwork, /pointer-events="none"/);
+  assert.match(artwork, /GRÖSSE ORMANI/);
+  assert.match(artwork, /KUZEY PLATOSU/);
+});
