@@ -806,3 +806,5 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .public-chat-dm-tabs .public-chat-action{flex:1;min-height:42px}
 .public-chat-dm-tabs .is-active{background:#3a2b54;border-color:#d7b9ff;color:#fff}
 .public-chat-dm[hidden],.public-chat-dm-group[hidden]{display:none!important}
+
+.public-chat-avatar-link{display:inline-flex;align-self:flex-start;border-radius:50%;text-decoration:none;outline-offset:3px}.public-chat-avatar-link:focus-visible{outline:2px solid #c4a8ff}.public-chat-dm [data-site-dm-profile]{display:inline-flex;width:max-content;max-width:100%;color:#d9c9f6;text-decoration:underline;text-underline-offset:3px}.public-chat-dm [data-site-dm-profile][hidden]{display:none}
