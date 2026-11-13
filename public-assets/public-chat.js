@@ -222,7 +222,7 @@
    if(update.scope==='dm'){dmLoad();dmFriends();}
    if(update.scope==='group'){loadGroups();if(update.conversationId===groupSelected&&activeDmView==='group')groupLoad();}
   });
-  dmFriends().then(loadGroups);window.setInterval(()=>{if(activeDmView==='direct')dmLoad();else groupLoad();},90000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(activeDmView==='direct')dmLoad();else groupLoad();}});
+  dmFriends().then(loadGroups);window.setInterval(()=>{if(document.visibilityState==='visible'){if(activeDmView==='direct')dmLoad();else groupLoad();}},90000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(activeDmView==='direct')dmLoad();else groupLoad();}});
  }
 
  refresh();if(isOwner)loadReports();
