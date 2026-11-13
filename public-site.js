@@ -609,6 +609,22 @@ function playerProfilePage(user,profile,data,status){
   inventory:data.inventory||[],bosses:data.mapBosses||DEFAULT_SOLO_BOSSES,
   dungeons:data.mapDungeons||DEFAULT_DUNGEON_TIERS,dungeonWins:stats.dungeon_wins
  });
+ const dailyQuestRows=(data.dailyQuests||[]).map(quest=>{
+  const state=quest.claimed?'Ödül alındı':quest.done?'Tamamlandı · ödül bekliyor':'Devam ediyor';
+  const stateClass=quest.claimed?'is-claimed':quest.done?'is-complete':'is-pending';
+  return '<article class="card daily-quest-card '+stateClass+'"><div class="daily-quest-card-heading"><div><div class="eyebrow">'+(quest.class_name?'✧ '+esc(quest.class_name)+' özel görev':'GÜNLÜK GÖREV')+'</div><h3>'+esc(quest.title)+'</h3></div><strong>+'+Number(quest.reward_coins||0)+' altın</strong></div><p>'+esc(quest.description)+'</p><span class="daily-quest-state">'+state+'</span></article>';
+ }).join('');
+ const learnedSpellKeys=[...new Set(['zoltraak',...(data.learnedSpells||[]).map(row=>String(row.spell_key||''))])].filter(Boolean);
+ const spellMasteryByKey=new Map((data.spellMastery||[]).map(row=>[row.spell_key,row]));
+ const spellbookRows=learnedSpellKeys.map(key=>{
+  const spell=RPG_SPELL_DETAILS[key],mastery=spellMasteryByKey.get(key)||{};
+  const name=spell?.name||key,effect=spell?.effect||'Bu büyünün ayrıntısı henüz katalogda bulunmuyor.',cost=spell?.cost||'Öğrenilmiş büyü';
+  const masteryLevel=Math.max(0,Number(mastery.mastery_level)||0);
+  const search=[key,name,cost,effect].join(' ').toLocaleLowerCase('tr-TR');
+  return '<details class="spellbook-entry" data-spellbook-entry data-search="'+esc(search)+'" data-mastery="'+masteryLevel+'"><summary><span>'+esc(name)+'</span><small>'+esc(cost)+'</small></summary><p>'+esc(effect)+'</p><small>'+Number(mastery.casts||0)+' kullanım · Ustalık '+masteryLevel+'</small></details>';
+ }).join('');
+ const spellbookSection='<section class="section" id="spellbook" data-spellbook><div class="section-head"><h2>Öğrendiğin Savaş Büyüleri</h2><p>Karakterinin büyü arşivi. Büyü ayrıntılarını aç, ada göre ara ve ustalık seviyene göre filtrele.</p></div><div class="spellbook-toolbar card"><label>Büyü ara<input type="search" data-spellbook-filter maxlength="80" placeholder="Büyü adı veya etkisi…" autocomplete="off"></label><label>Ustalık seviyesi<select data-spellbook-mastery><option value="">Tüm seviyeler</option><option value="0">Ustalık 0</option><option value="1">Ustalık 1</option><option value="2">Ustalık 2</option><option value="3">Ustalık 3+</option></select></label><output data-spellbook-count aria-live="polite">'+learnedSpellKeys.length+' / '+learnedSpellKeys.length+' büyü</output></div><div class="spellbook-grid">'+(spellbookRows||'<article class="card">Başlangıç büyüsü dışında henüz savaş büyüsü öğrenmedin. /buyuogren komutuyla yeni büyüler öğrenebilirsin.</article>')+'</div><p class="card spellbook-empty" data-spellbook-empty hidden>Bu aramayla eşleşen büyü bulunamadı.</p><p class="market-meta">Zoltraak başlangıç büyüsü olarak her karakterin kitabında bulunur. Yeni büyüleri Discord’da /buyuogren ile öğrenebilirsin.</p></section>';
+ const dailyQuestSection='<section class="section" id="daily-quests"><div class="section-head"><h2>Günlük Görev Panosu</h2><p>Sunucuda etkin olan görevler ve bugünkü karakter ilerlemen. Sınıfına özel görevler yalnızca kendi sınıfın için gösterilir.</p></div><div class="profile-board-grid">'+(dailyQuestRows||'<article class="card">Şu anda bu karakter için etkin günlük görev yok.</article>')+'</div><p class="market-meta">Tamamlanan görevlerin altın ödülünü Discord’da /gunlukgorev komutundan alabilirsin. Web paneli ödül işlemi yapmaz.</p></section>';
  const explorationMapSection=renderExplorationAtlas({mapContent,stats,esc});
  const notices={profile_saved:'Profil ve gizlilik tercihlerin kaydedildi.',title_not_owned:'Yalnızca gerçekten kazandığın bir unvanı seçebilirsin.',invalid:'Profil ayarları geçersiz.'};
  const notice=status&&notices[status]?'<article class="card profile-notice" role="status">'+esc(notices[status])+'</article>':'';
