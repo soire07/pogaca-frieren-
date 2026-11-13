@@ -52,3 +52,37 @@ test('site DM history is private to accepted unblocked friends and read receipts
  const noFriend=database({friends:false});
  assert.deepEqual(await listSiteDirectMessages(noFriend,{accountId:a,otherAccountId:b}),{status:'not_allowed',messages:[]});
 });
+
+
+test('site group conversations require friendship with every invited member and support member-scoped actions',async()=>{
+ const c='site_123e4567-e89b-12d3-a456-426614174002',groupId='123e4567-e89b-12d3-a456-426614174003';const seen=[];
+ const db={async query(sql,params=[]){seen.push({sql,params});
+  if(sql.includes('SELECT 1 FROM frieren_account_friend_requests'))return{rows:[{}],rowCount:1};
+  if(sql.includes('SELECT 1 FROM frieren_public_chat_blocks'))return{rows:[],rowCount:0};
+  if(sql.startsWith('INSERT INTO frieren_site_dm_groups'))return{rows:[],rowCount:1};
+  if(sql.startsWith('INSERT INTO frieren_site_dm_group_members'))return{rows:[],rowCount:1};
+  if(sql.startsWith('SELECT account_id FROM frieren_site_dm_group_members WHERE group_id=$1 AND account_id<>$2'))return{rows:[{account_id:b},{account_id:c}],rowCount:2};
+  if(sql.startsWith('SELECT 1 FROM frieren_site_dm_group_members'))return{rows:[{}],rowCount:1};
+  if(sql.includes('SELECT')&&sql.includes('FROM frieren_site_dm_group_messages m'))return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174004',sender_account_id:a,username:'Fern',body:'Grup selamı',created_at:new Date().toISOString(),is_own:false,is_read:false}],rowCount:1};
+  if(sql.startsWith('INSERT INTO frieren_site_dm_group_messages'))return{rows:[],rowCount:1};
+  if(sql.startsWith('INSERT INTO frieren_site_dm_group_reads'))return{rows:[{}],rowCount:1};
+  if(sql.startsWith('SELECT created_by FROM frieren_site_dm_groups'))return{rows:[{created_by:a}],rowCount:1};
+  if(sql.startsWith('DELETE FROM frieren_site_dm_group_members'))return{rows:[{}],rowCount:1};
+  if(sql.startsWith('SELECT account_id FROM frieren_site_dm_group_members WHERE group_id=$1 ORDER BY'))return{rows:[{account_id:b}],rowCount:1};
+  return{rows:[],rowCount:1};
+ }};
+ const {createSiteDmGroup,sendSiteDmGroupMessage,listSiteDmGroupMessages,markSiteDmGroupMessagesRead,leaveSiteDmGroup}=await import('../site-direct-messages.js');
+ const created=await createSiteDmGroup(db,{creatorAccountId:a,memberAccountIds:[b,c],title:'Büyü akademisi'});assert.equal(created.status,'created');
+ assert.equal(seen.filter(x=>x.sql.startsWith('INSERT INTO frieren_site_dm_group_members')).length,3);
+ assert.equal((await sendSiteDmGroupMessage(db,{senderAccountId:a,groupId,message:'Grup selamı'})).status,'sent');
+ const messages=await listSiteDmGroupMessages(db,{accountId:b,groupId});assert.equal(messages.status,'ok');assert.equal(messages.messages[0].username,'Fern');
+ assert.equal((await markSiteDmGroupMessagesRead(db,{accountId:b,groupId})).status,'read');
+ assert.equal((await leaveSiteDmGroup(db,{accountId:a,groupId})).status,'left');
+ assert.ok(seen.some(x=>x.sql.startsWith('UPDATE frieren_site_dm_groups SET created_by=$2')));
+});
+test('site group conversations reject nonmembers and require at least two invited friends',async()=>{
+ const db=database({friends:false});const {createSiteDmGroup,sendSiteDmGroupMessage}=await import('../site-direct-messages.js');
+ assert.throws(()=>createSiteDmGroup(db,{creatorAccountId:a,memberAccountIds:[b],title:'Küçük grup'}),/SITE_DM_GROUP_MEMBERS_INVALID/);
+ const id='123e4567-e89b-12d3-a456-426614174003';
+ assert.equal((await sendSiteDmGroupMessage(db,{senderAccountId:a,groupId:id,body:'selam'})).status,'not_allowed');
+});
