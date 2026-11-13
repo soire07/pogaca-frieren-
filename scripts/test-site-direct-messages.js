@@ -10,7 +10,7 @@ function database({friends=true,blocked=false,rate=0,thread=0}={}){
   statements.push({sql,params});
   if(sql.includes('SELECT 1 FROM frieren_account_friend_requests'))return{rows:friends?[{}]:[],rowCount:friends?1:0};
   if(sql.includes('SELECT 1 FROM frieren_public_chat_blocks'))return{rows:blocked?[{}]:[],rowCount:blocked?1:0};
-  if(sql.includes('SELECT COUNT(*)::int AS count FROM frieren_site_direct_messages WHERE sender_account_id'))return{rows:[{count:rate}],rowCount:1};
+  if(sql.includes('frieren_site_direct_messages WHERE sender_account_id=$1')&&sql.includes('10 minutes'))return{rows:[{count:rate}],rowCount:1};
   if(sql.includes('SELECT COUNT(*)::int AS count FROM frieren_site_direct_messages WHERE (sender_account_id'))return{rows:[{count:thread}],rowCount:1};
   if(sql.startsWith('INSERT INTO frieren_site_direct_messages'))return{rows:[],rowCount:1};
   if(sql.startsWith('SELECT message_id,sender_account_id'))return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174000',sender_account_id:b,recipient_account_id:a,body:'Selam',is_own:false}],rowCount:1};
