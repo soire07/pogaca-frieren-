@@ -1481,7 +1481,7 @@ html[data-a11y-motion=reduce] *,html[data-a11y-motion=reduce] *::before,html[dat
 .atlas-progress-track{height:8px;margin:10px 0 7px;overflow:hidden;border-radius:20px;background:#111a20;border:1px solid #d6b77b33}
 .atlas-progress-track i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#789c77,#d2b16b,#f1dba2);box-shadow:0 0 12px #e4c17e55}
 .atlas-progress small{color:#b9ad99}
-.atlas-map-shell{position:relative;padding:10px;border:1px solid #c9a66d66;border-radius:18px;background:linear-gradient(145deg,#292638,#1b202b);box-shadow:0 24px 60px #05060c70}
+.atlas-map-shell{--atlas-paper-bg:#e6d4ad;position:relative;padding:10px;border:1px solid #c9a66d66;border-radius:18px;background:linear-gradient(145deg,#292638,#1b202b);box-shadow:0 24px 60px #05060c70}
 .atlas-map-paper{position:absolute;inset:5px;border:1px solid #e7d1a044;border-radius:14px;pointer-events:none;z-index:2}
 .atlas-map-viewport{position:relative;overflow:hidden;width:100%;border-radius:12px;background:#315b63;isolation:isolate}
 .atlas-map-art{position:relative;width:100%;aspect-ratio:3/2;overflow:hidden}
