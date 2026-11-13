@@ -1846,7 +1846,7 @@ test('illustrated atlas background is served as a first-party image asset', asyn
  assert.ok(artwork.startsWith('<svg'));
  assert.match(artwork,/KUZEY KITASI/);
  const atlas=renderExplorationAtlas({mapContent:{regions:[],summary:{}}});
- assert.ok(atlas.includes('src="/assets/frieren-world-map.svg?v=atlas-362-1"'));
+ assert.ok(atlas.includes('src="/assets/frieren-world-map.svg?v=atlas-373-1"'));
  assert.match(atlas,/atlas-pin-layer/);
  assert.doesNotMatch(atlas,/<svg class="atlas-world-map"/);
 });
