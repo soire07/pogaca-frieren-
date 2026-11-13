@@ -1,0 +1,8 @@
+(() => {
+ const root=document.querySelector('[data-exploration-atlas]'); if(!root)return;
+ const modal=root.querySelector('[data-atlas-modal]'),panels=[...root.querySelectorAll('[data-atlas-panel]')];let last=null;
+ const close=()=>{modal.hidden=true;document.body.classList.remove('atlas-modal-open');if(last)last.focus();};
+ const open=(key,focus,trigger)=>{const active=panels.find(x=>x.dataset.atlasPanel===key);if(!active)return;panels.forEach(x=>{x.hidden=x!==active;x.querySelectorAll('.is-highlighted').forEach(n=>n.classList.remove('is-highlighted'));});modal.hidden=false;document.body.classList.add('atlas-modal-open');last=trigger;const h=active.querySelector('h3');if(h){h.tabIndex=-1;h.focus({preventScroll:true});}if(focus==='boss'||focus==='dungeon'){const target=active.querySelector('[data-atlas-focus-target="'+focus+'"]');if(target)target.classList.add('is-highlighted');}};
+ root.addEventListener('click',e=>{const c=e.target.closest('[data-atlas-close]');if(c){close();return;}const t=e.target.closest('[data-atlas-open]');if(t){e.preventDefault();open(t.dataset.atlasOpen,t.dataset.atlasFocus,t);}});
+ document.addEventListener('keydown',e=>{if(modal.hidden)return;if(e.key==='Escape'){close();return;}if(e.key==='Tab'){const f=[...modal.querySelectorAll('button:not([disabled]),[tabindex="-1"]')];if(!f.length)return;const a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
+})();
