@@ -1139,6 +1139,7 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
   if(sql.includes('FROM adventure_history'))return{rows:[{activity_type:'adventure',activity_label:'Buzlu Orman',activity_at:'2026-01-04T00:00:00.000Z',xp_awarded:50}],rowCount:1};
   if(sql.includes('FROM adventure_journal_entries'))return{rows:[{collection_key:'spells',entry_key:'alev_kuresi'},{collection_key:'discoveries',entry_key:'ancient-elf-sanctuary'}],rowCount:2};
   if(sql.includes('FROM adventure_journal_collection_claims'))return{rows:[{collection_key:'spells'}],rowCount:1};
+  if(sql.includes('FROM exploration_region_mastery'))return{rows:[{region_key:'merkez',visits:3},{region_key:'orman',visits:1}],rowCount:2};
   if(sql.includes('FROM anime_character_collection'))return{rows:[{anime_cards:14,anime_copies:22,journal_entries:9}],rowCount:1};
   if(sql.includes('FROM arena_seasons'))return{rows:[{season_name:'Kuzey Sezonu',rating:1420,wins:5,losses:2,matches:7}],rowCount:1};
   if(sql.includes('FROM player_profile_settings'))return{rows:[{show_stats:false,show_achievements:true,show_collections:false,show_activity:false,show_cosmetics:true,active_title:'Kıdemli Maceracı'}],rowCount:1};
@@ -1154,6 +1155,11 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/Büyü arşivi/);
  assert.match(response.body,/1\/7 kayıt/);
  assert.match(response.body,/Ödül alındı/);
+ assert.match(response.body,/Keşif Haritası/);
+ assert.match(response.body,/Merkez Topraklar/);
+ assert.match(response.body,/Büyük Orman Yolu/);
+ assert.match(response.body,/Ustalık seviyesi 1/);
+ assert.match(response.body,/Seviye 35/);
  assert.match(response.body,/Seviye 20/);
  assert.match(response.body,/1\.950/);
  assert.match(response.body,/Kıdemli Maceracı/);
@@ -1237,6 +1243,7 @@ test('owner profile overrides VIP and renders the exclusive role, title, blood X
     if(sql.includes('SELECT TO_CHAR(date_trunc'))return{rows:[{day_label:'2026-11-04',xp:80}],rowCount:1};
     if(sql.includes('SELECT collection_key,entry_key FROM adventure_journal_entries'))return{rows:[],rowCount:0};
     if(sql.includes('SELECT collection_key FROM adventure_journal_collection_claims'))return{rows:[],rowCount:0};
+    if(sql.includes('FROM exploration_region_mastery'))return{rows:[],rowCount:0};
     throw new Error('Unexpected profile query: '+sql);
   }};
   try {
