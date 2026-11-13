@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ensureAccountProfileSchema } from './account-profile.js';
+import { createAccountNotification, ensureAccountProfileSchema } from './account-profile.js';
 import { ensurePublicChatSchema } from './public-chat.js';
 
 const ACCOUNT=/^site_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -39,6 +39,7 @@ export async function sendSiteDirectMessage(db,{senderAccountId,recipientAccount
   if(Number(rate.rows[0]?.count||0)>=20)return{status:'rate_limited'};
   const id=randomUUID();
   await c.query('INSERT INTO frieren_site_direct_messages(message_id,sender_account_id,recipient_account_id,body) VALUES($1,$2,$3,$4)',[id,sender,recipient,message]);
+  await createAccountNotification(c,{accountId:recipient,type:'site_dm',title:'Yeni özel mesaj',body:message.slice(0,120),href:'/kesfet#topluluk-sohbeti',schemaReady:true});
   await c.query(`DELETE FROM frieren_site_direct_messages WHERE message_id IN (
    SELECT message_id FROM frieren_site_direct_messages
    WHERE (sender_account_id=$1 AND recipient_account_id=$2) OR (sender_account_id=$2 AND recipient_account_id=$1)
