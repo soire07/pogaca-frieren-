@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { ATLAS_HISTORICAL_EVENTS, ATLAS_ROUTE_STOPS, findAtlasRoute, getAtlasDetailLevel } from '../atlas-navigation.js';
 import { renderExplorationAtlas } from '../exploration-atlas.js';
 
@@ -34,6 +35,35 @@ test('route endpoints are known canon settlements and route geometry does not mu
   assert.deepEqual(ATLAS_ROUTE_STOPS, snapshot);
   assert.ok(ATLAS_ROUTE_STOPS.some(stop => stop.id === 'waal' && stop.label === 'Waal'));
   assert.ok(ATLAS_ROUTE_STOPS.some(stop => stop.id === 'aeusserst' && stop.label === 'Äußerst'));
+});
+
+test('the route graph connects every selectable canon stop in both directions', () => {
+  for (const from of ATLAS_ROUTE_STOPS) {
+    for (const to of ATLAS_ROUTE_STOPS) {
+      const route = findAtlasRoute(from.id, to.id);
+      assert.ok(route, 'missing route: ' + from.id + ' -> ' + to.id);
+      assert.equal(route.nodes[0].id, from.id);
+      assert.equal(route.nodes.at(-1).id, to.id);
+      const reverse = findAtlasRoute(to.id, from.id);
+      assert.ok(reverse);
+      assert.equal(reverse.distanceUnits, route.distanceUnits);
+    }
+  }
+});
+
+test('route, history and zoom controls have responsive and reduced-motion styling', async () => {
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const client = await readFile(new URL('../public-assets/exploration-atlas.js', import.meta.url), 'utf8');
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  assert.match(css, /\.atlas-route-overlay/);
+  assert.match(css, /\.atlas-route-planner/);
+  assert.match(css, /\.atlas-pin-event \.atlas-pin-glyph/);
+  assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-zoom-detail-layer/);
+  assert.match(client, /data-atlas-route-submit/);
+  assert.match(client, /atlasZoomRegional/);
+  assert.match(atlas, /data-atlas-event=/);
+  assert.match(atlas, /data-atlas-zoom-regional="1\.35"/);
+  assert.match(atlas, /data-atlas-zoom-local="2\.2"/);
 });
 
 test('historical event markers are anchored to known places and carry episode/source evidence', () => {
