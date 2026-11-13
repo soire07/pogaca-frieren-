@@ -209,3 +209,23 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   assert.match(locations, /x:39, y:79/);
   assert.match(locations, /level_1: Object\.freeze\(\{ regionKey:'merkez', x:43, y:72/);
 });
+
+
+test('atlas terrain has organic biome edges and distinct painterly relief layers', async () => {
+  const artwork = await readFile(new URL('../public-assets/frieren-world-map.svg', import.meta.url), 'utf8');
+  assert.match(artwork, /id="biome-edge"/, 'biome boundaries need organic edge displacement');
+  assert.match(artwork, /feTurbulence/);
+  assert.match(artwork, /feDisplacementMap[^>]+scale="(?:1[2-9]|[2-9][0-9])"/);
+  for (const layer of [
+    'atlas-forest-canopy',
+    'atlas-mountain-relief',
+    'atlas-meadow-texture',
+    'atlas-coastline-detail',
+    'atlas-tundra-texture'
+  ]) {
+    assert.ok(artwork.includes(layer), 'missing painterly terrain layer: ' + layer);
+  }
+  assert.match(artwork, /clip-path="url\(#land-clip\)"/);
+  assert.match(artwork, /stroke-linecap="round"/);
+  assert.doesNotMatch(artwork, /<circle[^>]+fill="black"/i);
+});
