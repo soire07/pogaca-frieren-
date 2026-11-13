@@ -91,3 +91,30 @@ test('atlas CSS keeps every category distinct and city labels hidden until inter
   assert.match(refined, /@media\(max-width:700px\)/);
   assert.match(refined, /prefers-reduced-motion:reduce/);
 });
+
+
+test('current canon and RPG map coordinates are collision-adjusted as one visual layer', async () => {
+  const { declutterAtlasPins } = await import('../atlas-pin-layout.js');
+  const {
+    FRIEREN_WORLD_SETTLEMENTS,
+    FRIEREN_WORLD_BOSS_LOCATIONS,
+    FRIEREN_WORLD_DUNGEON_LOCATIONS
+  } = await import('../exploration-world-locations.js');
+  const markers = [
+    ...[
+      ['merkez',35,68],['orman',32,43],['harabeler',55,47],
+      ['kuzey',68,31],['yayla',74,72],['aus',87,8]
+    ].map(([key,x,y])=>({id:'region:'+key,type:'region',x,y})),
+    ...FRIEREN_WORLD_SETTLEMENTS.map(place=>({id:'city:'+place.key,type:'city',x:place.x,y:place.y})),
+    ...Object.entries(FRIEREN_WORLD_BOSS_LOCATIONS).map(([key,point])=>({id:'boss:'+key,type:'boss',x:point.x,y:point.y})),
+    ...Object.entries(FRIEREN_WORLD_DUNGEON_LOCATIONS).map(([key,point])=>({id:'dungeon:'+key,type:'dungeon',x:point.x,y:point.y}))
+  ];
+  const arranged = declutterAtlasPins(markers);
+  for (let i = 0; i < arranged.length; i++) {
+    for (let j = i + 1; j < arranged.length; j++) {
+      const dx = arranged[i].x - arranged[j].x;
+      const dy = (arranged[i].y - arranged[j].y) * 1.5;
+      assert.ok(Math.hypot(dx, dy) >= 3.1, 'catalog pins overlap: ' + arranged[i].id + ' / ' + arranged[j].id);
+    }
+  }
+});
