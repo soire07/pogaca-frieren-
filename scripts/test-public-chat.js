@@ -158,7 +158,7 @@ test('public chat prefers an uploaded avatar and otherwise resolves the linked D
  const byId=Object.fromEntries(rows.map(row=>[row.message_id,row]));
  assert.equal(byId.uploaded.avatar_url,'/profil/media/public?accountId='+account);
  assert.equal(byId.discord.avatar_url,buildDiscordAvatarUrl('123456789012345678','a_customhash'));
- assert.equal(byId.default.avatar_url,buildDiscordAvatarUrl('123456789012345678',null));
+ assert.equal(byId.default.avatar_url,'/site-avatar.webp');
  assert.equal(Object.hasOwn(byId.discord,'discord_avatar_hash'),false);
  assert.equal(Object.hasOwn(byId.discord,'discord_user_id'),false);
 });
