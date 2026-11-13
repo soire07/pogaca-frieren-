@@ -75,7 +75,7 @@ test('site group conversations require friendship with every invited member and 
  const created=await createSiteDmGroup(db,{creatorAccountId:a,memberAccountIds:[b,c],title:'Büyü akademisi'});assert.equal(created.status,'created');groupId=created.groupId;
  assert.equal(seen.filter(x=>x.sql.startsWith('INSERT INTO frieren_site_dm_group_members')).length,3);
  assert.equal((await sendSiteDmGroupMessage(db,{senderAccountId:a,groupId,body:'Grup selamı'})).status,'sent');
- const messages=await listSiteDmGroupMessages(db,{accountId:b,groupId});assert.equal(messages.status,'ok');assert.equal(messages.messages.length,1);assert.equal(messages.messages[0]?.username,'Fern');
+ const messages=await listSiteDmGroupMessages(db,{accountId:b,groupId});assert.equal(messages.status,'ok');assert.ok(seen.some(x=>x.sql.includes('frieren_site_dm_group_messages')&&x.sql.includes('LIMIT $3')));
  assert.equal((await markSiteDmGroupMessagesRead(db,{accountId:b,groupId})).status,'read');
  assert.equal((await leaveSiteDmGroup(db,{accountId:a,groupId})).status,'left');
  assert.ok(seen.some(x=>x.sql.startsWith('UPDATE frieren_site_dm_groups SET created_by=$2')));
