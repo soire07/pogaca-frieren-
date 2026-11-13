@@ -57,7 +57,9 @@ test('route, history and zoom controls have responsive and reduced-motion stylin
   const client = await readFile(new URL('../public-assets/exploration-atlas.js', import.meta.url), 'utf8');
   const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
   assert.match(css, /\.atlas-route-overlay/);
-  assert.match(css, /\.atlas-route-planner/);\n  assert.match(css, /\.atlas-local-detail-overlay/);\n  assert.match(css, /data-atlas-season/);
+  assert.match(css, /\.atlas-route-planner/);
+  assert.match(css, /\.atlas-local-detail-overlay/);
+  assert.match(css, /data-atlas-season/);
   assert.match(css, /\.atlas-pin-event \.atlas-pin-glyph/);
   assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-zoom-detail-layer/);
   assert.match(client, /data-atlas-route-submit/);
@@ -75,7 +77,9 @@ test('historical event markers are anchored to known places and carry episode/so
     assert.ok(Number.isInteger(event.episodeEnd) && event.episodeEnd >= event.episodeStart);
     assert.match(event.officialSource, /^https:\/\/frieren-anime\.jp\//);
     assert.match(event.locationSource, /^https:\/\//);
-    assert.ok(Number.isFinite(event.x) && Number.isFinite(event.y));\n    assert.ok(event.episodeSources?.length);\n    assert.ok(event.episodeSources.every(source => source.url.startsWith('https://frieren-anime.jp/story/')));
+    assert.ok(Number.isFinite(event.x) && Number.isFinite(event.y));
+    assert.ok(event.episodeSources?.length);
+    assert.ok(event.episodeSources.every(source => source.url.startsWith('https://frieren-anime.jp/story/')));
   }
   assert.ok(ATLAS_HISTORICAL_EVENTS.some(event => event.anchorKey === 'royal-capital' && event.episodeStart === 1));
   assert.ok(ATLAS_HISTORICAL_EVENTS.some(event => event.anchorKey === 'riegel-canyon' && event.episodeStart === 6));
@@ -116,7 +120,8 @@ test('rendered atlas exposes route, event and zoom-level controls accessibly', (
   assert.match(html, /data-atlas-zoom-detail="overview"/);
   assert.match(html, /data-atlas-detail-level="regional"/);
   assert.match(html, /data-atlas-detail-level="local"/);
-  assert.match(html, /kilometre ölçeği belirtilmemiştir/i);\n  assert.match(html, /Bölüm 06/);
+  assert.match(html, /kilometre ölçeği belirtilmemiştir/i);
+  assert.match(html, /Bölüm 06/);
 });
 
 
@@ -161,4 +166,5 @@ test('rendered atlas exposes user-calibrated scale, seasonal ecology and local d
   assert.match(html, /data-atlas-ecology-summary/);
   assert.match(html, /data-atlas-local-detail-layer/);
   assert.match(html, /kilometre ölçeği belirtilmemiştir/i);
+  assert.match(html, /Bölüm 06/);
 });
