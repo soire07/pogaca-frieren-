@@ -102,3 +102,10 @@ test('group message read state is scoped to the current viewer, not another memb
  assert.match(messageSql,/ap\.profile_slug/,'group messages must include the sender profile slug for profile navigation');
  assert.doesNotMatch(messageSql,/rd\.reader_account_id<>m\.sender_account_id/);
 });
+
+test('direct message media is bound to the accepted friend thread and sender account',async()=>{
+ const db=database();const media='123e4567-e89b-12d3-a456-426614174099';
+ const result=await sendSiteDirectMessage(db,{senderAccountId:a,recipientAccountId:b,body:'',mediaId:media});
+ assert.equal(result.status,'sent');const attach=db.statements.find(x=>x.sql.startsWith('UPDATE frieren_site_chat_media'));
+ assert.ok(attach);assert.equal(attach.params[1],a);assert.equal(attach.params[2],'dm');assert.equal(attach.params[3],'dm:'+[a,b].sort().join(':'));
+});
