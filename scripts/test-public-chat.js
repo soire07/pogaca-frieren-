@@ -143,9 +143,16 @@ test('public chat prefers an uploaded avatar and otherwise resolves the linked D
  const rows=await listPublicChatMessages(db);
  assert.match(sql,/LEFT JOIN frieren_site_discord_accounts/);
  assert.match(sql,/discord_avatar_hash/);
- assert.equal(rows[0].avatar_url,'/profil/media/public?accountId='+account);
- assert.equal(rows[1].avatar_url,buildDiscordAvatarUrl('123456789012345678','a_customhash'));
- assert.equal(rows[2].avatar_url,buildDiscordAvatarUrl('123456789012345678',null));
- assert.equal(Object.hasOwn(rows[1],'discord_avatar_hash'),false);
- assert.equal(Object.hasOwn(rows[1],'discord_user_id'),false);
+ const byId=Object.fromEntries(rows.map(row=>[row.message_id,row]));
+ assert.equal(byId.uploaded.avatar_url,'/profil/media/public?accountId='+account);
+ assert.equal(byId.discord.avatar_url,buildDiscordAvatarUrl('123456789012345678','a_customhash'));
+ assert.equal(byId.default.avatar_url,buildDiscordAvatarUrl('123456789012345678',null));
+ assert.equal(Object.hasOwn(byId.discord,'discord_avatar_hash'),false);
+ assert.equal(Object.hasOwn(byId.discord,'discord_user_id'),false);
+});
+
+
+test('community chat falls back to initials when an avatar image cannot be loaded',async()=>{
+ const {readFile}=await import('node:fs/promises');const script=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');
+ assert.match(script,/avatar\.onerror\s*=/);assert.match(script,/avatar\.replaceWith\(fallback\)/);assert.match(script,/fallback\.dataset\.online=avatar\.dataset\.online/);
 });
