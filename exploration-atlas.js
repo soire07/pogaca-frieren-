@@ -6,12 +6,12 @@ import {
 } from './exploration-world-locations.js';
 
 const REGIONS = Object.freeze({
-  merkez:{name:'Merkez Topraklar',type:'Güney kıta ovaları',city:'Strahl',x:35,y:75,className:'atlas-plains',creatures:['mana_slime','forest_sprite']},
-  orman:{name:'Größe Ormanı',type:'Kadim orman kuşağı',city:'Fabel Köyü',x:31,y:49,className:'atlas-forest',creatures:['forest_sprite','rune_fox']},
-  harabeler:{name:'Graf Granat Bölgesi',type:'Kuzey yerleşimleri ve harabeler',city:'Graf Granat Bölgesi',x:55,y:53,className:'atlas-highlands',creatures:['mana_slime','ancient_drake']},
-  kuzey:{name:'Kühl Bölgesi',type:'Göller ve dağ geçitleri',city:'Äußerst',x:68,y:38,className:'atlas-north',creatures:['frost_hare','rune_fox']},
-  yayla:{name:'Schwer Dağları',type:'Yüksek dağlar',city:'Kılıç Köyü',x:76,y:65,className:'atlas-mountains',creatures:['frost_hare','ancient_drake']},
-  aus:{name:'Ende',type:'Kıtanın en kuzey ucu',city:'İblis Kralı’nın Şatosu',x:88,y:19,className:'atlas-ende',creatures:['ancient_drake','mana_slime']}
+  merkez:{name:'Merkez Topraklar',type:'Güney kıta ovaları',city:'Strahl',x:35,y:68,className:'atlas-plains',creatures:['mana_slime','forest_sprite']},
+  orman:{name:'Größe Ormanı',type:'Kadim orman kuşağı',city:'Fabel Köyü',x:32,y:43,className:'atlas-forest',creatures:['forest_sprite','rune_fox']},
+  harabeler:{name:'Graf Granat Bölgesi',type:'Kuzey yerleşimleri ve harabeler',city:'Graf Granat Bölgesi',x:55,y:47,className:'atlas-highlands',creatures:['mana_slime','ancient_drake']},
+  kuzey:{name:'Kühl Bölgesi',type:'Göller ve dağ geçitleri',city:'Äußerst',x:68,y:31,className:'atlas-north',creatures:['frost_hare','rune_fox']},
+  yayla:{name:'Schwer Dağları',type:'Yüksek dağlar',city:'Kılıç Köyü',x:74,y:72,className:'atlas-mountains',creatures:['frost_hare','ancient_drake']},
+  aus:{name:'Ende',type:'Kıtanın en kuzey ucu',city:'İblis Kralı’nın Şatosu',x:87,y:8,className:'atlas-ende',creatures:['ancient_drake','mana_slime']}
 });
 const REGION_ANCHORS = Object.freeze({
   merkez:{x:35,y:75},orman:{x:31,y:49},harabeler:{x:55,y:53},
