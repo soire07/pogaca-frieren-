@@ -140,7 +140,7 @@ test('Frieren atlas adds subtle northern snowfall and forest mist without changi
   assert.match(css, /atlas-northfall/);
   assert.match(css, /atlas-forest-mist/);
   assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-atmosphere-layer::before/);
-  assert.match(site, /site\.css\?v=atlas-365-1/);
+  assert.match(site, /site\.css\?v=atlas-366-1/);
 });
 
 
@@ -188,6 +188,8 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   assert.match(client, /dataset\.atlasLighting/);
   assert.match(client, /dataset\.atlasWeather/);
   assert.match(css, /atlas-weather-layer/);
+  assert.match(css, /atlas-cloud-shadow/);
+  assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-map-art::before/);
   assert.match(css, /data-atlas-weather="snow"/);
   assert.match(css, /data-atlas-lighting="night"/);
   assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-terrain-details/);
