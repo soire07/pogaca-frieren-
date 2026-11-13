@@ -1637,3 +1637,25 @@ test('web spellbook and Discord /buyular share the same spell display catalog', 
  assert.match(command,/rpg-spell-catalog\.js/);
  assert.match(site,/rpg-spell-catalog\.js/);
 });
+
+test('universal site search indexes pages, Discord commands, characters and spells with category filters', async () => {
+ const client={commands:new Map([
+  ['buyular',{data:{name:'buyular',description:'Öğrendiğin savaş büyülerini ve etkilerini göster.'}}],
+  ['kesif',{data:{name:'kesif',description:'Bölgeleri keşfet ve ustalık kazan.'}}]
+ ])};
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/ara?q=frieren'),response,{db:null,client}),true);
+ assert.equal(response.status,200);
+ assert.match(response.body,/Site Araması/);
+ assert.match(response.body,/Karakter Ansiklopedisi/);
+ assert.match(response.body,/Frieren/);
+ const spells=res();
+ assert.equal(await handlePublicSiteRequest(request('/ara?q=alev&category=spell'),spells,{db:null,client}),true);
+ assert.match(spells.body,/Alev Küresi/);
+ assert.match(spells.body,/data-search-category="spell"/);
+ assert.doesNotMatch(spells.body,/Büyük Orman Yolu/);
+ const commands=res();
+ assert.equal(await handlePublicSiteRequest(request('/ara?q=buyular&category=command'),commands,{db:null,client}),true);
+ assert.match(commands.body,/buyular/);
+ assert.match(commands.body,/Discord komutu/);
+});
