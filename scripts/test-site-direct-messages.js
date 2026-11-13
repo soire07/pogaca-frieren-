@@ -86,3 +86,18 @@ test('site group conversations reject nonmembers and require at least two invite
  const id='123e4567-e89b-12d3-a456-426614174003';
  assert.equal((await sendSiteDmGroupMessage(db,{senderAccountId:a,groupId:id,body:'selam'})).status,'not_allowed');
 });
+
+
+test('group message read state is scoped to the current viewer, not another member',async()=>{
+ const {listSiteDmGroupMessages}=await import('../site-direct-messages.js');
+ const groupId='123e4567-e89b-12d3-a456-426614174003';let messageSql='';
+ const db={async query(sql){
+  if(sql.startsWith('SELECT 1 FROM frieren_site_dm_group_members'))return{rows:[{}],rowCount:1};
+  if(sql.includes('FROM frieren_site_dm_group_messages m LEFT JOIN')){messageSql=sql;return{rows:[{message_id:'123e4567-e89b-12d3-a456-426614174004',sender_account_id:a,username:'Fern',body:'Grup selamı',is_read:false}],rowCount:1};}
+  return{rows:[],rowCount:0};
+ }};
+ const result=await listSiteDmGroupMessages(db,{accountId:b,groupId});
+ assert.equal(result.messages[0].is_read,false);
+ assert.match(messageSql,/rd\.reader_account_id=\$2/);
+ assert.doesNotMatch(messageSql,/rd\.reader_account_id<>m\.sender_account_id/);
+});
