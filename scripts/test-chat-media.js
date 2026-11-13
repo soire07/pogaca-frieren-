@@ -29,9 +29,11 @@ test('R2 signing creates bounded presigned PUT, GET and DELETE requests without 
   assert.match(put.searchParams.get('X-Amz-Signature'),/^[a-f0-9]{64}$/);
   assert.ok(!put.href.includes('test-secret-key'));
   const get=new URL(signChatMediaUrl('GET',key,'image/jpeg',9000));
-  assert.equal(get.searchParams.get('X-Amz-Expires'),'3600');
+  assert.equal(get.searchParams.get('X-Amz-Expires'),'7200');
   assert.equal(get.searchParams.get('response-content-type'),'image/jpeg');
   assert.equal(get.searchParams.get('response-content-disposition'),'inline');
+  assert.equal(get.searchParams.get('response-cache-control'),'private, max-age=3600');
+  const hour=new Date('2026-11-13T05:00:00.000Z');assert.equal(signChatMediaUrl('GET',key,'image/jpeg',7200,hour),signChatMediaUrl('GET',key,'image/jpeg',7200,hour),'hour-bucketed signed URLs should remain cache-stable');
   assert.match(signChatMediaUrl('DELETE',key,null),/X-Amz-Signature=[a-f0-9]{64}/);
   assert.match(getChatMediaReadUrl({object_key:key,mime_type:'image/jpeg'}),/^https:\/\//);
   assert.throws(()=>signChatMediaUrl('POST',key,'image/jpeg'),/CHAT_MEDIA_METHOD_INVALID/);
