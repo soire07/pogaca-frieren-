@@ -7,7 +7,7 @@ import { getFarmPlot } from './farming.js';
 import { getCreatureCollection, getCreatureWishlist } from './creatures.js';
 import { getCharacterWishlist } from './character-wishlist.js';
 import { characters as ANIME_CHARACTERS } from './character-data.js';
-import { spellDetails as RPG_SPELL_DETAILS } from './commands/rpg/buyular.js';
+import { spellDetails as RPG_SPELL_DETAILS } from './rpg-spell-catalog.js';
 import { readPublicSiteSession, createPublicSiteSession } from './owner-dashboard.js';
 import { saveProfileMedia, getProfileMedia, deleteProfileMedia, ensureProfileMediaSchema } from './profile-media.js';
 import { handleSiteAuthRequest, createSiteCsrfToken, verifySiteCsrfToken, ensureSiteAccountSchema } from './site-auth.js';
