@@ -77,6 +77,7 @@ test('Neon backup restore waits for the target database to accept a query', asyn
   assert.ok(restore.indexOf(readiness) < restore.indexOf('pg_restore --exit-on-error'), 'restore must wait until the target database accepts queries');
 });
 
+
 test('Poğaça external HTTP health probe checks liveness and dependency readiness independently', async () => {
   const source = await workflow('pogaca-external-health.yml');
   const triggerBlock = source.split('permissions:')[0];
@@ -97,4 +98,30 @@ test('Poğaça external HTTP health probe checks liveness and dependency readine
   assert.ok(source.includes('timeout-minutes: 3'));
   assert.ok(!source.includes('FRIEREN_AI_HEALTH_URL'));
   assert.ok(!source.includes('DATABASE_URL'));
+});
+
+test('Vercel production smoke runs externally, checks DNS and browser routes, and never writes production data', async () => {
+  const source = await workflow('vercel-production-smoke.yml');
+  const smoke = await readFile(new URL('./vercel-production-smoke.mjs', import.meta.url), 'utf8');
+  const triggerBlock = source.split('permissions:')[0];
+
+  assert.ok(triggerBlock.includes('pull_request:'), 'the PR must validate the external production probe');
+  assert.ok(triggerBlock.includes('deployment_status:'), 'successful Vercel deployment statuses must trigger a post-deploy check');
+  assert.ok(triggerBlock.includes('schedule:'), 'a scheduled external check must catch later DNS/TLS outages');
+  assert.ok(triggerBlock.includes('workflow_dispatch:'), 'manual production diagnostics must remain available');
+  assert.ok(source.includes("cron: '41 4 * * *'"), 'the daily probe must avoid unnecessary frequent requests');
+  assert.ok(source.includes("github.event.deployment_status.state == 'success'"));
+  assert.ok(source.includes('https://frierenbot.vercel.app'));
+  assert.ok(source.includes('node scripts/vercel-production-smoke.mjs'));
+  assert.ok(source.includes('playwright@1.56.1'));
+  assert.ok(smoke.includes("const allowedHost = 'frierenbot.vercel.app'"));
+  assert.ok(smoke.includes("await lookup(baseUrl.hostname"));
+  assert.ok(smoke.includes("engine: chromium"));
+  assert.ok(smoke.includes("engine: webkit"));
+  assert.ok(smoke.includes("'/login'"));
+  assert.ok(smoke.includes("'/tanitim'"));
+  assert.ok(smoke.includes("'/assets/exploration-atlas.js?v=atlas-371-1'"));
+  assert.ok(smoke.includes('for (let attempt = 1; attempt <= 3; attempt += 1)'));
+  assert.ok(!smoke.includes('DATABASE_URL'));
+  assert.ok(!smoke.includes('fetch(') || !smoke.includes('method: \'POST\''), 'the probe must remain read-only');
 });
