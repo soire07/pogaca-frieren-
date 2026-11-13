@@ -47,8 +47,8 @@ export function declutterAtlasPins(pins, { minDistance = 3.2 } = {}) {
     }
     const result = { ...pin, x: selected.x, y: selected.y };
     delete result._index;
-    arranged.set(pin.id, result);
+    arranged.set(pin.id ?? pin._index, result);
     placed.push(selected);
   }
-  return source.map(pin => arranged.get(pin.id) || { ...pin });
+  return source.map((pin, index) => arranged.get(pin.id ?? index) || { ...pin });
 }
