@@ -29,7 +29,7 @@ export function subscribeChatEvents(accountId,listener){
 
 export function publishChatEvent({scope,accountIds=[],conversationId=null}={}){
  if(!['public','dm','group'].includes(scope))return 0;
- const event={id:randomUUID(),scope,conversationId:scope==='group'&&/^[0-9a-f-]{36}$/i.test(String(conversationId||''))?String(conversationId):null,at:Date.now()};
+ const event={id:randomUUID(),scope,conversationId:scope==='group'&&/^[0-9a-f-]{36}$/i.test(String(conversationId||''))?String(conversationId):scope==='dm'&&String(conversationId||'').split(':').length===2&&String(conversationId).split(':').every(id=>accountPattern.test(id))?String(conversationId):null,at:Date.now()};
  let delivered=0;
  if(scope==='public'){
   for(const listeners of subscribers.values())for(const listener of listeners){try{listener(event);delivered++;}catch{}}
