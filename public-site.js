@@ -913,6 +913,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       else if(url.pathname==='/api/public-chat/reports/review')result=await resolvePublicChatReport(db,{accountId:session.id,reportId:form.get('reportId'),status:form.get('status'),isOwner:owner});
       else result=await touchPublicChatPresence(db,{accountId:session.id});
       const status=result.status==='not_found'?404:['self_block','self_report'].includes(result.status)?400:['added','removed','blocked','already_blocked','unblocked','updated','deleted','pinned','unpinned','online','typing','read','reported','already_reported','reviewed','dismissed'].includes(result.status)?200:400;
+      if(status===200&&url.pathname!=='/api/public-chat/presence')publishChatEvent({scope:'public'});
       res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(result));return true;
     }catch(error){
       if(String(error?.message||'').startsWith('PUBLIC_CHAT_')){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_chat_action'}));return true;}
