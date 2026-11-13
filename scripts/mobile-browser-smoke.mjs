@@ -94,7 +94,7 @@ for (const scenario of scenarios) {
       stats: {}
     });
     await page.setContent('<!doctype html><html lang="tr"><body>' + atlasMarkup + '</body></html>');
-    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-364-1' });
+    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-365-1' });
     const terrainLayer = page.locator('[data-atlas-geography-layer="terrain-details"]');
     const terrainToggle = page.locator('[data-atlas-geography="terrain-details"]');
     if (await terrainLayer.count() !== 1 || await terrainLayer.getAttribute('hidden') !== null) {
