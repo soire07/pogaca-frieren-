@@ -24,6 +24,12 @@ for (const scenario of scenarios) {
       hasTouch: true
     });
     const page = await context.newPage();
+    const browserErrors = [];
+    const pageErrors = [];
+    const failedRequests = [];
+    page.on('console', message => { if (message.type() === 'error') browserErrors.push(message.text()); });
+    page.on('pageerror', error => pageErrors.push(error.message));
+    page.on('requestfailed', request => failedRequests.push({ url: request.url(), error: request.failure()?.errorText }));
     const siteSession = createPublicSiteSession(
       process.env.ADMIN_SESSION_SECRET,
       { id: 'site_123e4567-e89b-12d3-a456-426614174000', username: 'Smoke Gezgin' },
@@ -68,6 +74,63 @@ for (const scenario of scenarios) {
     }
     const playerPage = await page.goto(baseUrl + '/kesfet', { waitUntil: 'domcontentloaded', timeout: 45000 });
     if (!playerPage || playerPage.status() !== 200) throw new Error(scenario.name + ' authenticated site page HTTP ' + (playerPage?.status() || 'no response'));
+    const encyclopediaPage = await page.goto(baseUrl + '/ansiklopedi', { waitUntil: 'domcontentloaded', timeout: 45000 });
+    if (!encyclopediaPage || encyclopediaPage.status() !== 200) throw new Error(scenario.name + ' character encyclopedia HTTP ' + (encyclopediaPage?.status() || 'no response'));
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+    await page.waitForTimeout(300);
+    const accessibilityPanel = page.locator('[data-accessibility-panel]');
+    if (await accessibilityPanel.count() !== 1) throw new Error(scenario.name + ' accessibility controls are missing');
+    await accessibilityPanel.locator('summary').click();
+    await accessibilityPanel.locator('[data-accessibility-font="large"]').click();
+    await accessibilityPanel.locator('[data-accessibility-contrast]').click();
+    await accessibilityPanel.locator('[data-accessibility-motion]').click();
+    const accessibilityState = await page.evaluate(() => ({
+      font: document.documentElement.dataset.a11yFont,
+      contrast: document.documentElement.dataset.a11yContrast,
+      motion: document.documentElement.dataset.a11yMotion,
+      saved: Boolean(localStorage.getItem('frieren-accessibility-v1'))
+    }));
+    if (accessibilityState.font !== 'large' || accessibilityState.contrast !== 'high' || accessibilityState.motion !== 'reduce' || !accessibilityState.saved) {
+      throw new Error(scenario.name + ' accessibility controls did not apply and persist: ' + JSON.stringify(accessibilityState));
+    }
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+    const restoredAccessibility = await page.evaluate(() => ({
+      font: document.documentElement.dataset.a11yFont,
+      contrast: document.documentElement.dataset.a11yContrast,
+      motion: document.documentElement.dataset.a11yMotion
+    }));
+    if (restoredAccessibility.font !== 'large' || restoredAccessibility.contrast !== 'high' || restoredAccessibility.motion !== 'reduce') {
+      throw new Error(scenario.name + ' accessibility preferences were not restored after reload: ' + JSON.stringify(restoredAccessibility));
+    }
+    const encyclopediaDiagnostics = await page.evaluate(() => ({
+      root: Boolean(document.querySelector('[data-character-encyclopedia]')),
+      ready: document.querySelector('[data-character-encyclopedia]')?.dataset.characterEncyclopediaReady || null,
+      script: [...document.scripts].filter(script => script.src.includes('character-encyclopedia.js')).map(script => ({ src: script.src, defer: script.defer }))
+    }));
+    if (encyclopediaDiagnostics.ready !== 'true') throw new Error(scenario.name + ' character encyclopedia did not initialize: ' + JSON.stringify({ encyclopediaDiagnostics, browserErrors, pageErrors, failedRequests }));
+    await page.locator('[data-character-search]').fill('frieren');
+    const frierenAnimeOption = await page.locator('[data-character-anime] option').evaluateAll(options => options.map(option => option.value).find(value => value.includes('Frieren')));
+    if (!frierenAnimeOption) throw new Error(scenario.name + ' character encyclopedia is missing the Frieren series filter');
+    await page.locator('[data-character-anime]').selectOption(frierenAnimeOption);
+    await page.locator('[data-character-rarity]').selectOption('Efsanevi');
+    const visibleCharacterCount = await page.locator('[data-character-card]:visible').count();
+    if (visibleCharacterCount < 1) throw new Error(scenario.name + ' character encyclopedia filters returned no expected Frieren character');
+    const spoilerButton = page.locator('[data-character-card]:visible').first().locator('[data-character-spoiler-toggle]');
+    const spoilerDetails = page.locator('[data-character-card]:visible').first().locator('[data-character-spoiler]');
+    if (!(await spoilerDetails.isHidden())) throw new Error(scenario.name + ' character encyclopedia exposed spoiler details by default');
+    await spoilerButton.click();
+    const revealedSpoiler = await page.evaluate(() => {
+      const root = document.querySelector('[data-character-encyclopedia]');
+      const button = root?.querySelector('[data-character-card]:not([hidden]) [data-character-spoiler-toggle]');
+      const details = root?.querySelector('[data-character-card]:not([hidden]) [data-character-spoiler]');
+      return { ready: root?.dataset.characterEncyclopediaReady, expanded: button?.getAttribute('aria-expanded'), hidden: details?.hidden, script: [...document.scripts].some(script => script.src.includes('character-encyclopedia.js')) };
+    });
+    if (await spoilerDetails.isHidden() || await spoilerButton.getAttribute('aria-expanded') !== 'true') throw new Error(scenario.name + ' character spoiler reveal did not open accessibly: ' + JSON.stringify(revealedSpoiler));
+    await spoilerButton.click();
+    if (!(await spoilerDetails.isHidden()) || await spoilerButton.getAttribute('aria-expanded') !== 'false') throw new Error(scenario.name + ' character spoiler toggle did not close');
+    const encyclopediaLayout = await page.evaluate(() => ({ width: window.innerWidth, documentWidth: document.documentElement.scrollWidth }));
+    if (encyclopediaLayout.documentWidth > encyclopediaLayout.width + 1) throw new Error(scenario.name + ' character encyclopedia horizontal overflow: ' + JSON.stringify(encyclopediaLayout));
     await page.setContent('<main class="profile-page"><input data-profile-achievement-search><select data-profile-achievement-sort><option value="date-desc">Yeni</option><option value="name-asc">Ad</option></select><output id="profile-achievement-count"></output><div id="profile-achievement-list"><article data-achievement-name="frieren" data-achievement-date="2" data-achievement-reward="20">Frieren</article><article data-achievement-name="fern" data-achievement-date="1" data-achievement-reward="10">Fern</article></div><div id="profile-activity-list"><li data-activity-type="macera">Macera</li><li data-activity-type="başarım">Başarım</li></div><button type="button" data-profile-activity-filter="all">Tümü</button><button type="button" data-profile-activity-filter="başarım">Başarım</button><form id="profile-settings-form"><select name="showStats"><option value="false" selected>Gizli</option><option value="true">Açık</option></select><select name="showAchievements"><option value="true" selected>Açık</option><option value="false">Gizli</option></select><select name="showCollections"><option value="true" selected>Açık</option><option value="false">Gizli</option></select><select name="showActivity"><option value="false" selected>Gizli</option><option value="true">Açık</option></select><select name="showCosmetics"><option value="true" selected>Açık</option><option value="false">Gizli</option></select><select name="activeTitle"><option value="">Varsayılan</option></select></form><section data-profile-privacy="showStats">İstatistik</section><section data-profile-privacy="showActivity">Günlük</section><button type="button" id="profile-preview-toggle">Önizleme</button><button type="button" id="profile-settings-reset">Sıfırla</button><p id="profile-preview-note" hidden>Önizleme notu</p></main>');
     await page.addScriptTag({ url: baseUrl + '/assets/profile-interactions.js' });
     await page.locator('[data-profile-achievement-search]').fill('frieren');
@@ -121,7 +184,8 @@ for (const scenario of scenarios) {
     const menuStyle = await sidebar.evaluate(node => { const r=node.getBoundingClientRect(); const s=getComputedStyle(node); return {left:r.left,top:r.top,width:r.width,position:s.position,backdrop:s.backdropFilter}; });
     const maxMenuWidth = scenario.isMobile ? 340 : 440;
     if (menuStyle.position !== 'fixed' || menuStyle.left > 24 || menuStyle.top > 80 || menuStyle.width > maxMenuWidth || (!scenario.isMobile && menuStyle.width < 380)) throw new Error(scenario.name + ' navigation width or anchored popover layout is invalid: ' + JSON.stringify(menuStyle));
-    if (!(await sidebar.getByRole('link', { name: /Kullanıcı Paneli/ }).count())) throw new Error(scenario.name + ' missing player interface shortcut');
+    const playerShortcut = sidebar.locator('[data-nav-path="/"]');
+    if (await playerShortcut.count() !== 1) throw new Error(scenario.name + ' missing player interface shortcut; nav=' + await sidebar.innerText());
     if (await sidebar.locator('[data-nav-path="/kesfet"]').getAttribute('aria-current') !== 'page') throw new Error(scenario.name + ' active navigation item is not marked');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.getElementById('site-sidebar')?.hidden === true);
@@ -132,7 +196,7 @@ for (const scenario of scenarios) {
     await page.waitForFunction(() => document.getElementById('site-sidebar')?.hidden === true);
     if (await menuToggle.getAttribute('aria-expanded') !== 'false' || await sidebar.isVisible()) throw new Error(scenario.name + ' outside click did not close navigation');
     await menuToggle.click();
-    await sidebar.getByRole('link', { name: /Kullanıcı Paneli/ }).click();
+    await playerShortcut.click();
     await page.waitForURL(url => url.pathname === '/');
     if (page.url().split('?')[0] !== baseUrl + '/') throw new Error(scenario.name + ' user panel shortcut did not navigate to the account dashboard');
     if (!(await page.getByRole('heading', { name: /Maceracı Paneli/ }).count())) throw new Error(scenario.name + ' player dashboard heading is missing');

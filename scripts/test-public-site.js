@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { handlePublicSiteRequest, publicHomeShowcasePage } from '../public-site.js';
 import { createPublicSiteSession, buildPublicSiteSessionCookie } from '../owner-dashboard.js';
 import { createSiteCsrfToken } from '../site-auth.js';
+import { buildExplorationMapContent } from '../exploration-map-content.js';
 
 const secret = 'test-public-site-session-secret-at-least-32-characters';
 process.env.ADMIN_SESSION_SECRET = secret;
@@ -1124,6 +1125,18 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  const db={async query(sql,params){
   calls.push({sql,params});
   if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return{rows:[],rowCount:0};
+  if(sql.includes('INSERT INTO guild_daily_quests'))return{rows:[],rowCount:0};
+  if(sql.includes('FROM guild_daily_quests WHERE guild_id=$1'))return{rows:[
+   {quest_key:'adventure',title:'Macera tutkunu',description:'Bugün bir maceraya çık',objective_type:'adventure',class_name:null,reward_coins:100,active:true,is_system:true},
+   {quest_key:'class_buyucu',title:'Mana araştırmacısı',description:'Büyücü olarak büyü çalış',objective_type:'spell',class_name:'Büyücü',reward_coins:140,active:true,is_system:true},
+   {quest_key:'class_muhafiz',title:'Ön safta nöbet',description:'Muhafız olarak boss yen',objective_type:'boss_win',class_name:'Muhafız',reward_coins:130,active:true,is_system:true}
+  ],rowCount:3};
+  if(sql.includes('FROM daily_mission_claims'))return{rows:[{mission_key:'adventure'}],rowCount:1};
+  if(sql.includes('SELECT spell_key,casts,mastery_level FROM spell_mastery'))return{rows:[{spell_key:'alev_kuresi',casts:18,mastery_level:2},{spell_key:'buz_mizragi',casts:7,mastery_level:1}],rowCount:2};
+  if(sql.includes('FROM learned_spells'))return{rows:[{spell_key:'alev_kuresi',learned_at:new Date('2026-11-10T10:00:00Z')},{spell_key:'buz_mizragi',learned_at:new Date('2026-11-11T10:00:00Z')}],rowCount:2};
+  if(sql.includes('last_adventure_at::date'))return{rows:[{done:true}],rowCount:1};
+  if(sql.includes('FROM spell_mastery'))return{rows:[{done:true}],rowCount:1};
+  if(sql.includes('last_boss_win_at::date'))return{rows:[{done:false}],rowCount:1};
   if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[{guild_id:guildId,user_id:userId,character_name:'Fern',class_name:'Büyücü',level:99,xp:38050,coins:900}],rowCount:1};
   if(sql.includes('FROM users WHERE guild_id=$1 AND user_id=$2'))return{rows:[{created_at:'2026-01-01T00:00:00.000Z',boss_defeats:12,dungeon_wins:8,exploration_count:42,items_used_count:9,daily_streak:4,best_daily_streak:7}],rowCount:1};
   if(sql.includes('FROM user_titles'))return{rows:[{title:'Kıdemli Maceracı',unlocked_at:'2026-01-02T00:00:00.000Z'}],rowCount:1};
@@ -1137,6 +1150,11 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
    {board:'achievements',players:[{user_id:userId,character_name:'Fern',achievements:2}]}
   ],rowCount:6};
   if(sql.includes('FROM adventure_history'))return{rows:[{activity_type:'adventure',activity_label:'Buzlu Orman',activity_at:'2026-01-04T00:00:00.000Z',xp_awarded:50}],rowCount:1};
+  if(sql.includes('FROM adventure_journal_entries'))return{rows:[{collection_key:'spells',entry_key:'alev_kuresi'},{collection_key:'discoveries',entry_key:'ancient-elf-sanctuary'},{collection_key:'bosses',entry_key:'schattenwolf'},{collection_key:'bosses',entry_key:'ruinGuardian'}],rowCount:4};
+  if(sql.includes('FROM adventure_journal_collection_claims'))return{rows:[{collection_key:'spells'}],rowCount:1};
+  if(sql.includes('FROM exploration_region_mastery'))return{rows:[{region_key:'merkez',visits:3},{region_key:'orman',visits:1}],rowCount:2};
+  if(sql.includes('FROM inventory WHERE guild_id=$1 AND user_id=$2'))return{rows:[{item_key:'🐺 Schattenwolfzahn',quantity:2},{item_key:'Orman Kristali',quantity:1}],rowCount:2};
+  if(sql.includes('FROM guild_rpg_content_overrides WHERE guild_id=$1 AND content_type=$2'))return{rows:[],rowCount:0};
   if(sql.includes('FROM anime_character_collection'))return{rows:[{anime_cards:14,anime_copies:22,journal_entries:9}],rowCount:1};
   if(sql.includes('FROM arena_seasons'))return{rows:[{season_name:'Kuzey Sezonu',rating:1420,wins:5,losses:2,matches:7}],rowCount:1};
   if(sql.includes('FROM player_profile_settings'))return{rows:[{show_stats:false,show_achievements:true,show_collections:false,show_activity:false,show_cosmetics:true,active_title:'Kıdemli Maceracı'}],rowCount:1};
@@ -1148,6 +1166,63 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.equal(await handlePublicSiteRequest(request('/maceraci/profil?guildId='+guildId,{id:accountId,username:'Gezgin'}),response,{db}),true);
  assert.equal(response.status,200);
  assert.match(response.body,/Maceracı Profili/);
+ assert.match(response.body,/Keşif ve Büyü Günlüğü/);
+ assert.match(response.body,/Büyü arşivi/);
+ assert.match(response.body,/1\/7 kayıt/);
+ assert.match(response.body,/Ödül alındı/);
+ assert.match(response.body,/Öğrendiğin Savaş Büyüleri/);
+ assert.match(response.body,/Zoltraak/);
+ assert.match(response.body,/Alev Küresi/);
+ assert.match(response.body,/Buz Mızrağı/);
+ assert.match(response.body,/Ustalık 2/);
+ assert.match(response.body,/data-spellbook-filter/);
+ assert.match(response.body,/data-spellbook-mastery/);
+ assert.match(response.body,/data-spellbook-count/);
+ assert.match(response.body,/spellbook-controls\.js/);
+ const spellbookAsset=res();
+ assert.equal(await handlePublicSiteRequest(request('/assets/spellbook-controls.js'),spellbookAsset,{db:null}),true);
+ assert.equal(spellbookAsset.status,200);
+ const spellbookScript=spellbookAsset.body.toString('utf8');
+ assert.match(spellbookScript,/addEventListener\('input'/);
+ assert.match(spellbookScript,/addEventListener\('change'/);
+ assert.match(spellbookScript,/data-spellbook-empty/);
+ assert.match(response.body,/Günlük Görev Panosu/);
+ assert.match(response.body,/Macera tutkunu/);
+ assert.match(response.body,/Ödül alındı/);
+ assert.match(response.body,/Mana araştırmacısı/);
+ assert.doesNotMatch(response.body,/Ön safta nöbet/);
+ assert.ok(!calls.some(call=>/INSERT INTO daily_mission_claims|UPDATE users SET coins/i.test(call.sql)));
+ assert.match(response.body,/Keşif Haritası/);
+ assert.match(response.body,/exploration-map-scene/);
+ assert.match(response.body,/exploration-map-terrain/);
+ assert.match(response.body,/exploration-map-parchment/);
+ assert.match(response.body,/exploration-map-coastline/);
+ assert.match(response.body,/exploration-map-compass-rose/);
+ assert.match(response.body,/exploration-map-route-segment is-open/);
+ assert.match(response.body,/exploration-map-route-segment is-locked/);
+ assert.match(response.body,/exploration-map-fog/);
+ assert.match(response.body,/Boss zaferleri · karakter geneli/);
+ assert.match(response.body,/Zindan zaferleri · karakter geneli/);
+ assert.match(response.body,/data-map-marker-type="boss"/);
+ assert.match(response.body,/data-map-marker-type="chest"/);
+ assert.match(response.body,/data-map-marker-type="relic"/);
+ assert.match(response.body,/Boss noktaları/);
+ assert.match(response.body,/Schattenwolf/);
+ assert.match(response.body,/Merkez Topraklar Mahzeni/);
+ assert.match(response.body,/Nadir ganimet noktaları/);
+ assert.match(response.body,/Schattenwolfzahn/);
+ assert.match(response.body,/Envanterinde ×2/);
+ assert.match(response.body,/Keşfedilen bölgeler/);
+ assert.match(response.body,/Yenilen bosslar/);
+ assert.match(response.body,/Sandıklar mevcut zindan karşılaşmalarında rastgele bulunur/);
+ assert.match(response.body,/exploration-map-landmark/);
+ assert.match(response.body,/data-region-key="merkez"/);
+ assert.match(response.body,/href="#region-merkez"/);
+ assert.match(response.body,/aria-label="Frieren RPG dünya haritası"/);
+ assert.match(response.body,/Merkez Topraklar/);
+ assert.match(response.body,/Büyük Orman Yolu/);
+ assert.match(response.body,/Ustalık seviyesi 1/);
+ assert.match(response.body,/Seviye 35/);
  assert.match(response.body,/Seviye 20/);
  assert.match(response.body,/1\.950/);
  assert.match(response.body,/Kıdemli Maceracı/);
@@ -1159,6 +1234,7 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/Gizlilik ayarları/);
  assert.ok(calls.every(call=>!call.params||!call.params.includes('999999999999999999')));
  assert.ok(calls.some(call=>call.sql.includes('WHERE guild_id=$1 AND user_id=$2')));
+ assert.ok(calls.some(call=>call.sql.includes('FROM exploration_region_mastery')&&call.params[0]===guildId&&call.params[1]===userId));
 });
 
 test('public profile preferences are CSRF protected and saved only for the linked guild character',async()=>{
@@ -1217,6 +1293,11 @@ test('owner profile overrides VIP and renders the exclusive role, title, blood X
   process.env.FRIEREN_OWNER_ACCOUNT_IDS=accountId;
   const db={async query(sql){
     if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return{rows:[],rowCount:0};
+    if(sql.includes('INSERT INTO guild_daily_quests'))return{rows:[],rowCount:0};
+    if(sql.includes('FROM guild_daily_quests WHERE guild_id=$1'))return{rows:[{quest_key:'disabled',title:'Kapalı görev',description:'Kapalı görev açıklaması',objective_type:'adventure',class_name:null,reward_coins:0,active:false,is_system:false}],rowCount:1};
+    if(sql.includes('FROM daily_mission_claims'))return{rows:[],rowCount:0};
+    if(sql.includes('SELECT spell_key,casts,mastery_level FROM spell_mastery'))return{rows:[],rowCount:0};
+    if(sql.includes('FROM learned_spells'))return{rows:[],rowCount:0};
     if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};
     if(sql.includes('SELECT show_stats,show_achievements'))return{rows:[{show_stats:true,show_achievements:true,show_collections:true,show_activity:true,show_cosmetics:true,active_title:'Yıldız Büyücüsü'}],rowCount:1};
     if(sql.includes('SELECT created_at,boss_defeats'))return{rows:[{created_at:'2025-01-01T00:00:00Z',boss_defeats:8,dungeon_wins:5,exploration_count:12,daily_streak:4,best_daily_streak:9}],rowCount:1};
@@ -1229,6 +1310,11 @@ test('owner profile overrides VIP and renders the exclusive role, title, blood X
     if(sql.includes('SELECT is_public FROM player_homes'))return{rows:[{is_public:true}],rowCount:1};
     if(sql.includes('SELECT slot,cosmetic_key FROM player_cosmetic_loadout'))return{rows:[{slot:'profile_frame',cosmetic_key:'moon_frame'}],rowCount:1};
     if(sql.includes('SELECT TO_CHAR(date_trunc'))return{rows:[{day_label:'2026-11-04',xp:80}],rowCount:1};
+    if(sql.includes('SELECT collection_key,entry_key FROM adventure_journal_entries'))return{rows:[],rowCount:0};
+    if(sql.includes('SELECT collection_key FROM adventure_journal_collection_claims'))return{rows:[],rowCount:0};
+    if(sql.includes('FROM exploration_region_mastery'))return{rows:[],rowCount:0};
+    if(sql.includes('FROM inventory WHERE guild_id=$1 AND user_id=$2'))return{rows:[],rowCount:0};
+    if(sql.includes('FROM guild_rpg_content_overrides WHERE guild_id=$1 AND content_type=$2'))return{rows:[],rowCount:0};
     throw new Error('Unexpected profile query: '+sql);
   }};
   try {
@@ -1353,6 +1439,12 @@ test('global account profile renders without a guild picker and keeps profile me
   assert.match(response.body,/sunucu.*karakteri seçmen gerekmez/i);
   assert.match(response.body,/data-profile-media-editor/);
   assert.doesNotMatch(response.body,/Sunucu seç|Karakter seç/);
+  assert.match(response.body,/theme-gallery\.js\?v=theme-gallery-1/);
+  const themeAsset=res();
+  assert.equal(await handlePublicSiteRequest(request('/assets/theme-gallery.js'),themeAsset,{db:null}),true);
+  assert.equal(themeAsset.status,200);
+  assert.match(themeAsset.body.toString('utf8'),/aria-pressed/);
+  assert.match(themeAsset.body.toString('utf8'),/dispatchEvent\(new Event\('change'/);
   assert.match(response.body,/\/assets\/user-center\.js/);
 });
 
@@ -1498,7 +1590,7 @@ test('global account profile has a complete Frieren identity layout and keeps RP
   const accountId='site_123e4567-e89b-12d3-a456-426614174000';
   const db={async query(sql){if(sql.includes('SELECT user_id FROM site_discord_links'))return{rows:[],rowCount:0};if(sql.includes('SELECT 1 FROM frieren_profile_media'))return{rows:[],rowCount:0};return{rows:[],rowCount:0};}};
   const response=res();assert.equal(await handlePublicSiteRequest(request('/profil',{id:accountId,username:'Gezgin'}),response,{db}),true);
-  for(const expected of ['account-profile-showcase','account-profile-grid','GİZLİLİK VE GÜVENLİK','/kesfet#topluluk-sohbeti','/hesap-merkezi','/maceraci'])assert.ok(response.body.includes(expected),expected);
+  for(const expected of ['account-profile-showcase','account-profile-grid','GİZLİLİK VE GÜVENLİK','/kesfet#topluluk-sohbeti','/hesap-merkezi','/maceraci','data-theme-gallery','data-theme-choice','data-theme-preview','aria-pressed'])assert.ok(response.body.includes(expected),expected);
   assert.doesNotMatch(response.body,/Sunucu seç|Karakter seç/);
 });
 
@@ -1524,4 +1616,196 @@ test('community chat keeps own messages readable and reactions flowing on mobile
  assert.match(styles,/\.public-chat-reactions\s*\{[^}]*display:\s*flex/);
  assert.match(styles,/\.public-chat-reactions\s*\{[^}]*flex-wrap:\s*wrap/);
  assert.ok(styles.includes('.public-chat-messages{min-height:150px;max-height:52vh;'));
+});
+
+
+test('unified Frieren visual system defines consistent glass surfaces and accessible focus states', async () => {
+ const styles=await readFile(new URL('../site.css',import.meta.url),'utf8');
+ assert.match(styles,/\/\* Unified Frieren platform surface system v1\./);
+ assert.match(styles,/--frieren-panel:rgba\(30,24,48,\.72\)/);
+ assert.match(styles,/backdrop-filter:blur\(14px\)/);
+ assert.match(styles,/outline:2px solid #d9c3ff/);
+ assert.match(styles,/@media\(prefers-reduced-motion:reduce\)/);
+ assert.match(styles,/@media\(max-width:560px\)/);
+});
+
+test('account notification center renders unread state and neutralizes unsafe stored destinations', async () => {
+ const accountId='site_123e4567-e89b-12d3-a456-426614174000';
+ const db={async query(sql){
+  if(sql.includes('SELECT notification_id,notification_type,title,body,href,created_at,read_at FROM frieren_account_notifications'))return{rows:[{notification_id:'123e4567-e89b-12d3-a456-426614174000',notification_type:'friend_request',title:'<img src=x onerror=alert(1)>',body:'Yeni istek',href:'javascript:alert(1)',created_at:new Date('2026-11-13T10:00:00Z'),read_at:null}],rowCount:1};
+  return{rows:[],rowCount:0};
+ }};
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/bildirimler',{id:accountId,username:'Gezgin'}),response,{db}),true);
+ assert.equal(response.status,200);
+ assert.match(response.body,/Okunmamış: 1/);
+ assert.match(response.body,/notification-card is-unread/);
+ assert.match(response.body,/Okunmadı/);
+ assert.doesNotMatch(response.body,/href="javascript:alert\(1\)"/);
+ assert.match(response.body,/href="\/profil">Aç/);
+ assert.match(response.body,/&lt;img src=x onerror=alert\(1\)&gt;/);
+});
+
+test('exploration map content maps real boss, dungeon, rare loot and player progress to the six canonical regions', () => {
+ const result=buildExplorationMapContent({
+  level:22,
+  regionVisits:[{region_key:'merkez',visits:4},{region_key:'orman',visits:2},{region_key:'kuzey',visits:1}],
+  journalEntries:[{collection_key:'bosses',entry_key:'schattenwolf'},{collection_key:'bosses',entry_key:'northDemon'}],
+  inventory:[{item_key:'🐺 Schattenwolfzahn',quantity:2},{item_key:'Orman Kristali',quantity:1}],
+  bosses:[
+   {key:'level_1',minLevel:1,name:'Schattenwolf',region:'Merkez Topraklar',loot:['🐺 Schattenwolfzahn'],craftingMaterial:'Büyülü Poğaça Kutusu'},
+   {key:'level_20',minLevel:20,name:'Kuzey İblisi',region:'Kuzey Toprakları',loot:['Kuzey İblisinin Kalbi'],craftingMaterial:'Ejderha Pulu'}
+  ],
+  dungeons:[
+   {key:'level_1',minLevel:1,name:'Merkez Mahzeni',loot:'Eski Mahzen Anahtarı'},
+   {key:'level_5',minLevel:5,name:'Orman Zindanı',loot:'Orman Kristali'}
+  ],
+  dungeonWins:3
+ });
+ const merkez=result.regions.find(region=>region.region.key==='merkez');
+ const orman=result.regions.find(region=>region.region.key==='orman');
+ const kuzey=result.regions.find(region=>region.region.key==='kuzey');
+ assert.equal(merkez.discovered,true);
+ assert.equal(merkez.visits,4);
+ assert.equal(merkez.masteryLevel,1);
+ assert.equal(merkez.bosses[0].defeated,true);
+ assert.equal(merkez.dungeon.name,'Merkez Mahzeni');
+ assert.equal(merkez.rareItems.find(item=>item.name==='🐺 Schattenwolfzahn').ownedQuantity,2);
+ assert.equal(orman.rareItems.find(item=>item.name==='Orman Kristali').ownedQuantity,1);
+ assert.equal(kuzey.bosses[0].defeated,true);
+ assert.equal(kuzey.unlocked,true);
+ assert.equal(result.summary.discoveredRegions,3);
+ assert.equal(result.summary.defeatedBosses,2);
+ assert.equal(result.summary.dungeonWins,3);
+});
+
+test('map boss completion follows the same journal-key rules as the live solo boss reward flow', () => {
+ const renamed=buildExplorationMapContent({
+  level:20,
+  journalEntries:[{collection_key:'bosses',entry_key:'schattenwolf'}],
+  bosses:[{key:'level_1',minLevel:1,name:'Gece Kurdu',region:'Merkez Topraklar'}],
+  dungeons:[]
+ });
+ assert.equal(renamed.regions.find(region=>region.region.key==='merkez').bosses[0].defeated,false);
+});
+
+test('web exploration atlas and Discord /kesif share one region catalog', async () => {
+ const catalog=await readFile(new URL('../exploration-regions.js',import.meta.url),'utf8');
+ const command=await readFile(new URL('../commands/rpg/kesif.js',import.meta.url),'utf8');
+ const site=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+ const mapContent=await readFile(new URL('../exploration-map-content.js',import.meta.url),'utf8');
+ for(const key of ['merkez','orman','harabeler','kuzey','yayla','aus'])assert.match(catalog,new RegExp("key: '"+key+"'"));
+ assert.match(command,/EXPLORATION_REGION_CATALOG\.map/);
+ assert.match(command,/configured\.minLevel = region\.minLevel/);
+ assert.match(mapContent,/EXPLORATION_REGION_CATALOG/);
+ assert.match(site,/buildExplorationMapContent/);
+});
+
+test('character encyclopedia uses the existing catalog with closed spoilers and working filter hooks', async () => {
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/ansiklopedi'),response,{db:null}),true);
+ assert.equal(response.status,200);
+ for(const expected of ['Karakter Ansiklopedisi','Frieren','Fern','Satoru Gojo','data-character-search','data-character-anime','data-character-rarity','data-character-spoiler-toggle','data-character-spoiler hidden'])assert.ok(response.body.includes(expected),expected);
+ const script=await readFile(new URL('../public-assets/character-encyclopedia.js',import.meta.url),'utf8');
+ assert.match(script,/addEventListener\('input'/);
+ assert.match(script,/data-character-spoiler-toggle/);
+ assert.match(script,/aria-expanded/);
+ for(const assetPath of ['/assets/site-navigation.js','/assets/site-actions.js','/assets/profile-interactions.js','/assets/character-encyclopedia.js']){
+  const asset=res();
+  assert.equal(await handlePublicSiteRequest(request(assetPath),asset,{db:null}),true,assetPath);
+  assert.equal(asset.status,200,assetPath);
+  assert.match(asset.headers['Content-Type'],/javascript/,assetPath);
+  assert.ok(asset.body.length>0,assetPath);
+ }
+ const encyclopediaAsset=res();
+ assert.equal(await handlePublicSiteRequest(request('/assets/character-encyclopedia.js'),encyclopediaAsset,{db:null}),true);
+ assert.match(encyclopediaAsset.body.toString('utf8'),/applyFilters/);
+});
+
+test('web spellbook and Discord /buyular share the same spell display catalog', async () => {
+ const catalog=await readFile(new URL('../rpg-spell-catalog.js',import.meta.url),'utf8');
+ const command=await readFile(new URL('../commands/rpg/buyular.js',import.meta.url),'utf8');
+ const site=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+ for(const key of ['zoltraak','alev_kuresi','buz_mizragi','koruyucu_bariyer','sifa_isigi','yildirim_zinciri','tas_duvar','mana_patlamasi'])assert.match(catalog,new RegExp(key));
+ assert.match(command,/rpg-spell-catalog\.js/);
+ assert.match(site,/rpg-spell-catalog\.js/);
+});
+
+test('universal site search indexes pages, Discord commands, characters and spells with category filters', async () => {
+ const client={commands:new Map([
+  ['buyular',{data:{name:'buyular',description:'Öğrendiğin savaş büyülerini ve etkilerini göster.'}}],
+  ['kesif',{data:{name:'kesif',description:'Bölgeleri keşfet ve ustalık kazan.'}}]
+ ])};
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/ara?q=frieren'),response,{db:null,client}),true);
+ assert.equal(response.status,200);
+ assert.match(response.body,/Site Araması/);
+ assert.match(response.body,/Karakter Ansiklopedisi/);
+ assert.match(response.body,/Frieren/);
+ const spells=res();
+ assert.equal(await handlePublicSiteRequest(request('/ara?q=alev&category=spell'),spells,{db:null,client}),true);
+ assert.match(spells.body,/Alev Küresi/);
+ assert.match(spells.body,/data-search-category="spell"/);
+ assert.doesNotMatch(spells.body,/Büyük Orman Yolu/);
+ const commands=res();
+ assert.equal(await handlePublicSiteRequest(request('/ara?q=buyular&category=command'),commands,{db:null,client}),true);
+ assert.match(commands.body,/buyular/);
+ assert.match(commands.body,/Discord komutu/);
+});
+
+test('public pages expose persistent and keyboard-accessible reading controls', async () => {
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/ansiklopedi'),response,{db:null}),true);
+ assert.match(response.body,/data-accessibility-panel/);
+ assert.match(response.body,/data-accessibility-font/);
+ assert.match(response.body,/data-accessibility-contrast/);
+ assert.match(response.body,/data-accessibility-motion/);
+ assert.match(response.body,/accessibility-controls\.js/);
+ const asset=res();
+ assert.equal(await handlePublicSiteRequest(request('/assets/accessibility-controls.js'),asset,{db:null}),true);
+ assert.equal(asset.status,200);
+ const script=asset.body.toString('utf8');
+ assert.match(script,/localStorage/);
+ assert.match(script,/prefers-reduced-motion/);
+ assert.match(script,/aria-pressed/);
+ assert.match(script,/a11yFont/);
+ assert.match(script,/a11yContrast/);
+ assert.match(script,/a11yMotion/);
+ const styles=await readFile(new URL('../site.css',import.meta.url),'utf8');
+ assert.match(styles,/data-a11y-font=large/);
+ assert.match(styles,/data-a11y-font=x-large/);
+ assert.match(styles,/data-a11y-contrast=high/);
+ assert.match(styles,/data-a11y-motion=reduce/);
+});
+
+test('spellbook search and mastery filters update visible entries and empty state', async () => {
+ const source=await readFile(new URL('../public-assets/spellbook-controls.js',import.meta.url),'utf8');
+ const listeners={};
+ const search={value:'',addEventListener(type,callback){listeners['search:'+type]=callback;}};
+ const mastery={value:'',addEventListener(type,callback){listeners['mastery:'+type]=callback;}};
+ const count={textContent:''},empty={hidden:true};
+ const entries=[
+  {dataset:{search:'alev kuresi fire damage',mastery:'2'},hidden:false},
+  {dataset:{search:'buz mizragi ice freeze',mastery:'1'},hidden:false},
+  {dataset:{search:'mana patlamasi arcane',mastery:'3'},hidden:false}
+ ];
+ const root={dataset:{},querySelector(selector){return selector==='[data-spellbook-filter]'?search:selector==='[data-spellbook-mastery]'?mastery:selector==='[data-spellbook-count]'?count:selector==='[data-spellbook-empty]'?empty:null;},querySelectorAll(selector){return selector==='[data-spellbook-entry]'?entries:[];}};
+ const document={querySelector(selector){return selector==='[data-spellbook]'?root:null;}};
+ const {runInNewContext}=await import('node:vm');
+ runInNewContext(source,{document});
+ assert.equal(root.dataset.spellbookReady,'true');
+ assert.equal(count.textContent,'3 / 3 büyü');
+ search.value='ice';
+ listeners['search:input']();
+ assert.deepEqual(entries.map(entry=>entry.hidden),[true,false,true]);
+ assert.equal(count.textContent,'1 / 3 büyü');
+ mastery.value='3';
+ listeners['mastery:change']();
+ assert.deepEqual(entries.map(entry=>entry.hidden),[true,true,true]);
+ assert.equal(count.textContent,'0 / 3 büyü');
+ assert.equal(empty.hidden,false);
+ search.value='arcane';
+ listeners['search:input']();
+ assert.deepEqual(entries.map(entry=>entry.hidden),[true,true,false]);
+ assert.equal(empty.hidden,true);
 });

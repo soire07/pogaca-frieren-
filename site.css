@@ -914,3 +914,316 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
  .public-chat-owner-controls>[data-chat-toggle-pause]{grid-row:1}
  .public-chat-owner-controls>[data-chat-reports-refresh]{grid-row:2}
 }
+
+
+/* Unified Frieren platform surface system v1.
+   Additive layer: preserve existing page layouts and component contracts. */
+:root{
+  --frieren-night:#100d20;
+  --frieren-panel:rgba(30,24,48,.72);
+  --frieren-panel-strong:rgba(23,19,39,.9);
+  --frieren-border:rgba(207,181,255,.2);
+  --frieren-border-hover:rgba(218,194,255,.48);
+  --frieren-glow:rgba(166,126,232,.14);
+  --frieren-text:#faf6ff;
+  --frieren-muted:#c9c1dc;
+}
+:where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(.card,.account-profile-card,.personal-center-item,.user-center-metrics article,.section-card){
+  border-color:var(--frieren-border);
+  background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025)),var(--frieren-panel);
+  box-shadow:0 18px 48px rgba(4,3,12,.28),inset 0 1px rgba(255,255,255,.055);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+}
+:where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(h1,h2,h3){
+  text-wrap:balance;
+}
+:where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(input,select,textarea){
+  max-width:100%;
+  border-color:var(--frieren-border);
+  background-color:rgba(12,10,23,.78);
+  color:var(--frieren-text);
+}
+:where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(input,select,textarea):focus-visible{
+  outline:2px solid #d9c3ff;
+  outline-offset:3px;
+  border-color:var(--frieren-border-hover);
+}
+:where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(.btn,button,a[role=button]){
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+:where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(.btn,button,a[role=button]):focus-visible{
+  outline:2px solid #e6d4ff;
+  outline-offset:3px;
+}
+@media(hover:hover) and (prefers-reduced-motion:no-preference){
+  :where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(.card,.account-profile-card,.personal-center-item):hover{
+    border-color:var(--frieren-border-hover);
+    box-shadow:0 22px 54px rgba(4,3,12,.34),0 0 26px var(--frieren-glow),inset 0 1px rgba(255,255,255,.07);
+  }
+}
+@media(max-width:560px){
+  :where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(.card,.account-profile-card,.personal-center-item){
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  :where(.user-center-page,.personal-center-page,.account-center-page,.social-center-page,.life-center-page,.collection-center-page,.inventory-center-page,.notification-center-page,.guild-dashboard-page) :where(.btn,button,a[role=button]){
+    transition:none!important;
+  }
+}
+
+/* Account notification inbox states. */
+.notification-card { position: relative; display: grid; gap: 10px; }
+.notification-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.notification-state { display: inline-flex; align-items: center; border: 1px solid rgba(167,139,250,.28); border-radius: 999px; padding: 4px 9px; color: #c9b8f5; font-size: .75rem; font-weight: 700; white-space: nowrap; }
+.notification-card.is-unread { border-color: rgba(167,139,250,.58); box-shadow: inset 3px 0 0 rgba(167,139,250,.8), 0 12px 30px rgba(8,6,24,.16); }
+.notification-card.is-read .notification-state { color: #aaa3bd; border-color: rgba(170,163,189,.22); }
+.notification-all-read { color: #bcb4d0; font-size: .9rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .notification-card { transition: border-color .18s ease, box-shadow .18s ease; }
+}
+
+/* RPG adventure journal collection cards. */
+.journal-collection-card { display: grid; align-content: start; gap: 12px; }
+.journal-collection-card > strong { font-size: 1.25rem; color: #f2eaff; }
+.journal-collection-card .progress { height: 9px; background: rgba(255,255,255,.08); border: 1px solid rgba(185,155,233,.14); }
+.journal-collection-card .progress i { background: linear-gradient(90deg,#8064bd,#c5a9f4); }
+.journal-collection-card small { color: #bcb4d0; }
+.journal-collection-state { margin: 0; color: #d4c5f4; font-weight: 650; }
+
+/* Illustrated RPG world map with live region progression markers. */
+.exploration-map-shell { overflow: hidden; padding: clamp(10px,2.5vw,22px); background: radial-gradient(ellipse at 50% 40%,rgba(105,79,157,.2),transparent 70%),rgba(18,15,38,.9); }
+.exploration-map-scroll { overflow-x: auto; overflow-y: hidden; border: 1px solid rgba(210,190,153,.25); border-radius: 16px; background: #263a36; overscroll-behavior-inline: contain; scrollbar-color: #8064bd #211d32; scrollbar-width: thin; }
+.exploration-map-scroll:focus-visible { outline: 3px solid #c5a9f4; outline-offset: 3px; }
+.exploration-map-svg { display: block; width: 100%; min-width: 720px; height: auto; max-height: none; overflow: hidden; }
+.exploration-map-terrain { pointer-events: none; }
+.exploration-map-landmark { filter: drop-shadow(0 5px 5px rgba(0,0,0,.35)); }
+.exploration-map-road { pointer-events: none; }
+.exploration-map-route { fill: none; stroke: rgba(219,190,255,.55); stroke-width: 3; stroke-dasharray: 4 12; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 5px rgba(184,147,255,.6)); pointer-events: none; }
+.exploration-map-link { cursor: pointer; text-decoration: none; }
+.exploration-map-node-glow { fill: #b79be9; opacity: .12; stroke: none; }
+.exploration-map-node-pin { fill: #76618f; stroke: #e7d5ff; stroke-width: 3; }
+.exploration-map-node-number { fill: #fff8e9; font-size: 18px; font-weight: 900; }
+.exploration-map-node-state { fill: #f4dfaa; font-size: 18px; font-weight: 900; paint-order: stroke; stroke: #26302c; stroke-width: 3px; }
+.exploration-map-node.is-discovered .exploration-map-node-pin { fill: #a987df; stroke: #f0d6ff; }
+.exploration-map-node.is-discovered .exploration-map-node-glow { opacity: .42; }
+.exploration-map-node.is-open .exploration-map-node-pin { fill: #657e70; stroke: #d8e4c4; }
+.exploration-map-node.is-locked .exploration-map-node-pin { fill: #55535b; stroke: #aaa2b5; }
+.exploration-map-node.is-locked .exploration-map-node-number { fill: #d4cbd9; }
+.exploration-map-label rect { fill: rgba(25,31,31,.9); stroke: rgba(226,207,166,.65); stroke-width: 1.5; }
+.exploration-map-label text { fill: #f5e9c8; font-size: 15px; font-weight: 750; pointer-events: none; }
+.exploration-map-link:hover .exploration-map-node-pin, .exploration-map-link:focus-visible .exploration-map-node-pin { stroke: #fff; stroke-width: 5; }
+.exploration-map-link:focus-visible { outline: none; }
+.exploration-map-link:focus-visible .exploration-map-label rect { stroke: #fff; stroke-width: 3; }
+.exploration-map-compass circle { stroke: #d6c7a0; }
+.exploration-map-compass text { fill: #f4e5c3; font-size: 18px; font-weight: 900; }
+.exploration-map-caption { fill: rgba(246,232,195,.72); font-size: 15px; letter-spacing: 2px; }
+.exploration-map-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding-top: 14px; color: #c4bdd4; font-size: .82rem; }
+.exploration-map-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.exploration-map-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #657e70; }
+.exploration-map-legend i.is-discovered { background: #a987df; }
+.exploration-map-legend i.is-locked { background: #55535b; }
+.exploration-map-scroll-hint { color: #a99fbd; }
+.exploration-region-card { display: grid; align-content: start; gap: 9px; scroll-margin-top: 90px; }
+.exploration-region-card > strong { color: #e6dcf8; }
+.exploration-region-card > p { margin: 0; }
+.exploration-region-card.is-locked { opacity: .72; border-style: dashed; }
+.exploration-region-card.is-discovered { border-color: rgba(190,157,245,.5); }
+.exploration-region-card small { color: #bdb4d1; }
+.exploration-region-card .progress { height: 8px; }
+.exploration-region-card .progress i { background: linear-gradient(90deg,#8064bd,#c5a9f4); }
+@media (max-width: 560px) {
+  .exploration-map-shell { padding: 10px; }
+  .exploration-map-svg { min-width: 720px; }
+  .exploration-map-legend { gap: 8px 12px; font-size: .76rem; }
+  .exploration-map-scroll-hint { flex-basis: 100%; }
+}
+
+/* Daily quest board status and reward hierarchy. */
+.daily-quest-card { display: grid; align-content: start; gap: 10px; }
+.daily-quest-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.daily-quest-card-heading h3 { margin: 5px 0 0; }
+.daily-quest-card-heading > strong { color: #d9c5ff; white-space: nowrap; }
+.daily-quest-card > p { margin: 0; color: #c4bdd4; }
+.daily-quest-state { display: inline-flex; align-self: start; border-radius: 999px; padding: 5px 10px; border: 1px solid rgba(176,157,210,.25); color: #c9c1d8; font-size: .8rem; font-weight: 700; }
+.daily-quest-card.is-complete { border-color: rgba(151,206,171,.42); }
+.daily-quest-card.is-complete .daily-quest-state { color: #b5e6c4; border-color: rgba(151,206,171,.38); }
+.daily-quest-card.is-claimed .daily-quest-state { color: #d8c5ff; border-color: rgba(190,157,245,.45); }
+
+/* Public character encyclopedia with spoiler-safe progressive disclosure. */
+.encyclopedia-page { padding-top: clamp(28px,5vw,56px); padding-bottom: 64px; }
+.encyclopedia-page > .section-head { max-width: 820px; margin-bottom: 22px; }
+.encyclopedia-page > .section-head h1 { margin: 8px 0 12px; }
+.encyclopedia-page > .section-head p { color: #c6bdd8; }
+.encyclopedia-toolbar { display: grid; grid-template-columns: minmax(180px,1.5fr) minmax(160px,1fr) minmax(140px,.8fr) auto; align-items: end; gap: 14px; margin-bottom: 20px; }
+.encyclopedia-toolbar label { display: grid; gap: 7px; color: #d9cfee; font-size: .88rem; }
+.encyclopedia-toolbar input,.encyclopedia-toolbar select { width: 100%; min-width: 0; }
+.encyclopedia-toolbar output { color: #c9b8f5; font-size: .85rem; white-space: nowrap; padding-bottom: 10px; }
+.encyclopedia-character-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,280px),1fr)); gap: 16px; }
+.encyclopedia-character-card { display: grid; align-content: start; gap: 14px; }
+.encyclopedia-character-card[hidden] { display: none; }
+.encyclopedia-character-heading { display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 12px; }
+.encyclopedia-character-heading h2 { margin: 0; font-size: 1.08rem; }
+.encyclopedia-character-heading small { color: #bcb4d0; display: block; margin-top: 4px; }
+.encyclopedia-character-emoji { display: grid; place-items: center; width: 46px; height: 46px; border: 1px solid rgba(190,157,245,.32); border-radius: 14px; background: rgba(127,93,180,.18); font-size: 1.55rem; }
+.encyclopedia-rarity { color: #d9c5ff; border: 1px solid rgba(190,157,245,.3); border-radius: 999px; padding: 4px 8px; font-size: .72rem; white-space: nowrap; }
+.character-spoiler { border-top: 1px solid rgba(190,157,245,.18); padding-top: 12px; color: #d2c9e3; }
+.character-spoiler[hidden] { display: none; }
+.character-spoiler p { margin: 0 0 8px; }
+.character-spoiler small { color: #b6a9cf; }
+.encyclopedia-empty { margin-top: 18px; text-align: center; color: #c6bdd8; }
+@media (max-width: 760px) {
+  .encyclopedia-toolbar { grid-template-columns: 1fr 1fr; }
+  .encyclopedia-toolbar label:first-child { grid-column: 1 / -1; }
+  .encyclopedia-toolbar output { grid-column: 1 / -1; padding-bottom: 0; }
+}
+@media (max-width: 420px) {
+  .encyclopedia-toolbar { grid-template-columns: 1fr; }
+  .encyclopedia-toolbar label:first-child { grid-column: auto; }
+  .encyclopedia-toolbar output { grid-column: auto; }
+}
+
+/* Learned RPG spellbook with native, accessible disclosure. */
+.spellbook-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr)); gap: 12px; }
+.spellbook-entry { border: 1px solid rgba(190,157,245,.24); border-radius: 16px; padding: 14px 16px; background: rgba(26,21,49,.72); }
+.spellbook-entry[open] { border-color: rgba(190,157,245,.55); background: rgba(48,37,78,.68); }
+.spellbook-entry summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; color: #f0e9ff; font-weight: 750; list-style: none; }
+.spellbook-entry summary::-webkit-details-marker { display: none; }
+.spellbook-entry summary::after { content: '＋'; color: #c9b8f5; font-size: 1.1rem; }
+.spellbook-entry[open] summary::after { content: '−'; }
+.spellbook-entry summary small { color: #c8b8e6; font-size: .78rem; font-weight: 600; text-align: right; }
+.spellbook-entry p { margin: 12px 0 8px; color: #d2c9e3; }
+.spellbook-entry > small { color: #bcb4d0; }
+
+
+/* Account profile theme gallery: previews map to the four persisted profile themes. */
+.theme-gallery{border:1px solid var(--frieren-border,rgba(207,181,255,.2));border-radius:18px;padding:16px;margin:18px 0;background:rgba(16,13,32,.32)}
+.theme-gallery legend{font-weight:750;padding:0 8px}
+.theme-gallery>p{color:var(--frieren-muted,#c9c1dc);font-size:.9rem;margin:0 0 12px}
+.theme-gallery-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.theme-choice{display:grid;gap:8px;text-align:left;min-width:0;padding:10px;border:1px solid rgba(207,181,255,.2);border-radius:14px;background:rgba(255,255,255,.035);color:inherit;cursor:pointer}
+.theme-choice[aria-pressed=true]{border-color:#d9c3ff;box-shadow:0 0 0 2px rgba(217,195,255,.2),0 10px 26px rgba(8,5,22,.2)}
+.theme-choice:focus-visible{outline:2px solid #e6d4ff;outline-offset:3px}
+.theme-choice strong,.theme-choice small{overflow-wrap:anywhere}
+.theme-choice small{color:var(--frieren-muted,#c9c1dc);font-size:.76rem;line-height:1.35}
+.theme-swatch{display:flex;align-items:flex-end;gap:5px;height:48px;padding:7px;border-radius:9px;background:linear-gradient(135deg,#17152c,#31244e)}
+.theme-swatch i{display:block;width:22%;height:62%;border-radius:4px;background:#a78bfa}
+.theme-swatch i:nth-child(2){height:85%;background:#d8c5ff}
+.theme-swatch i:nth-child(3){height:45%;background:#6d5a94}
+.theme-swatch[data-theme-preview=violet]{background:linear-gradient(135deg,#21112f,#633a86)}
+.theme-swatch[data-theme-preview=violet] i{background:#e0b4ff}
+.theme-swatch[data-theme-preview=violet] i:nth-child(2){background:#f2d6ff}
+.theme-swatch[data-theme-preview=violet] i:nth-child(3){background:#9d70c5}
+.theme-swatch[data-theme-preview=starlight]{background:linear-gradient(135deg,#10172e,#30466e)}
+.theme-swatch[data-theme-preview=starlight] i{background:#9bc8ff}
+.theme-swatch[data-theme-preview=starlight] i:nth-child(2){background:#e0efff}
+.theme-swatch[data-theme-preview=starlight] i:nth-child(3){background:#617fae}
+.theme-swatch[data-theme-preview=forest]{background:linear-gradient(135deg,#10251f,#315b48)}
+.theme-swatch[data-theme-preview=forest] i{background:#9bd2b1}
+.theme-swatch[data-theme-preview=forest] i:nth-child(2){background:#d6f2df}
+.theme-swatch[data-theme-preview=forest] i:nth-child(3){background:#628d75}
+@media(max-width:700px){.theme-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.theme-choice{transition:none!important}}
+
+
+/* Persistent reading and accessibility preferences. */
+.accessibility-panel{position:fixed;z-index:120;top:76px;right:14px;width:min(340px,calc(100vw - 28px));color:var(--frieren-text,#faf6ff)}
+.accessibility-panel>summary{list-style:none;display:flex;align-items:center;justify-content:center;min-height:42px;padding:9px 14px;border:1px solid rgba(207,181,255,.42);border-radius:999px;background:rgba(24,19,40,.96);box-shadow:0 10px 30px rgba(0,0,0,.32);font-weight:750;cursor:pointer}
+.accessibility-panel>summary::-webkit-details-marker{display:none}
+.accessibility-panel>summary:focus-visible,.accessibility-panel button:focus-visible{outline:2px solid #e6d4ff;outline-offset:3px}
+.accessibility-panel-content{display:grid;gap:12px;margin-top:8px;padding:16px;border:1px solid rgba(207,181,255,.35);border-radius:18px;background:rgba(18,14,31,.98);box-shadow:0 18px 48px rgba(0,0,0,.42)}
+.accessibility-panel fieldset{display:grid;gap:8px;min-width:0;border:0;padding:0;margin:0}
+.accessibility-panel legend{font-weight:750;margin-bottom:7px}
+.accessibility-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.accessibility-panel button{min-height:38px;padding:8px 10px;border:1px solid rgba(207,181,255,.28);border-radius:10px;background:rgba(255,255,255,.06);color:inherit;cursor:pointer}
+.accessibility-panel button[aria-pressed=true]{border-color:#e6d4ff;background:rgba(167,139,250,.24);box-shadow:inset 0 0 0 1px rgba(230,212,255,.22)}
+.accessibility-panel-status{margin:0;color:var(--frieren-muted,#c9c1dc);font-size:.82rem}
+html[data-a11y-font=large]{font-size:110%}
+html[data-a11y-font=x-large]{font-size:120%}
+html[data-a11y-contrast=high]{--frieren-text:#fff;--frieren-muted:#fff;--frieren-border:rgba(255,255,255,.72);color-scheme:dark}
+html[data-a11y-contrast=high] body{color:#fff}
+html[data-a11y-contrast=high] :where(.card,.accessibility-panel-content,.accessibility-panel>summary){border-color:#fff!important}
+html[data-a11y-contrast=high] :where(.muted,.market-meta,.eyebrow,small){color:#fff!important}
+html[data-a11y-motion=reduce] *,html[data-a11y-motion=reduce] *::before,html[data-a11y-motion=reduce] *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+@media(max-width:560px){.accessibility-panel{top:66px;right:10px;width:min(320px,calc(100vw - 20px))}.accessibility-panel-content{padding:13px}}
+
+.spellbook-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:end;margin-bottom:14px}
+.spellbook-toolbar label{display:grid;gap:6px;font-weight:650}
+.spellbook-toolbar input,.spellbook-toolbar select{width:100%;min-width:0;padding:11px 12px;border:1px solid rgba(207,181,255,.25);border-radius:10px;background:rgba(12,10,23,.8);color:#faf6ff}
+.spellbook-toolbar output{grid-column:1/-1;color:var(--frieren-muted,#c9c1dc);font-size:.86rem}
+.spellbook-empty{margin-top:12px}
+.spellbook-entry[hidden]{display:none!important}
+@media(max-width:600px){.spellbook-toolbar{grid-template-columns:minmax(0,1fr)}.spellbook-toolbar output{grid-column:auto}}
+
+
+/* Antique parchment atlas finish: decorative layers never intercept map navigation. */
+.exploration-map-shell{background:linear-gradient(135deg,rgba(91,63,39,.22),rgba(26,19,35,.88)),rgba(18,15,38,.9)}
+.exploration-map-scroll{background:#d9c79b;border-color:rgba(222,190,133,.62);box-shadow:inset 0 0 0 5px rgba(92,65,39,.16),0 12px 34px rgba(0,0,0,.22)}
+.exploration-map-parchment{mix-blend-mode:soft-light;pointer-events:none}
+.exploration-map-coastline,.exploration-map-compass-rose{pointer-events:none}
+.exploration-map-compass-rose text{fill:#765b39;font:800 14px Georgia,serif;letter-spacing:2px}
+.exploration-map-terrain{filter:sepia(.22) saturate(.78)}
+.exploration-map-landmark{filter:drop-shadow(0 3px 3px rgba(68,46,28,.28))}
+.exploration-map-routes,.exploration-map-fog-layer{pointer-events:none}
+.exploration-map-route-segment{fill:none;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:3 13;opacity:.98}
+.exploration-map-route-segment.is-open{stroke:#d49a32;filter:drop-shadow(0 0 3px rgba(255,197,75,.92)) drop-shadow(0 0 8px rgba(232,165,47,.62))}
+.exploration-map-route-segment.is-locked{stroke:#8d8b87;stroke-width:4;stroke-dasharray:2 14;opacity:.68}
+.exploration-map-fog{fill:url(#exploration-fog);filter:blur(13px);opacity:.62}
+.exploration-map-fog-layer{opacity:.9}
+.exploration-map-node-glow{filter:blur(5px);transition:opacity .25s ease,filter .25s ease}
+.exploration-map-node.is-discovered .exploration-map-node-glow{fill:#e6b85e;opacity:.72;filter:blur(8px)}
+.exploration-map-node.is-open .exploration-map-node-glow{fill:#c49ae8;opacity:.4;filter:blur(7px)}
+.exploration-map-node.is-locked .exploration-map-node-glow{opacity:.04}
+.exploration-map-label rect{fill:rgba(83,60,37,.9);stroke:#d6b879}
+.exploration-map-label text{fill:#fff0cd}
+.exploration-map-combat-badges{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 14px}
+.exploration-map-combat-badge{position:relative;display:grid;grid-template-columns:34px auto;grid-template-rows:auto auto;align-items:center;column-gap:9px;min-width:190px;padding:10px 14px;border:1px solid rgba(208,177,119,.58);border-radius:12px;background:linear-gradient(135deg,rgba(76,53,39,.88),rgba(35,27,42,.92));box-shadow:inset 0 0 0 2px rgba(233,204,153,.08),0 5px 16px rgba(0,0,0,.18)}
+.exploration-map-combat-badge i{grid-row:1/3;display:grid;place-items:center;width:32px;height:32px;border:1px solid rgba(222,191,132,.55);border-radius:50%;color:#f0cf89;font-size:1.1rem;font-style:normal}
+.exploration-map-combat-badge strong{color:#f6dfad;font:800 1.2rem Georgia,serif;line-height:1.1}
+.exploration-map-combat-badge small{color:#d1c1a5;font-size:.72rem;line-height:1.3}
+.exploration-map-combat-badge.is-dungeon i{color:#c8b8e5}
+@media(max-width:560px){.exploration-map-combat-badge{min-width:0;flex:1 1 145px;padding:9px 10px}.exploration-map-combat-badge small{font-size:.68rem}}
+@media(prefers-reduced-motion:reduce){.exploration-map-node-glow{transition:none}.exploration-map-route-segment{filter:none}}
+
+
+/* RPG map encounter, treasure and discovery markers */
+.exploration-map-marker{cursor:pointer;outline:none}
+.exploration-map-marker g{transition:transform .18s ease,filter .18s ease}
+.exploration-map-marker circle{stroke-width:1.8;filter:drop-shadow(0 2px 3px rgba(35,24,17,.42))}
+.exploration-map-marker text{font:800 13px Georgia,serif;pointer-events:none}
+.exploration-map-marker.is-boss circle{fill:#542d35;stroke:#d6a0a0}
+.exploration-map-marker.is-boss text{fill:#ffe0cf}
+.exploration-map-marker.is-chest circle{fill:#775126;stroke:#f1cf82}
+.exploration-map-marker.is-chest text{fill:#fff0c2}
+.exploration-map-marker.is-relic circle{fill:#493b68;stroke:#d9b8ff}
+.exploration-map-marker.is-relic text{fill:#f0dcff}
+.exploration-map-marker .exploration-map-marker-count{font:800 8px Arial,sans-serif;fill:#fff}
+.exploration-map-marker:hover g,.exploration-map-marker:focus-visible g{transform:scale(1.16);filter:drop-shadow(0 0 7px rgba(255,213,128,.85))}
+.exploration-map-marker:focus-visible circle{stroke:#fff;stroke-width:3}
+.exploration-map-node-visits{fill:#5a442b;font:700 8px Georgia,serif;letter-spacing:.15px}
+.exploration-map-progress-summary{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 13px}
+.exploration-map-progress-summary span{display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid rgba(196,164,108,.4);border-radius:999px;background:rgba(80,57,40,.36);color:var(--muted,#d3c7b7);font-size:.78rem}
+.exploration-map-progress-summary strong{color:#f1d79f;font-variant-numeric:tabular-nums}
+.exploration-map-legend b{display:inline-grid;place-items:center;width:20px;height:20px;margin-right:4px;border:1px solid currentColor;border-radius:50%;font-size:.75rem}
+.exploration-map-legend .map-legend-boss{color:#e5b0a5}
+.exploration-map-legend .map-legend-chest{color:#edce8a}
+.exploration-map-legend .map-legend-relic{color:#d6b5ff}
+.exploration-region-details{display:grid;gap:10px;margin-top:13px;padding-top:12px;border-top:1px solid rgba(196,164,108,.25)}
+.exploration-region-details section{min-width:0}
+.exploration-region-details h4{margin:0 0 7px;color:#e8d1a2;font-size:.82rem;letter-spacing:.03em}
+.exploration-region-details ul{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.exploration-detail-row{display:flex;align-items:center;gap:9px;min-width:0;padding:8px 10px;border:1px solid rgba(190,165,125,.2);border-radius:10px;background:rgba(27,22,34,.3)}
+.exploration-detail-row>span:last-child{display:grid;gap:2px;min-width:0}
+.exploration-detail-row strong{color:#f0e2c5;font-size:.82rem;overflow-wrap:anywhere}
+.exploration-detail-row small{color:var(--muted,#c9bdac);font-size:.72rem;line-height:1.35}
+.exploration-detail-icon{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;border:1px solid rgba(213,183,129,.35);border-radius:50%;color:#e7c88c}
+.exploration-boss-row.is-defeated{border-color:rgba(214,177,103,.5);background:rgba(105,76,36,.2)}
+.exploration-boss-row.is-defeated .exploration-detail-icon{color:#f3d58c;box-shadow:0 0 10px rgba(239,193,96,.25)}
+.exploration-boss-row.is-locked,.exploration-chest-row.is-locked{opacity:.62}
+.exploration-relic-row.is-owned{border-color:rgba(175,139,224,.48);background:rgba(82,60,112,.2)}
+.exploration-relic-row.is-owned .exploration-detail-icon{color:#d8b7ff;box-shadow:0 0 10px rgba(176,136,233,.25)}
+.exploration-map-note{margin:7px 0 0;color:var(--muted,#c9bdac);font-size:.72rem;line-height:1.5}
+@media(max-width:560px){.exploration-map-progress-summary{gap:6px}.exploration-map-progress-summary span{flex:1 1 140px;justify-content:space-between;font-size:.7rem;padding:7px 9px}.exploration-region-details{gap:8px}}
+@media(prefers-reduced-motion:reduce){.exploration-map-marker g{transition:none}}
