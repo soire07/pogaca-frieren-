@@ -295,3 +295,16 @@ test('each major biome has its own painterly signature without changing the 3:2 
   assert.match(artwork, /GRÖSSE ORMANI/);
   assert.match(artwork, /KUZEY PLATOSU/);
 });
+
+test('atlas decluttering keeps bosses, settlements and dungeons inside the illustrated landmass', async () => {
+  const { declutterAtlasPins } = await import('../atlas-pin-layout.js');
+  const source = [
+    { id: 'boss:zeldeila', type: 'boss', x: 95, y: 36 },
+    { id: 'city:demon-kings-castle', type: 'city', x: 94, y: 24 },
+    { id: 'dungeon:level_30', type: 'dungeon', x: 92, y: 44 }
+  ];
+  const arranged = declutterAtlasPins(source);
+  assert.deepEqual(source.map(pin => [pin.x, pin.y]), [[95,36],[94,24],[92,44]], 'canonical catalog coordinates must not be mutated');
+  assert.ok(arranged.every(pin => pin.x < 93), 'coastal/outside pins must be moved inward onto the illustrated landmass');
+  assert.notDeepEqual(arranged.map(pin => [pin.x,pin.y]), source.map(pin => [pin.x,pin.y]));
+});
