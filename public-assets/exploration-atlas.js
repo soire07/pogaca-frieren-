@@ -6,7 +6,7 @@
  let last=null,scale=1,x=0,y=0,pointers=new Map(),drag=null,pinchDistance=0;
  const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
  const routePlanner=root.querySelector('[data-atlas-route-planner]');
- routePlanner?.addEventListener('click',event=>{const clearButton=event.target.closest('[data-atlas-route-clear]');if(!clearButton)return;const routeSvg=root.querySelector('.atlas-route-overlay'),summary=routePlanner.querySelector('[data-atlas-route-summary]');if(routeSvg)routeSvg.setAttribute('hidden','');if(summary)summary.textContent='Rota temizlendi. Yeni bir başlangıç ve varış noktası seç.';});
+ routePlanner?.addEventListener('click',event=>{const clearButton=event.target.closest('[data-atlas-route-clear]');if(!clearButton)return;const routeSvg=root.querySelector('.atlas-route-overlay'),summary=routePlanner.querySelector('[data-atlas-route-summary]');if(routeSvg){routeSvg.setAttribute('hidden','');routeSvg.style.display='none';}if(summary)summary.textContent='Rota temizlendi. Yeni bir başlangıç ve varış noktası seç.';});
  const paint=()=>{camera.style.transform='translate3d('+x+'px,'+y+'px,0) scale('+scale+')';const output=root.querySelector('[data-atlas-zoom-value]');if(output)output.value=Math.round(scale*100)+'%';const mapArt=root.querySelector('.atlas-map-art');if(mapArt){const regional=Number(mapArt.dataset.atlasZoomRegional)||1.35,local=Number(mapArt.dataset.atlasZoomLocal)||2.2;mapArt.dataset.atlasZoomDetail=scale>=local?'local':scale>=regional?'regional':'overview';}};
  const bounds=()=>{const rect=viewport.getBoundingClientRect();return {x:Math.max(0,(rect.width*(scale-1))/2),y:Math.max(0,(rect.height*(scale-1))/2)};};
  const constrain=()=>{const limit=bounds();x=clamp(x,-limit.x,limit.x);y=clamp(y,-limit.y,limit.y);};
@@ -30,7 +30,7 @@
    if(line)line.setAttribute('d',path);if(glow)glow.setAttribute('d',path);
    const start=routeSvg?.querySelector('[data-atlas-route-start]'),end=routeSvg?.querySelector('[data-atlas-route-end]'),first=route.nodes[0],lastNode=route.nodes[route.nodes.length-1];
    if(start){start.setAttribute('cx',Number(first.x)*18);start.setAttribute('cy',Number(first.y)*12);}if(end){end.setAttribute('cx',Number(lastNode.x)*18);end.setAttribute('cy',Number(lastNode.y)*12);}
-   if(routeSvg)routeSvg.removeAttribute('hidden');
+   if(routeSvg){routeSvg.removeAttribute('hidden');routeSvg.style.display='block';}
    const via=route.nodes.slice(1,-1).map(node=>node.label);if(summary)summary.textContent=route.nodes[0].label+' → '+lastNode.label+' · '+Number(route.distanceUnits).toFixed(1)+' harita birimi'+(via.length?' · Geçitler: '+via.join(' → '):' · Doğrudan bağlantı');
    return;
   }
