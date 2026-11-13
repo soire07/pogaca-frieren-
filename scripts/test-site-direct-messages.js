@@ -25,9 +25,11 @@ test('site DMs require an accepted friend relationship and respect blocks in eit
  const blocked=database({blocked:true});
  assert.equal((await sendSiteDirectMessage(blocked,{senderAccountId:a,recipientAccountId:b,body:'Merhaba'})).status,'not_allowed');
 });
-test('site DMs enforce sender rate limits and a bounded thread size',async()=>{
+test('site DMs enforce sender rate limits and prune history to the newest 500 messages',async()=>{
  assert.equal((await sendSiteDirectMessage(database({rate:20}),{senderAccountId:a,recipientAccountId:b,body:'Merhaba'})).status,'rate_limited');
- assert.equal((await sendSiteDirectMessage(database({thread:500}),{senderAccountId:a,recipientAccountId:b,body:'Merhaba'})).status,'thread_limit');
+ const db=database();assert.equal((await sendSiteDirectMessage(db,{senderAccountId:a,recipientAccountId:b,body:'Merhaba'})).status,'sent');
+ const prune=db.statements.find(x=>x.sql.startsWith('DELETE FROM frieren_site_direct_messages'));
+ assert.ok(prune);assert.match(prune.sql,/OFFSET 500/);assert.deepEqual(prune.params,[a,b]);
 });
 test('site DMs persist only a validated friend-to-friend message',async()=>{
  const db=database();
