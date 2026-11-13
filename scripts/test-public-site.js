@@ -1203,9 +1203,9 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/exploration-map-fog/);
  assert.match(response.body,/Boss zaferleri · karakter geneli/);
  assert.match(response.body,/Zindan zaferleri · karakter geneli/);
- assert.match(response.body,/data-map-marker-type="boss"/);
- assert.match(response.body,/data-map-marker-type="chest"/);
- assert.match(response.body,/data-map-marker-type="relic"/);
+ assert.doesNotMatch(response.body,/data-map-marker-type="boss"/);
+ assert.doesNotMatch(response.body,/data-map-marker-type="chest"/);
+ assert.doesNotMatch(response.body,/data-map-marker-type="relic"/);
  assert.match(response.body,/Boss noktaları/);
  assert.match(response.body,/Schattenwolf/);
  assert.match(response.body,/Merkez Topraklar Mahzeni/);
