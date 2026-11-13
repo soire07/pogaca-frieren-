@@ -14,6 +14,9 @@ test('Frieren atlas uses layered cartographic relief instead of flat decorative 
   assert.match(artwork, /GRÖSSE ORMANI/);
   assert.match(artwork, /MERKEZ TOPRAKLAR/);
   assert.doesNotMatch(artwork, /<circle[^>]+fill="black"/i);
+  assert.match(artwork, /clip-path="url\(#land-clip\)"/);
+  assert.match(artwork, /coastal shoals and small islands/);
+  assert.match(artwork, /fine regional elevation lines/);
 });
 
 test('atlas landmark symbols are compact, category-coded and keep labels out of the default view', async () => {
@@ -27,4 +30,91 @@ test('atlas landmark symbols are compact, category-coded and keep labels out of 
   assert.match(active, /\.atlas-pin-city \.atlas-pin-label\{opacity:0\}/);
   assert.match(active, /\.atlas-pin:hover \.atlas-pin-label/);
   assert.match(active, /@media\(max-width:700px\)/);
+});
+
+
+test('atlas marker decluttering separates nearby pins without mutating canonical coordinates', async () => {
+  const { declutterAtlasPins } = await import('../atlas-pin-layout.js');
+  const source = [
+    { key: 'region', type: 'region', x: 50, y: 50 },
+    { key: 'city', type: 'city', x: 50.4, y: 50.2 },
+    { key: 'boss', type: 'boss', x: 50.1, y: 50.3 },
+    { key: 'dungeon', type: 'dungeon', x: 50.2, y: 50.1 }
+  ];
+  const before = structuredClone(source);
+  const arranged = declutterAtlasPins(source);
+  assert.deepEqual(source, before, 'canonical location records must remain untouched');
+  assert.equal(arranged.length, source.length);
+  assert.deepEqual(arranged.map(pin => pin.key), source.map(pin => pin.key));
+  for (let i = 0; i < arranged.length; i++) {
+    for (let j = i + 1; j < arranged.length; j++) {
+      const dx = arranged[i].x - arranged[j].x;
+      const dy = (arranged[i].y - arranged[j].y) * 1.5;
+      assert.ok(Math.hypot(dx, dy) >= 3.1, 'visible pins should not overlap: ' + arranged[i].key + ' / ' + arranged[j].key);
+    }
+  }
+});
+
+test('atlas marker decluttering keeps isolated positions and clamps pins to the map', async () => {
+  const { declutterAtlasPins } = await import('../atlas-pin-layout.js');
+  const source = [
+    { key: 'isolated', type: 'city', x: 20, y: 20 },
+    { key: 'edge-a', type: 'city', x: 1, y: 1 },
+    { key: 'edge-b', type: 'boss', x: 1.1, y: 1.1 }
+  ];
+  const arranged = declutterAtlasPins(source);
+  assert.deepEqual(arranged[0], source[0], 'isolated landmarks should retain their canonical placement');
+  for (const pin of arranged) {
+    assert.ok(pin.x >= 1 && pin.x <= 99);
+    assert.ok(pin.y >= 1 && pin.y <= 99);
+  }
+});
+
+
+test('all atlas landmark categories are rendered through one collision-aware layout', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  assert.match(atlas, /import \{ declutterAtlasPins \} from '.\/atlas-pin-layout\.js'/);
+  assert.match(atlas, /const markerConfigs = \[/);
+  assert.match(atlas, /declutterAtlasPins\(markerConfigs\)/);
+  assert.match(atlas, /markerPins/);
+  assert.doesNotMatch(atlas, /regionPins\+cityPins\+bossPins\+dungeonPins/);
+});
+
+test('atlas CSS keeps every category distinct and city labels hidden until interaction', async () => {
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const refined = css.slice(css.lastIndexOf('Refined atlas presentation'));
+  assert.match(refined, /\.atlas-pin-region \.atlas-pin-glyph/);
+  assert.match(refined, /\.atlas-pin-city \.atlas-pin-glyph/);
+  assert.match(refined, /\.atlas-pin-boss \.atlas-pin-glyph/);
+  assert.match(refined, /\.atlas-pin-dungeon \.atlas-pin-glyph/);
+  assert.match(refined, /\.atlas-pin-city \.atlas-pin-label\{[^}]*opacity:0/);
+  assert.match(refined, /@media\(max-width:700px\)/);
+  assert.match(refined, /prefers-reduced-motion:reduce/);
+});
+
+
+test('current canon and RPG map coordinates are collision-adjusted as one visual layer', async () => {
+  const { declutterAtlasPins } = await import('../atlas-pin-layout.js');
+  const {
+    FRIEREN_WORLD_SETTLEMENTS,
+    FRIEREN_WORLD_BOSS_LOCATIONS,
+    FRIEREN_WORLD_DUNGEON_LOCATIONS
+  } = await import('../exploration-world-locations.js');
+  const markers = [
+    ...[
+      ['merkez',35,68],['orman',32,43],['harabeler',55,47],
+      ['kuzey',68,31],['yayla',74,72],['aus',87,8]
+    ].map(([key,x,y])=>({id:'region:'+key,type:'region',x,y})),
+    ...FRIEREN_WORLD_SETTLEMENTS.map(place=>({id:'city:'+place.key,type:'city',x:place.x,y:place.y})),
+    ...Object.entries(FRIEREN_WORLD_BOSS_LOCATIONS).map(([key,point])=>({id:'boss:'+key,type:'boss',x:point.x,y:point.y})),
+    ...Object.entries(FRIEREN_WORLD_DUNGEON_LOCATIONS).map(([key,point])=>({id:'dungeon:'+key,type:'dungeon',x:point.x,y:point.y}))
+  ];
+  const arranged = declutterAtlasPins(markers);
+  for (let i = 0; i < arranged.length; i++) {
+    for (let j = i + 1; j < arranged.length; j++) {
+      const dx = arranged[i].x - arranged[j].x;
+      const dy = (arranged[i].y - arranged[j].y) * 1.5;
+      assert.ok(Math.hypot(dx, dy) >= 3.1, 'catalog pins overlap: ' + arranged[i].id + ' / ' + arranged[j].id);
+    }
+  }
 });

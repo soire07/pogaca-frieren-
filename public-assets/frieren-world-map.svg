@@ -77,6 +77,36 @@
  </g>
  <!-- subtle coastal shallows -->
  <path d="M205 292C259 221 371 179 492 198 585 133 718 129 832 163 940 100 1075 119 1170 157 1304 107 1442 167 1524 248 1632 309 1665 412 1618 516 1677 625 1634 741 1582 826 1631 929 1521 1033 1390 1038 1284 1104 1160 1073 1073 1043 948 1118 825 1086 739 1032 624 1092 505 1057 414 1000 300 989 220 901 233 793 159 708 160 590 192 501 139 412 151 339 206 292Z" fill="url(#paper-fiber)" opacity=".65"/>
+ <g clip-path="url(#land-clip)">
+ <!-- fine regional elevation lines and terrain transitions -->
+ <g fill="none" stroke-linecap="round" stroke-linejoin="round" pointer-events="none">
+  <g stroke="#6b735f" stroke-opacity=".32" stroke-width="2">
+   <path d="M710 250C770 215 840 215 900 250S1030 275 1110 260M730 275C790 242 850 244 910 276S1030 298 1140 282M755 302C810 275 865 278 925 306S1035 326 1165 310"/>
+   <path d="M1045 570C1110 520 1190 530 1260 585S1375 685 1370 760M1025 605C1100 555 1180 565 1245 620S1340 710 1330 780M1040 650C1110 610 1170 625 1220 670S1300 740 1290 800"/>
+   <path d="M280 760C350 690 455 690 530 735S650 835 625 915M300 795C370 730 455 730 520 770S615 855 595 925M335 830C390 785 460 785 510 820S575 885 560 940"/>
+  </g>
+  <g stroke="#f0e7ca" stroke-opacity=".34" stroke-width="2.2">
+   <path d="M690 385C790 345 890 360 960 405S1090 450 1175 425"/>
+   <path d="M1120 835C1190 800 1270 825 1335 875"/>
+   <path d="M245 620C330 570 420 580 490 625"/>
+  </g>
+  <path d="M260 650C390 610 510 640 600 715S750 840 790 955" stroke="#7c8c71" stroke-opacity=".48" stroke-width="2.5" stroke-dasharray="7 10"/>
+  <path d="M560 205C610 250 640 300 660 365" stroke="#e7dfc5" stroke-opacity=".55" stroke-width="2" stroke-dasharray="5 8"/>
+ </g>
+ <!-- subtle sub-region boundary, not an RPG route -->
+ <path d="M610 220C590 350 620 470 675 560S720 760 690 900M990 185C960 330 990 430 1040 515S1110 690 1080 850" fill="none" stroke="#665e4d" stroke-opacity=".28" stroke-width="2" stroke-dasharray="5 12"/>
+</g>
+ <!-- coastal shoals and small islands add geographic scale -->
+ <g fill="#c9c19e" stroke="#e1d5b7" stroke-width="2" opacity=".9">
+  <path d="M92 365q24-18 48-4 18 13 2 27-28 13-50-2-14-9 0-21Z"/>
+  <path d="M1650 270q24-17 43 1 12 14-8 24-26 7-39-7-8-9 4-18Z"/>
+  <path d="M1690 795q21-15 39 1 9 12-9 21-23 5-34-7-7-8 4-15Z"/>
+  <path d="M120 930q18-13 34 0 9 10-6 18-19 5-29-5-7-7 1-13Z"/>
+ </g>
+ <g fill="none" stroke="#9db7b1" stroke-opacity=".3" stroke-width="2">
+  <path d="M60 350q48-35 100-6M1625 250q45-32 88 1M1670 780q43-28 80 2M100 920q38-25 72 0"/>
+  <path d="M70 390q55-28 112 5M1635 825q46-25 90 5"/>
+ </g>
 </g>
 <!-- cartographic annotations -->
 <g font-family="Georgia,serif" fill="#344b49" opacity=".8">
