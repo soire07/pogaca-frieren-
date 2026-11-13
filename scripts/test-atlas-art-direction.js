@@ -28,3 +28,41 @@ test('atlas landmark symbols are compact, category-coded and keep labels out of 
   assert.match(active, /\.atlas-pin:hover \.atlas-pin-label/);
   assert.match(active, /@media\(max-width:700px\)/);
 });
+
+
+test('atlas marker decluttering separates nearby pins without mutating canonical coordinates', async () => {
+  const { declutterAtlasPins } = await import('../atlas-pin-layout.js');
+  const source = [
+    { key: 'region', type: 'region', x: 50, y: 50 },
+    { key: 'city', type: 'city', x: 50.4, y: 50.2 },
+    { key: 'boss', type: 'boss', x: 50.1, y: 50.3 },
+    { key: 'dungeon', type: 'dungeon', x: 50.2, y: 50.1 }
+  ];
+  const before = structuredClone(source);
+  const arranged = declutterAtlasPins(source);
+  assert.deepEqual(source, before, 'canonical location records must remain untouched');
+  assert.equal(arranged.length, source.length);
+  assert.deepEqual(arranged.map(pin => pin.key), source.map(pin => pin.key));
+  for (let i = 0; i < arranged.length; i++) {
+    for (let j = i + 1; j < arranged.length; j++) {
+      const dx = arranged[i].x - arranged[j].x;
+      const dy = (arranged[i].y - arranged[j].y) * 1.5;
+      assert.ok(Math.hypot(dx, dy) >= 3.1, 'visible pins should not overlap: ' + arranged[i].key + ' / ' + arranged[j].key);
+    }
+  }
+});
+
+test('atlas marker decluttering keeps isolated positions and clamps pins to the map', async () => {
+  const { declutterAtlasPins } = await import('../atlas-pin-layout.js');
+  const source = [
+    { key: 'isolated', type: 'city', x: 20, y: 20 },
+    { key: 'edge-a', type: 'city', x: 1, y: 1 },
+    { key: 'edge-b', type: 'boss', x: 1.1, y: 1.1 }
+  ];
+  const arranged = declutterAtlasPins(source);
+  assert.deepEqual(arranged[0], source[0], 'isolated landmarks should retain their canonical placement');
+  for (const pin of arranged) {
+    assert.ok(pin.x >= 1 && pin.x <= 99);
+    assert.ok(pin.y >= 1 && pin.y <= 99);
+  }
+});
