@@ -181,8 +181,9 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   assert.match(atlas, /atlas-ruin-remnants/);
   assert.match(atlas, /data-atlas-weather="clear"/);
   assert.match(atlas, /data-atlas-lighting="day"/);
+  assert.match(atlas, /data-atlas-lighting-toggle/);
   assert.match(atlas, /data-atlas-weather/);
-  assert.match(atlas, /data-atlas-lighting/);
+  assert.match(atlas, /data-atlas-lighting-toggle/);
   assert.match(atlas, /RPG tehlikesi:/);
   assert.match(client, /dataset\.atlasLighting/);
   assert.match(client, /dataset\.atlasWeather/);
