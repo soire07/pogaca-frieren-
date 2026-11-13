@@ -85,11 +85,19 @@ export async function ensureChatMediaSchema(db){
  try{await pending;}catch(error){ready.delete(db);throw error;}
 }
 
+async function pruneExpiredPendingMedia(db){
+ const stale=await db.query("SELECT media_id,object_key FROM frieren_site_chat_media WHERE message_id IS NULL AND created_at<NOW()-INTERVAL '24 hours' ORDER BY created_at LIMIT 50");
+ for(const row of stale.rows||[]){
+  const response=await fetch(signChatMediaUrl('DELETE',row.object_key,null,300),{method:'DELETE'});
+  if(response.ok||response.status===404)await db.query('DELETE FROM frieren_site_chat_media WHERE media_id=$1 AND message_id IS NULL',[row.media_id]);
+ }
+}
 export async function uploadChatMedia(db,{accountId,scope,scopeKey,mimeType,buffer}){
  if(!ACCOUNT.test(String(accountId||'')))throw new Error('CHAT_MEDIA_ACCOUNT_INVALID');
  if(!['public','dm','group'].includes(scope)||!String(scopeKey||'').startsWith(scope+':')&&!(scope==='public'&&scopeKey==='public'))throw new Error('CHAT_MEDIA_SCOPE_INVALID');
  const media=validateChatMedia(buffer,mimeType),cfg=config();if(!cfg)throw new Error('CHAT_MEDIA_STORAGE_NOT_CONFIGURED');
  await ensureChatMediaSchema(db);
+ await pruneExpiredPendingMedia(db);
  const [usage,storage]=await Promise.all([db.query("SELECT COALESCE(SUM(size_bytes),0)::bigint AS bytes FROM frieren_site_chat_media WHERE owner_account_id=$1 AND created_at>NOW()-INTERVAL '24 hours'",[accountId]),db.query('SELECT COALESCE(SUM(size_bytes),0)::bigint AS bytes FROM frieren_site_chat_media')]);
  if(Number(usage.rows[0]?.bytes||0)+media.size>150*1024*1024)throw new Error('CHAT_MEDIA_DAILY_QUOTA');
  if(Number(storage.rows[0]?.bytes||0)+media.size>8_500_000_000)throw new Error('CHAT_MEDIA_STORAGE_QUOTA');
