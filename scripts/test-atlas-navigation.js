@@ -75,10 +75,10 @@ test('historical event markers are anchored to known places and carry episode/so
     assert.ok(Number.isInteger(event.episodeEnd) && event.episodeEnd >= event.episodeStart);
     assert.match(event.officialSource, /^https:\/\/frieren-anime\.jp\//);
     assert.match(event.locationSource, /^https:\/\//);
-    assert.ok(Number.isFinite(event.x) && Number.isFinite(event.y));
+    assert.ok(Number.isFinite(event.x) && Number.isFinite(event.y));\n    assert.ok(event.episodeSources?.length);\n    assert.ok(event.episodeSources.every(source => /^https:\\/\\/frieren-anime\\.jp\\/story\\//.test(source.url)));
   }
   assert.ok(ATLAS_HISTORICAL_EVENTS.some(event => event.anchorKey === 'royal-capital' && event.episodeStart === 1));
-  assert.ok(ATLAS_HISTORICAL_EVENTS.some(event => event.anchorKey === 'waal' && event.episodeStart === 6));
+  assert.ok(ATLAS_HISTORICAL_EVENTS.some(event => event.anchorKey === 'riegel-canyon' && event.episodeStart === 6));
   assert.ok(ATLAS_HISTORICAL_EVENTS.some(event => event.anchorKey === 'graf-granat'));
   assert.ok(ATLAS_HISTORICAL_EVENTS.some(event => event.anchorKey === 'aeusserst' && event.episodeStart === 18));
 });
@@ -116,7 +116,7 @@ test('rendered atlas exposes route, event and zoom-level controls accessibly', (
   assert.match(html, /data-atlas-zoom-detail="overview"/);
   assert.match(html, /data-atlas-detail-level="regional"/);
   assert.match(html, /data-atlas-detail-level="local"/);
-  assert.match(html, /kilometre ölçeği belirtilmemiştir/i);
+  assert.match(html, /kilometre ölçeği belirtilmemiştir/i);\n  assert.match(html, /Bölüm 06/);
 });
 
 
