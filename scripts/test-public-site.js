@@ -1681,9 +1681,9 @@ test('public pages expose persistent and keyboard-accessible reading controls', 
  assert.match(script,/localStorage/);
  assert.match(script,/prefers-reduced-motion/);
  assert.match(script,/aria-pressed/);
- assert.match(script,/data-a11y-font/);
- assert.match(script,/data-a11y-contrast/);
- assert.match(script,/data-a11y-motion/);
+ assert.match(script,/a11yFont/);
+ assert.match(script,/a11yContrast/);
+ assert.match(script,/a11yMotion/);
  const styles=await readFile(new URL('../site.css',import.meta.url),'utf8');
  assert.match(styles,/data-a11y-font=large/);
  assert.match(styles,/data-a11y-font=x-large/);
