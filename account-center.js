@@ -479,7 +479,7 @@ export async function exportSiteAccountData(db, accountId) {
     return { ...ticket, replies:messages.rows, statusHistory:events.rows };
   }));
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     exportedAt: new Date().toISOString(),
     account: accountResult.rows[0],
     accountData,
