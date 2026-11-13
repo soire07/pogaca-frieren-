@@ -764,3 +764,5 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .public-chat-emoji-picker[hidden]{display:none}
 .public-chat-emoji{width:36px;height:36px;border:0;border-radius:8px;background:#ffffff0c;font-size:19px;cursor:pointer}
 .public-chat-emoji:focus-visible,.public-chat-emoji:hover{outline:2px solid #c4a8ff;background:#9b7bd933}
+
+.public-chat-new-messages{display:block;width:100%;margin:8px 0;border-color:#bca2ee;background:#34264e;color:#f3eaff}.public-chat-new-messages[hidden]{display:none}
