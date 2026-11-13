@@ -1480,7 +1480,6 @@ test('dedicated user center pages expose the new account, social and life naviga
  assert.match(source,/inventory-center-page/);
  assert.match(source,/notification-center-page/);
  assert.match(source,/public-assets\/user-center\.js', 'public-assets\/public-chat\.js'].includes/);
-test('community chat keeps own messages full-width on desktop and mobile',async()=>{const styles=await readFile(new URL('../site.css',import.meta.url),'utf8');assert.match(styles,/\.public-chat-message\.is-own\s*\{[^}]*grid-template-columns:\s*40px\s+minmax\(0,1fr\)/);assert.match(styles,/@media\s*\(max-width:\s*620px\)\s*\{[^}]*\.public-chat-message\.is-own\s*\{[^}]*grid-template-columns:\s*32px\s+minmax\(0,1fr\)/);});
  assert.match(source,/site\.css\?v=community-chat-279/);
  assert.match(styles,/\.social-center-page/);
  assert.match(styles,/\.user-center-tabs/);
@@ -1512,4 +1511,14 @@ test('public adventurer profile renders the equipped Frieren guild banner', () =
   const html = publicHomeShowcasePage(user, data);
   assert.match(html, /player-banner--frieren/);
   assert.match(html, /Maceracı profil sancağı/);
+});
+
+
+test('community chat keeps own messages readable and reactions flowing on mobile',async()=>{
+ const styles=await readFile(new URL('../site.css',import.meta.url),'utf8');
+ assert.match(styles,/\.public-chat-message\.is-own\s*\{\s*grid-template-columns:\s*40px\s+minmax\(0,1fr\)/);
+ assert.match(styles,/@media\s*\(max-width:\s*620px\)\s*\{[^}]*\.public-chat-message\.is-own\s*\{\s*grid-template-columns:\s*32px\s+minmax\(0,1fr\)/);
+ assert.match(styles,/\.public-chat-reactions\s*\{[^}]*display:\s*flex/);
+ assert.match(styles,/\.public-chat-reactions\s*\{[^}]*flex-wrap:\s*wrap/);
+ assert.match(styles,/@media\s*\(max-width:\s*620px\)\s*\{[^}]*\.public-chat-messages\s*\{[^}]*min-height:\s*150px/);
 });
