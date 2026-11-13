@@ -1171,6 +1171,7 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/Gizlilik ayarları/);
  assert.ok(calls.every(call=>!call.params||!call.params.includes('999999999999999999')));
  assert.ok(calls.some(call=>call.sql.includes('WHERE guild_id=$1 AND user_id=$2')));
+ assert.ok(calls.some(call=>call.sql.includes('FROM exploration_region_mastery')&&call.params[0]===guildId&&call.params[1]===userId));
 });
 
 test('public profile preferences are CSRF protected and saved only for the linked guild character',async()=>{
@@ -1567,4 +1568,14 @@ test('account notification center renders unread state and neutralizes unsafe st
  assert.doesNotMatch(response.body,/href="javascript:alert\(1\)"/);
  assert.match(response.body,/href="\/profil">Aç/);
  assert.match(response.body,/&lt;img src=x onerror=alert\(1\)&gt;/);
+});
+
+test('web exploration atlas and Discord /kesif share one region catalog', async () => {
+ const catalog=await readFile(new URL('../exploration-regions.js',import.meta.url),'utf8');
+ const command=await readFile(new URL('../commands/rpg/kesif.js',import.meta.url),'utf8');
+ const site=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+ for(const key of ['merkez','orman','harabeler','kuzey','yayla','aus'])assert.match(catalog,new RegExp("key: '"+key+"'"));
+ assert.match(command,/EXPLORATION_REGION_CATALOG\.map/);
+ assert.match(command,/configured\.minLevel = region\.minLevel/);
+ assert.match(site,/EXPLORATION_REGION_CATALOG/);
 });
