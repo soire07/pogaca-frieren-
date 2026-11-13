@@ -67,34 +67,33 @@ function panel(item,index,settlements,esc) {
 }
 
 function renderRegionList(rows,esc) {
-  const cards=rows.map((item,index)=>{
-    const region=item.region,geo=REGIONS[region.key]||REGIONS.merkez;
-    const status=item.discovered?'Keşfedildi':item.unlocked?'Açık · henüz keşfedilmedi':'Kilitli · Seviye '+region.minLevel+' gerekli';
-    const progress=item.unlocked
+  const cards=rows.map(item=>{
+    const {region,visits,discovered,unlocked}=item;
+    const status=discovered?'Keşfedildi':unlocked?'Açık · henüz keşfedilmedi':'Kilitli · Seviye '+region.minLevel+' gerekli';
+    const progress=unlocked
       ? '<div class="progress" role="progressbar" aria-label="'+esc(region.name)+' ustalık ilerlemesi" aria-valuemin="0" aria-valuemax="3" aria-valuenow="'+item.visitsToNextMastery+'"><i style="width:'+item.masteryProgressPercent+'%"></i></div><small>Ustalık seviyesi '+item.masteryLevel+' · sonraki ödül '+item.visitsToNextMastery+'/3 keşif</small>'
       : '<small>Bu bölge karakterin Seviye '+region.minLevel+' olduğunda açılır.</small>';
-    const bossRows=item.bosses.map(boss=>detailRow({
-      key:boss.key,name:boss.name,
-      description:(boss.defeated?'Yenildi':boss.unlocked?'Karşılaşma açık':'Seviye '+boss.minLevel+' gerekli')+(boss.location?' · '+boss.location.place:' · Bölge konumu'),
-      icon:'☠',state:boss.defeated?'is-defeated':boss.unlocked?'is-open':'is-locked',focus:'boss'
-    })).join('');
-    const dungeonRows=item.dungeons.map(dungeon=>detailRow({
-      key:dungeon.key,name:dungeon.name,
-      description:(dungeon.unlocked?'Zindan girişi açık':'Seviye '+dungeon.minLevel+' gerekli')+' · '+(dungeon.lootName||'Zindan ganimeti')+(dungeon.location?' · '+dungeon.location.place:''),
-      icon:'◇',state:dungeon.unlocked?'is-open':'is-locked',focus:'dungeon'
-    })).join('');
-    const lootRows=item.rareItems.map(loot=>detailRow({
-      key:'loot-'+loot.name,name:loot.name,
-      description:loot.sources.map(source=>source==='dungeon'?'Zindan ganimeti':source==='boss_material'?'Boss malzemesi':'Boss ganimeti').join(' · ')+' · '+(loot.ownedQuantity?'Envanterinde ×'+loot.ownedQuantity:'Henüz envanterinde yok'),
-      icon:'✧',state:loot.ownedQuantity?'is-owned':'is-unowned'
-    })).join('');
-    const details='<div class="exploration-region-details">'+
-      '<section><h4>Boss noktaları · '+item.bosses.length+'</h4><ul>'+(bossRows||'<li class="exploration-map-note">Bu bölgede boss karşılaşması tanımlı değil.</li>')+'</ul></section>'+
-      '<section><h4>Zindanlar · '+item.dungeons.length+'</h4><ul>'+(dungeonRows||'<li class="exploration-map-note">Bu bölgede zindan tanımlı değil.</li>')+'</ul><p class="exploration-map-note">Zindan işaretleri mevcut RPG karşılaşmalarını gösterir; harita üzerinden yeni ödül veya karşılaşma başlatılmaz.</p></section>'+
-      '<section><h4>Nadir ganimet noktaları</h4><ul>'+(lootRows||'<li class="exploration-map-note">Bu bölge için katalogda tanımlı nadir ganimet yok.</li>')+'</ul></section></div>';
-    return '<article class="card exploration-region-card is-'+item.state+'" id="region-'+esc(region.key)+'" data-region-key="'+esc(region.key)+'" data-region-state="'+item.state+'"><div class="eyebrow">'+(index+1)+'. '+esc(geo.name)+'</div><strong>Seviye '+region.minLevel+'+</strong><p>'+esc(status)+'</p><p>'+item.visits+' keşif ziyareti · '+esc(geo.city)+'</p>'+progress+details+'</article>';
+    const bossRows=item.bosses.map(boss=>{
+      const bossState=boss.defeated?'Yenildi':boss.unlocked?'Karşılaşma açık':'Seviye '+boss.minLevel+' gerekli';
+      const bossClass=boss.defeated?'is-defeated':boss.unlocked?'is-open':'is-locked';
+      return '<li class="exploration-detail-row exploration-boss-row '+bossClass+'" data-boss-key="'+esc(boss.key)+'" data-atlas-focus-target="boss" data-atlas-target-key="'+esc(boss.key)+'"><span class="exploration-detail-icon" aria-hidden="true">♛</span><span><strong>'+esc(boss.name)+'</strong><small>'+bossState+'</small></span></li>';
+    }).join('');
+    const dungeonRows=item.dungeons.map(dungeon=>{
+      const dungeonClass=dungeon.unlocked?'is-open':'is-locked';
+      return '<li class="exploration-detail-row exploration-chest-row '+dungeonClass+'" data-atlas-focus-target="dungeon" data-atlas-target-key="'+esc(dungeon.key)+'"><span class="exploration-detail-icon" aria-hidden="true">▣</span><span><strong>'+esc(dungeon.name)+'</strong><small>'+(dungeon.unlocked?'Zindan girişi açık':'Seviye '+dungeon.minLevel+' gerekli')+' · Karakter genelinde '+mapDungeonWins(item)+' zindan zaferi</small></span></li>';
+    }).join('');
+    const itemRows=item.rareItems.map(loot=>{
+      const sources=loot.sources.map(source=>source==='dungeon'?'Zindan ganimeti':source==='boss_material'?'Boss malzemesi':'Boss ganimeti').join(' · ');
+      const owned=loot.ownedQuantity>0?'Envanterinde ×'+loot.ownedQuantity:'Henüz envanterinde yok';
+      return '<li class="exploration-detail-row exploration-relic-row '+(loot.ownedQuantity>0?'is-owned':'is-unowned')+'"><span class="exploration-detail-icon" aria-hidden="true">◆</span><span><strong>'+esc(loot.name)+'</strong><small>'+sources+' · '+owned+'</small></span></li>';
+    }).join('');
+    const encounterDetails='<div class="exploration-region-details">'+(bossRows?'<section><h4>Boss noktaları</h4><ul>'+bossRows+'</ul></section>':'')+(dungeonRows?'<section><h4>Zindan ve sandık alanı</h4><ul>'+dungeonRows+'</ul><p class="exploration-map-note">Sandıklar mevcut zindan karşılaşmalarında rastgele bulunur; bu işaret zindan/ganimet alanını gösterir, yeni bir harita üstü sandık açma işlemi değildir.</p></section>':'')+(itemRows?'<section><h4>Nadir ganimet noktaları</h4><ul>'+itemRows+'</ul></section>':'<p class="exploration-map-note">Bu bölge için katalogda tanımlı nadir ganimet yok.</p>')+'</div>';
+    return '<article class="card exploration-region-card is-'+item.state+'" id="region-'+esc(region.key)+'" data-region-key="'+esc(region.key)+'" data-region-state="'+item.state+'"><div class="eyebrow">'+region.emoji+' '+esc(region.name)+'</div><strong>Seviye '+region.minLevel+'+</strong><p>'+status+'</p><p>'+visits+' keşif ziyareti</p>'+progress+encounterDetails+'</article>';
   }).join('');
-  return '<section class="atlas-region-list" aria-labelledby="atlas-region-list-title"><div class="atlas-list-heading"><div><span class="eyebrow">RPG BÖLGE KAYITLARI</span><h3 id="atlas-region-list-title">Keşif Bölgeleri ve Karşılaşmalar</h3><p>Önceki bölge listesinin işlevi korunur; bütün bosslar, zindanlar, ustalık ve ganimet kayıtları burada görünür.</p></div><span>'+rows.length+' bölge</span></div><div class="exploration-region-grid">'+cards+'</div><p class="market-meta">Keşif yapmak için Discord’da /kesif komutunu kullan. Her üç başarılı ziyaret bölge ustalığı ödülü kazandırır.</p></section>';
+  return '<div class="exploration-region-grid">'+cards+'</div><p class="market-meta">Keşif yapmak için Discord’da /kesif komutunu kullan. Her üç başarılı ziyaret bölge ustalığı ödülü kazandırır.</p>';
+}
+function mapDungeonWins(item) {
+  return Math.max(0,Number(item.dungeonWins)||0);
 }
 
 export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) {
