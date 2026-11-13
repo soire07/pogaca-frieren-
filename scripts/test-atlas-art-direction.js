@@ -164,7 +164,7 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   for (const layer of ['atlas-waterways', 'atlas-trails', 'atlas-settled-land']) {
     assert.match(atlas, new RegExp('data-atlas-geography-layer="' + layer + '"'));
   }
-  assert.match(atlas, /atlas-geography-overlay/);
+  assert.match(atlas, /const geographyOverlay = `</);\n  assert.match(atlas, /atlas-geography-overlay/);
   assert.ok(atlas.includes("geographyOverlay+'<div class="), 'inline geography overlay must be inserted into map markup');
   assert.match(atlas, /atlas-inline-land-clip/);
   assert.match(atlas, /atlas-river-main/);
