@@ -20,7 +20,7 @@
   const response=await fetch('/api/chat-media/upload',{method:'POST',headers:{'Content-Type':file.type,'X-CSRF-Token':csrf,'X-Chat-Scope':scope,'X-Chat-Target':target||''},body:file});
   const data=await response.json().catch(()=>({}));
   if(!response.ok||data.status!=='uploaded'){
-   const message=data.error==='media_storage_not_configured'?'Dosya deposu henüz etkinleştirilmedi. Owner tarafında R2 ayarları gerekli.':data.error==='media_daily_quota'?'24 saatlik dosya yükleme kotan doldu.':data.error==='media_storage_quota'?'Sohbet dosyaları için ayrılan ücretsiz depolama alanı doldu.':data.error==='media_size_invalid'||data.error==='media_too_large'?'Dosya boyutu izin verilen sınırı aşıyor.':data.error==='media_type_invalid'?'Dosyanın gerçek biçimi desteklenmiyor.':'Dosya yüklenemedi. Tekrar dene.';
+   const message=data.error==='media_storage_not_configured'?'Dosya deposu henüz etkinleştirilmedi. Supabase Storage ayarları gerekli.':data.error==='media_daily_quota'?'24 saatlik dosya yükleme kotan doldu.':data.error==='media_storage_quota'?'Sohbet dosyaları için ayrılan ücretsiz depolama alanı doldu.':data.error==='media_size_invalid'||data.error==='media_too_large'?'Dosya boyutu izin verilen sınırı aşıyor.':data.error==='media_type_invalid'?'Dosyanın gerçek biçimi desteklenmiyor.':'Dosya yüklenemedi. Tekrar dene.';
    throw new Error(message);
   }
   if(status)status.textContent='Dosya yüklendi.';
@@ -31,7 +31,7 @@
   const url=String(item.media_url||''),mime=String(item.media_mime_type||'');
   if(!url||!mime)return;
   let parsed;try{parsed=new URL(url);}catch{return;}
-  if(parsed.protocol!=='https:'||!/^([a-f0-9]{32})\.r2\.cloudflarestorage\.com$/i.test(parsed.hostname))return;
+  if(parsed.protocol!=='https:'||!/^[a-z0-9-]+\.storage\.supabase\.co$/i.test(parsed.hostname))return;
   let element;
   if(mime.startsWith('image/')){element=document.createElement('img');element.alt='Sohbette paylaşılan görsel';element.loading='lazy';}
   else if(mime.startsWith('video/')){element=document.createElement('video');element.controls=true;element.preload='metadata';element.playsInline=true;}
@@ -76,7 +76,7 @@
   if(count)count.textContent=query?visible.length+' / '+messages.length+' eşleşme':messages.length+' mesaj gösteriliyor';
   const fragment=document.createDocumentFragment();
   for(const item of visible){
-   const li=document.createElement('li');li.className='public-chat-message';li.dataset.chatMessageId=String(item.message_id||'');
+   const li=document.createElement('li');li.className='public-chat-message'+(item.is_own?' is-own':'');li.dataset.chatMessageId=String(item.message_id||'');
    const avatarUrl=String(item.avatar_url||'');let trustedDiscordAvatar=false;try{const parsedAvatar=new URL(avatarUrl);trustedDiscordAvatar=parsedAvatar.protocol==='https:'&&parsedAvatar.hostname==='cdn.discordapp.com'&&parsedAvatar.searchParams.get('size')==='128'&&(parsedAvatar.pathname.startsWith('/embed/avatars/')||parsedAvatar.pathname.startsWith('/avatars/'));}catch{}const localAvatar=avatarUrl.startsWith('/profil/media/public?accountId=site_')&&/^[0-9a-f-]{36}$/i.test(avatarUrl.split('accountId=')[1]||'');const avatar=document.createElement(localAvatar||trustedDiscordAvatar?'img':'span');avatar.className='public-chat-avatar';if(item.is_online){avatar.dataset.online='true';avatar.title='Çevrimiçi';}else{avatar.dataset.online='false';avatar.title='Çevrimdışı';}if(avatar.tagName==='IMG'){avatar.alt='';avatar.loading='lazy';avatar.onerror=()=>{const fallback=document.createElement('span');fallback.className='public-chat-avatar';fallback.textContent=Array.from(String(item.username||'G').trim())[0]?.toLocaleUpperCase('tr-TR')||'G';fallback.dataset.online=avatar.dataset.online;fallback.title=avatar.title;avatar.replaceWith(fallback);};avatar.src=avatarUrl;}else avatar.textContent=Array.from(String(item.username||'G').trim())[0]?.toLocaleUpperCase('tr-TR')||'G';
    const body=document.createElement('div');body.className='public-chat-message-body';
    const meta=document.createElement('div');meta.className='public-chat-message-meta';
@@ -85,6 +85,17 @@
    const ownerBadge=item.is_owner===true?document.createElement('span'):null;if(ownerBadge){ownerBadge.className='public-chat-owner-badge';ownerBadge.textContent='OWNER';ownerBadge.setAttribute('aria-label','Site sahibi');}meta.append(name);if(ownerBadge)meta.append(ownerBadge);meta.append(time);body.append(meta);if(item.pinned_at){const pinned=document.createElement('span');pinned.className='public-chat-pinned';pinned.textContent='✦ Sabitlendi';body.append(pinned);}if(item.is_own&&Number(item.read_count)>0){const read=document.createElement('small');read.className='public-chat-read-count';read.textContent='Okundu · '+Number(item.read_count);body.append(read);}
    if(item.reply){const quote=document.createElement('blockquote');quote.className='public-chat-reply-quote';const qName=document.createElement('strong');qName.textContent=String(item.reply.username||'Yanıtlanan mesaj');const qText=document.createElement('span');qText.textContent=String(item.reply.body||'');quote.append(qName,qText);body.append(quote);}
    const text=document.createElement('p');text.className='public-chat-message-text';text.textContent=item.deleted_at?'Bu mesaj silindi':String(item.body||'');if(item.deleted_at)text.classList.add('is-deleted');body.append(text);appendMedia(body,item);
+    if(!item.deleted_at){
+     const reactions=document.createElement('div');reactions.className='public-chat-reactions';
+     for(const reaction of (Array.isArray(item.reactions)?item.reactions:[])){
+      const total=Math.max(0,Number(reaction.count)||0);if(!total)continue;
+      const emoji=String(reaction.emoji||'');if(!emoji)continue;
+      if(form){const chip=document.createElement('button');chip.type='button';chip.className='public-chat-reaction';chip.textContent=emoji+' +'+total;chip.setAttribute('aria-label',emoji+', '+total+' kişi tepki verdi');chip.setAttribute('aria-pressed',String(Boolean(reaction.reacted)));chip.dataset.chatReact=item.message_id;chip.dataset.emoji=emoji;reactions.append(chip);}
+      else{const label=document.createElement('span');label.className='public-chat-reaction-label';label.textContent=emoji+' +'+total;reactions.append(label);}
+     }
+     if(form){const add=document.createElement('button');add.type='button';add.className='public-chat-reaction-add';add.textContent='+';add.dataset.chatReactAdd=item.message_id;add.setAttribute('aria-label','Bu mesaja emoji tepkisi ekle');const input=document.createElement('input');input.type='text';input.inputMode='text';input.enterKeyHint='done';input.autocomplete='off';input.maxLength=16;input.placeholder='Emoji seç';input.className='public-chat-reaction-input';input.setAttribute('aria-label','Klavyenden bir emoji seç');input.dataset.chatReactionInput=item.message_id;input.hidden=true;reactions.append(add,input);}
+     if(reactions.children.length)body.append(reactions);
+    }
    const actions=document.createElement('div');actions.className='public-chat-actions';
    if(form&&!item.is_own){const reply=document.createElement('button');reply.type='button';reply.className='public-chat-action';reply.textContent='Yanıtla';reply.dataset.chatReply=item.message_id;actions.append(reply);}
    if(form&&item.is_own&&!item.deleted_at){const edit=document.createElement('button');edit.type='button';edit.className='public-chat-action';edit.textContent='Düzenle';edit.dataset.chatEdit=item.message_id;actions.append(edit);const removeOwn=document.createElement('button');removeOwn.type='button';removeOwn.className='public-chat-action';removeOwn.textContent='Sil';removeOwn.dataset.chatDeleteOwn=item.message_id;actions.append(removeOwn);}if(isOwner&&!item.deleted_at){const remove=document.createElement('button');remove.type='button';remove.className='public-chat-action';remove.textContent='Sil';remove.dataset.chatDelete=item.message_id;actions.append(remove);const pin=document.createElement('button');pin.type='button';pin.className='public-chat-action';pin.textContent=item.pinned_at?'Sabitlemeyi kaldır':'Sabitle';pin.dataset.chatPin=item.message_id;actions.append(pin);}
@@ -109,6 +120,18 @@
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(data.error==='owner_only'?'Bu işlem yalnızca Owner tarafından yapılabilir.':data.error==='chat_paused'?'Sohbet şu anda Owner tarafından durduruldu.':data.error==='invalid_chat_action'?'Bu işlem şu anda yapılamıyor.':'İşlem tamamlanamadı.');
   return data;
+ };
+ const isSingleEmoji=value=>{
+  const emoji=String(value||'').normalize('NFC');
+  if(!emoji||Array.from(emoji).length>16||/\s/u.test(emoji))return false;
+  try{const parts=[...new Intl.Segmenter('tr',{granularity:'grapheme'}).segment(emoji)];return parts.length===1&&(/[\p{Extended_Pictographic}\p{Regional_Indicator}]/u.test(emoji)||/^[#*0-9]\uFE0F?\u20E3$/u.test(emoji));}catch{return false;}
+ };
+ const submitReaction=async input=>{
+  const emoji=String(input.value||'').normalize('NFC').trim();
+  if(!isSingleEmoji(emoji)){say('Tek bir emoji seçmelisin.');return;}
+  input.disabled=true;
+  try{await postAction('/api/public-chat/reactions',{messageId:input.dataset.chatReactionInput,emoji});await refresh();}
+  catch(error){input.disabled=false;input.focus();say(error.message||'Emoji tepkisi eklenemedi.');}
  };
  readObserver=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{
   const visible=entries.filter(entry=>entry.isIntersecting&&entry.intersectionRatio>=0.6).map(entry=>entry.target.dataset.chatMessageId).filter(id=>id&&!observedReadIds.has(id));
@@ -175,10 +198,26 @@
    }catch(error){await discardMedia(mediaId,form.elements.csrf.value);say(error.message||'Mesaj gönderilemedi.');}
    finally{button.disabled=false;input.focus();}
   });
-  form.addEventListener('click',event=>{const toggle=event.target.closest('[data-chat-emoji-toggle]');if(toggle){const picker=form.querySelector('[data-chat-emoji-picker]');if(picker){picker.hidden=!picker.hidden;toggle.setAttribute('aria-expanded',String(!picker.hidden));}return;}const emojiButton=event.target.closest('[data-chat-emoji]');if(emojiButton){const input=form.elements.message,emoji=emojiButton.dataset.chatEmoji,start=input.selectionStart??input.value.length,end=input.selectionEnd??start;input.setRangeText(emoji,start,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();return;}if(!event.target.closest('[data-chat-reply-clear]'))return;replyTarget=null;form.elements.replyToMessageId.value='';if(replyPreview)replyPreview.hidden=true;if(replyLabel)replyLabel.textContent='';form.elements.message.focus();});
+  form.addEventListener('click',event=>{if(!event.target.closest('[data-chat-reply-clear]'))return;replyTarget=null;form.elements.replyToMessageId.value='';if(replyPreview)replyPreview.hidden=true;if(replyLabel)replyLabel.textContent='';form.elements.message.focus();});
+  list.addEventListener('input',event=>{
+   const input=event.target.closest('[data-chat-reaction-input]');if(!input)return;
+   if(input._reactionTimer)window.clearTimeout(input._reactionTimer);
+   if(isSingleEmoji(input.value))input._reactionTimer=window.setTimeout(()=>submitReaction(input),350);
+  });
+  list.addEventListener('compositionend',event=>{
+   const input=event.target.closest('[data-chat-reaction-input]');if(!input)return;
+   if(input._reactionTimer)window.clearTimeout(input._reactionTimer);
+   if(isSingleEmoji(input.value))input._reactionTimer=window.setTimeout(()=>submitReaction(input),250);
+  });
+  list.addEventListener('keydown',event=>{
+   const input=event.target.closest('[data-chat-reaction-input]');if(!input)return;
+   if(event.key==='Enter'){event.preventDefault();if(input._reactionTimer)window.clearTimeout(input._reactionTimer);submitReaction(input);}
+   if(event.key==='Escape'){const row=input.closest('.public-chat-reactions');input.value='';input.hidden=true;const add=row?.querySelector('[data-chat-react-add]');if(add){add.hidden=false;add.focus();}}
+  });
   list.addEventListener('click',async event=>{
    const button=event.target.closest('button');if(!button)return;
    try{
+    if(button.dataset.chatReactAdd){const row=button.closest('.public-chat-reactions');const input=row?.querySelector('[data-chat-reaction-input]');if(input){button.hidden=true;input.hidden=false;input.focus();}return;}
     if(button.dataset.chatReply){replyTarget=button.dataset.chatReply;form.elements.replyToMessageId.value=replyTarget;const item=button.closest('.public-chat-message');const name=item?.querySelector('.public-chat-message-meta strong')?.textContent||'mesaj';if(replyLabel)replyLabel.textContent=name+' mesajına yanıt veriyorsun';if(replyPreview)replyPreview.hidden=false;form.elements.message.focus();return;}
     if(button.dataset.chatReact){await postAction('/api/public-chat/reactions',{messageId:button.dataset.chatReact,emoji:button.dataset.emoji});await refresh();return;}
     if(button.dataset.chatEdit){const current=button.closest('.public-chat-message')?.querySelector('.public-chat-message-text')?.textContent||'';const body=await askChatDialog({title:'Mesajını düzenle',message:'Mesajını gönderimden sonraki 15 dakika içinde düzenleyebilirsin.',value:current,multiline:true,confirmLabel:'Kaydet'});if(body===null)return;await postAction('/api/public-chat/messages/edit',{messageId:button.dataset.chatEdit,body});say('Mesaj güncellendi.');await refresh();return;}
