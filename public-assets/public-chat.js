@@ -125,7 +125,7 @@
  const isSingleEmoji=value=>{
   const emoji=String(value||'').normalize('NFC');
   if(!emoji||Array.from(emoji).length>16||/\s/u.test(emoji))return false;
-  try{const parts=[...new Intl.Segmenter('tr',{granularity:'grapheme'}).segment(emoji)];return parts.length===1&&(/[\p{Extended_Pictographic}\p{Regional_Indicator}]/u.test(emoji)||/^[#*0-9]\uFE0F?\u20E3$/u.test(emoji));}catch{return false;}
+  try{const parts=[...new Intl.Segmenter('tr',{granularity:'grapheme'}).segment(emoji)];return parts.length===1&&(/\p{Extended_Pictographic}/u.test(emoji)||/^\p{Regional_Indicator}{2}$/u.test(emoji)||/^[#*0-9]\uFE0F?\u20E3$/u.test(emoji));}catch{return false;}
  };
  const submitReaction=async input=>{
   const emoji=String(input.value||'').normalize('NFC').trim();
