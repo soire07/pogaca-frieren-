@@ -90,8 +90,9 @@ export async function uploadChatMedia(db,{accountId,scope,scopeKey,mimeType,buff
  if(!['public','dm','group'].includes(scope)||!String(scopeKey||'').startsWith(scope+':')&&!(scope==='public'&&scopeKey==='public'))throw new Error('CHAT_MEDIA_SCOPE_INVALID');
  const media=validateChatMedia(buffer,mimeType),cfg=config();if(!cfg)throw new Error('CHAT_MEDIA_STORAGE_NOT_CONFIGURED');
  await ensureChatMediaSchema(db);
- const usage=await db.query("SELECT COALESCE(SUM(size_bytes),0)::bigint AS bytes FROM frieren_site_chat_media WHERE owner_account_id=$1 AND created_at>NOW()-INTERVAL '24 hours'",[accountId]);
+ const [usage,storage]=await Promise.all([db.query("SELECT COALESCE(SUM(size_bytes),0)::bigint AS bytes FROM frieren_site_chat_media WHERE owner_account_id=$1 AND created_at>NOW()-INTERVAL '24 hours'",[accountId]),db.query('SELECT COALESCE(SUM(size_bytes),0)::bigint AS bytes FROM frieren_site_chat_media')]);
  if(Number(usage.rows[0]?.bytes||0)+media.size>150*1024*1024)throw new Error('CHAT_MEDIA_DAILY_QUOTA');
+ if(Number(storage.rows[0]?.bytes||0)+media.size>8_500_000_000)throw new Error('CHAT_MEDIA_STORAGE_QUOTA');
  const mediaId=randomUUID(),objectKey='chat/'+scope+'/'+mediaId+'.'+media.extension;
  const putUrl=signChatMediaUrl('PUT',objectKey,media.mimeType,600);
  const response=await fetch(putUrl,{method:'PUT',headers:{'Content-Type':media.mimeType},body:media.buffer});
