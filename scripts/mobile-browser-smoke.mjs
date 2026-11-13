@@ -1,5 +1,6 @@
 import { chromium, webkit, request } from 'playwright';
 import { createPublicSiteSession } from '../owner-dashboard.js';
+import { renderExplorationAtlas } from '../exploration-atlas.js';
 
 const configuredBaseUrl = String(process.env.MOBILE_SMOKE_BASE_URL || '').trim();
 const allowLocal = process.env.MOBILE_SMOKE_ALLOW_LOCAL === '1';
@@ -74,6 +75,50 @@ for (const scenario of scenarios) {
     }
     const playerPage = await page.goto(baseUrl + '/kesfet', { waitUntil: 'domcontentloaded', timeout: 45000 });
     if (!playerPage || playerPage.status() !== 200) throw new Error(scenario.name + ' authenticated site page HTTP ' + (playerPage?.status() || 'no response'));
+    const atlasKeys = [
+      ['merkez', 'Merkez Topraklar', 1], ['orman', 'Größe Ormanı', 1],
+      ['harabeler', 'Harabeler', 10], ['kuzey', 'Kuzey Toprakları', 20],
+      ['yayla', 'Kuzey Yaylaları', 35], ['aus', 'Ende', 50]
+    ];
+    const atlasRegions = atlasKeys.map(([key, name, minLevel]) => ({
+      region: { key, name, minLevel, emoji: '✧' },
+      visits: 1, discovered: true, unlocked: true, state: 'discovered',
+      masteryLevel: 0, visitsToNextMastery: 1, masteryProgressPercent: 33,
+      bosses: [], dungeons: [], rareItems: [], dungeonWins: 0
+    }));
+    const atlasMarkup = renderExplorationAtlas({
+      mapContent: {
+        regions: atlasRegions,
+        summary: { discoveredRegions: 1, totalRegions: 6, defeatedBosses: 0, totalBosses: 0, totalDungeons: 0 }
+      },
+      stats: {}
+    });
+    await page.setContent('<!doctype html><html lang="tr"><body>' + atlasMarkup + '</body></html>');
+    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-364-1' });
+    const terrainLayer = page.locator('[data-atlas-geography-layer="terrain-details"]');
+    const terrainToggle = page.locator('[data-atlas-geography="terrain-details"]');
+    if (await terrainLayer.count() !== 1 || await terrainLayer.getAttribute('hidden') !== null) {
+      throw new Error(scenario.name + ' atlas terrain detail layer did not render visibly');
+    }
+    await terrainToggle.click();
+    if (await terrainLayer.getAttribute('hidden') === null) throw new Error(scenario.name + ' atlas terrain detail toggle did not hide the SVG layer');
+    await terrainToggle.click();
+    if (await terrainLayer.getAttribute('hidden') !== null) throw new Error(scenario.name + ' atlas terrain detail toggle did not restore the SVG layer');
+    await page.locator('[data-atlas-weather]').selectOption('snow');
+    const snowMode = await page.locator('.atlas-map-art').getAttribute('data-atlas-weather');
+    if (snowMode !== 'snow') throw new Error(scenario.name + ' atlas snow mode was not applied');
+    await page.locator('[data-atlas-weather]').selectOption('rain');
+    const rainMode = await page.locator('.atlas-map-art').getAttribute('data-atlas-weather');
+    if (rainMode !== 'rain') throw new Error(scenario.name + ' atlas rain mode was not applied');
+    const lightingToggle = page.locator('[data-atlas-lighting]');
+    await lightingToggle.click();
+    if (await page.locator('.atlas-map-art').getAttribute('data-atlas-lighting') !== 'night' || await lightingToggle.getAttribute('aria-pressed') !== 'true') {
+      throw new Error(scenario.name + ' atlas night mode did not apply accessibly');
+    }
+    await lightingToggle.click();
+    if (await page.locator('.atlas-map-art').getAttribute('data-atlas-lighting') !== 'day' || await lightingToggle.getAttribute('aria-pressed') !== 'false') {
+      throw new Error(scenario.name + ' atlas day mode did not restore correctly');
+    }
     const encyclopediaPage = await page.goto(baseUrl + '/ansiklopedi', { waitUntil: 'domcontentloaded', timeout: 45000 });
     if (!encyclopediaPage || encyclopediaPage.status() !== 200) throw new Error(scenario.name + ' character encyclopedia HTTP ' + (encyclopediaPage?.status() || 'no response'));
     await page.waitForLoadState('networkidle', { timeout: 15000 });
