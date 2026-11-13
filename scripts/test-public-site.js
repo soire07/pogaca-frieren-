@@ -1611,5 +1611,6 @@ test('character encyclopedia uses the existing catalog with closed spoilers and 
  const asset=res();
  assert.equal(await handlePublicSiteRequest(request('/assets/character-encyclopedia.js'),asset,{db:null}),true);
  assert.equal(asset.status,200);
+ assert.match(asset.headers['Content-Type'],/javascript/);
  assert.match(asset.body.toString('utf8'),/applyFilters/);
 });
