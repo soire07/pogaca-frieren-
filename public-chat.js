@@ -66,7 +66,7 @@ export async function listPublicChatMessages(db,{limit=100,viewerAccountId=null,
   ) r),'[]'::jsonb) AS reactions,
   (SELECT jsonb_build_object('username',p.username,'body',CASE WHEN p.deleted_at IS NOT NULL THEN 'Bu mesaj silindi' ELSE LEFT(p.body,120) END) FROM frieren_public_chat_messages p WHERE p.message_id=m.reply_to_message_id) AS reply,
   cm.media_id,cm.mime_type AS media_mime_type,cm.size_bytes AS media_size_bytes,cm.object_key AS media_object_key
-  FROM frieren_public_chat_messages m LEFT JOIN frieren_site_chat_media cm ON cm.message_id=m.message_id AND cm.scope_type='public' AND cm.scope_key='public' LEFT JOIN frieren_account_profiles ap ON ap.account_id=m.account_id
+  FROM frieren_public_chat_messages m LEFT JOIN frieren_site_chat_media cm ON cm.message_id=m.message_id AND cm.scope_type='public' AND cm.scope_key='public' AND m.deleted_at IS NULL LEFT JOIN frieren_account_profiles ap ON ap.account_id=m.account_id
   LEFT JOIN frieren_site_discord_accounts dsa ON dsa.account_id=REPLACE(m.account_id,'site_','')::uuid
   WHERE m.hidden=FALSE AND m.created_at>=NOW()-INTERVAL '30 days'
    AND ($2::text IS NULL OR NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE b.blocker_account_id=$2 AND b.blocked_account_id=m.account_id))
