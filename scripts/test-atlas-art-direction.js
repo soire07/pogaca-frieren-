@@ -91,6 +91,17 @@ test('atlas CSS keeps every category distinct and city labels hidden until inter
   assert.match(refined, /@media\(max-width:700px\)/);
   assert.match(refined, /prefers-reduced-motion:reduce/);
 });
+ 
+test('settlement labels open horizontally beside the village pin and flip inward near the right edge', async () => {
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const refined = css.slice(css.lastIndexOf('Refined atlas presentation'));
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  assert.match(refined, /\.atlas-pin-city \.atlas-pin-label\\{[^}]*left:calc\\(100% \\+ 7px\\);top:50%;transform:translateY\\(-50%\\)/);
+  assert.match(refined, /\.atlas-pin-city\\.atlas-pin-label-left \.atlas-pin-label\\{[^}]*right:calc\\(100% \\+ 7px\\)/);
+  assert.match(atlas, /atlas-pin-label-left/);
+  assert.match(atlas, /Number\\(x\\)>=68/);
+});
+
 
 
 test('current canon and RPG map coordinates are collision-adjusted as one visual layer', async () => {
