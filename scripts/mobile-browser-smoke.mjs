@@ -94,7 +94,7 @@ for (const scenario of scenarios) {
       stats: {}
     });
     await page.setContent('<!doctype html><html lang="tr"><body>' + atlasMarkup + '</body></html>');
-    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-367-1' });
+    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-368-1' });
     const routeFrom = page.locator('[data-atlas-route-from]');
     const routeTo = page.locator('[data-atlas-route-to]');
     await routeFrom.selectOption('royal-capital');
