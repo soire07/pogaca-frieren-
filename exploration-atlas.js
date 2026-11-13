@@ -31,7 +31,7 @@ const position = (x,y) => 'left:'+x+'%;top:'+y+'%;';
 
 function pin({key,targetKey=key,label,type,icon,x,y,focus='region',extraClass='',subtitle=''}) {
   const title = subtitle ? label+' · '+subtitle : label;
-  return '<button type="button" class="atlas-pin atlas-pin-'+type+' '+extraClass+'" style="'+position(x,y)+'" data-atlas-layer-item="'+type+'" data-atlas-open="'+escapeHtml(key)+'" data-atlas-focus="'+focus+'" data-atlas-target-key="'+escapeHtml(key)+'" aria-label="'+escapeHtml(title)+'" title="'+escapeHtml(title)+'"><span class="atlas-pin-glyph" aria-hidden="true">'+icon+'</span><span class="atlas-pin-label">'+escapeHtml(label)+'</span></button>';
+  return '<button type="button" class="atlas-pin atlas-pin-'+type+' '+extraClass+'" style="'+position(x,y)+'" data-atlas-layer-item="'+type+'" data-atlas-open="'+escapeHtml(key)+'" data-atlas-focus="'+focus+'" data-atlas-target-key="'+escapeHtml(targetKey)+'" aria-label="'+escapeHtml(title)+'" title="'+escapeHtml(title)+'"><span class="atlas-pin-glyph" aria-hidden="true">'+icon+'</span><span class="atlas-pin-label">'+escapeHtml(label)+'</span></button>';
 }
 
 function detailRow({key,name,description,icon,state='',focus=''}) {
@@ -114,9 +114,13 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
     const point=location||{x:anchor.x,y:anchor.y,place:'Bölge boss alanı'};
     return pin({key:item.region.key,targetKey:boss.key,label:boss.name,type:'boss',icon:'☠',x:point.x,y:point.y,focus:'boss',extraClass:boss.defeated?'is-defeated':'',subtitle:point.place});
   })).join('');
-  const dungeonPins=points.flatMap(({item})=>item.dungeons.map(dungeon=>{
-    const point=dungeon.location||FRIEREN_WORLD_DUNGEON_LOCATIONS[dungeon.key];
-    if(!point)return '';
+  const dungeonPins=points.flatMap(({item})=>item.dungeons.map((dungeon,index)=>{
+    const fallback={
+      merkez:[{x:37,y:88},{x:42,y:83}],orman:[{x:21,y:58},{x:27,y:62}],harabeler:[{x:64,y:56},{x:59,y:62}],
+      kuzey:[{x:72,y:46},{x:76,y:50}],yayla:[{x:82,y:76},{x:86,y:72}],aus:[{x:92,y:44},{x:89,y:50}]
+    };
+    const slots=fallback[item.region.key]||fallback.merkez;
+    const point=dungeon.location||FRIEREN_WORLD_DUNGEON_LOCATIONS[dungeon.key]||slots[index%slots.length];
     return pin({key:item.region.key,targetKey:dungeon.key,label:dungeon.name,type:'dungeon',icon:'◇',x:point.x,y:point.y,focus:'dungeon',subtitle:point.place});
   })).join('');
   const fogPaths=points.filter(point=>!point.item.discovered).map(point=>{
