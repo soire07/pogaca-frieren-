@@ -1669,3 +1669,14 @@ body.atlas-modal-open{overflow:hidden}
 @media(max-width:700px){
  .atlas-pin-city .atlas-pin-label{max-width:min(145px,38vw);font-size:9px}
 }
+
+
+/* Frieren atlas atmosphere: restrained northern snowfall and forest mist.
+   Decorative only; the layer never intercepts input or changes canonical geography. */
+.atlas-atmosphere-layer{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;mix-blend-mode:screen;background:radial-gradient(ellipse at 69% 18%,rgba(205,224,225,.13),transparent 25%),radial-gradient(ellipse at 27% 39%,rgba(115,158,131,.13),transparent 24%),linear-gradient(180deg,rgba(13,28,39,.04),transparent 35%,rgba(18,31,32,.09))}
+.atlas-atmosphere-layer::before{content:"";position:absolute;left:57%;top:5%;width:37%;height:32%;background-image:radial-gradient(circle,rgba(239,246,239,.78) 0 1px,transparent 1.6px),radial-gradient(circle,rgba(225,238,238,.48) 0 .8px,transparent 1.5px);background-size:53px 47px,79px 67px;background-position:0 0,21px 18px;mask-image:radial-gradient(ellipse at 55% 45%,#000 12%,transparent 76%);opacity:.22;animation:atlas-northfall 28s linear infinite}
+.atlas-atmosphere-layer::after{content:"";position:absolute;left:8%;top:25%;width:47%;height:40%;background:radial-gradient(ellipse at 45% 50%,rgba(190,211,190,.19),rgba(190,211,190,.06) 42%,transparent 73%);filter:blur(13px);opacity:.58;animation:atlas-forest-mist 34s ease-in-out infinite alternate}
+@keyframes atlas-northfall{from{background-position:0 0,21px 18px}to{background-position:0 188px,21px 286px}}
+@keyframes atlas-forest-mist{from{transform:translate3d(-1.5%,0,0);opacity:.38}to{transform:translate3d(2%,1.5%,0);opacity:.68}}
+@media(max-width:700px){.atlas-atmosphere-layer{opacity:.72}.atlas-atmosphere-layer::before{opacity:.14}.atlas-atmosphere-layer::after{filter:blur(8px);opacity:.34}}
+@media(prefers-reduced-motion:reduce){.atlas-atmosphere-layer::before,.atlas-atmosphere-layer::after{animation:none}}
