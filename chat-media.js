@@ -26,8 +26,8 @@ function config(){
  const secret=String(process.env.CHAT_MEDIA_SUPABASE_SECRET_ACCESS_KEY||'').trim();
  let endpoint;
  try{endpoint=new URL(endpointValue);}catch{return null;}
- const basePath=endpoint.pathname.replace(/\\/+$/,'');
- if(endpoint.protocol!=='https:'||! /^[a-z0-9-]+\\.storage\\.supabase\\.co$/i.test(endpoint.hostname)||basePath!=='/storage/v1/s3'||endpoint.search||endpoint.hash||endpoint.username||endpoint.password)return null;
+ const basePath=endpoint.pathname.replace(/\/+$/,'');
+ if(endpoint.protocol!=='https:'||! /^[a-z0-9-]+\.storage\.supabase\.co$/i.test(endpoint.hostname)||basePath!=='/storage/v1/s3'||endpoint.search||endpoint.hash||endpoint.username||endpoint.password)return null;
  if(!/^[a-z0-9-]{3,63}$/i.test(bucket)||!/^[a-z0-9-]{2,32}$/i.test(region)||!accessKey||!secret)return null;
  return{bucket,accessKey,secret,host:endpoint.host,basePath,region};
 }
