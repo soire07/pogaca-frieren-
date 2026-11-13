@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { ATLAS_HISTORICAL_EVENTS, ATLAS_ROUTE_STOPS, findAtlasRoute, getAtlasDetailLevel } from '../atlas-navigation.js';
 import { renderExplorationAtlas } from '../exploration-atlas.js';
+import { buildAtlasLocalDetailLayer, estimateAtlasKilometers, getAtlasEcologyProfile } from '../atlas-advanced.js';
 
 test('atlas route planner finds a connected road-and-pass route with honest map-unit distance', () => {
   const route = findAtlasRoute('royal-capital', 'ende');
@@ -116,4 +117,43 @@ test('rendered atlas exposes route, event and zoom-level controls accessibly', (
   assert.match(html, /data-atlas-detail-level="regional"/);
   assert.match(html, /data-atlas-detail-level="local"/);
   assert.match(html, /kilometre ölçeği belirtilmemiştir/i);
+});
+
+
+test('kilometre estimates require an explicit positive user calibration and never invent a scale', () => {
+  assert.equal(estimateAtlasKilometers(50, 100, 120), 60);
+  assert.equal(estimateAtlasKilometers(0, 100, 120), 0);
+  assert.equal(estimateAtlasKilometers(50, 0, 120), null);
+  assert.equal(estimateAtlasKilometers(50, 100, 0), null);
+  assert.equal(estimateAtlasKilometers(Number.NaN, 100, 120), null);
+});
+
+test('regional ecology changes by season and weather without altering RPG progression', () => {
+  assert.match(getAtlasEcologyProfile('orman', 'spring', 'rain').vegetation, /yosun|eğrelti/i);
+  assert.match(getAtlasEcologyProfile('orman', 'autumn', 'clear').vegetation, /Kızıl yaprak/i);
+  assert.match(getAtlasEcologyProfile('aus', 'winter', 'snow').vegetation, /kar/i);
+  assert.equal(getAtlasEcologyProfile('unknown', 'unknown', 'unknown').season, 'summer');
+  assert.equal(getAtlasEcologyProfile('unknown', 'unknown', 'unknown').weather, 'clear');
+});
+
+test('local zoom plans are anchored to existing settlements and explicitly schematic', async () => {
+  const { FRIEREN_WORLD_SETTLEMENTS } = await import('../exploration-world-locations.js');
+  const layer = buildAtlasLocalDetailLayer(FRIEREN_WORLD_SETTLEMENTS);
+  assert.match(layer, /data-atlas-local-detail-layer/);
+  assert.match(layer, /data-atlas-local-settlement="Strahl"/);
+  assert.match(layer, /data-atlas-local-settlement="Äußerst"/);
+  assert.equal((layer.match(/class="atlas-local-settlement-plan"/g)||[]).length, FRIEREN_WORLD_SETTLEMENTS.length);
+  assert.doesNotMatch(layer, /undefined|NaN/);
+});
+
+test('rendered atlas exposes user-calibrated scale, seasonal ecology and local detail controls', () => {
+  const html = renderExplorationAtlas({
+    mapContent: { regions: [], summary: {} },
+    stats: {}
+  });
+  assert.match(html, /data-atlas-reference-km/);
+  assert.match(html, /data-atlas-season/);
+  assert.match(html, /data-atlas-ecology-summary/);
+  assert.match(html, /data-atlas-local-detail-layer/);
+  assert.match(html, /senin ölçek kalibrasyonun|kilometre ölçeği kalibre edilmedi/i);
 });
