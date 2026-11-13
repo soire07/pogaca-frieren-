@@ -1608,4 +1608,8 @@ test('character encyclopedia uses the existing catalog with closed spoilers and 
  assert.match(script,/addEventListener\('input'/);
  assert.match(script,/data-character-spoiler-toggle/);
  assert.match(script,/aria-expanded/);
+ const asset=res();
+ assert.equal(await handlePublicSiteRequest(request('/assets/character-encyclopedia.js'),asset,{db:null}),true);
+ assert.equal(asset.status,200);
+ assert.match(asset.body,/applyFilters/);
 });
