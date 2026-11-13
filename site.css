@@ -1723,3 +1723,34 @@ body.atlas-modal-open{overflow:hidden}
 @keyframes atlas-cloud-shadow{from{transform:translate3d(-1.2%,0,0) scale(1)}to{transform:translate3d(1.4%,.7%,0) scale(1.025)}}
 @media(max-width:700px){.atlas-map-art::before{opacity:.16}}
 @media(prefers-reduced-motion:reduce){.atlas-map-art::before{animation:none}}
+
+
+/* Atlas route planner, sourced event pins and zoom-aware cartographic detail. */
+.atlas-route-overlay{position:absolute;inset:0;z-index:3;width:100%;height:100%;overflow:visible;pointer-events:none}
+.atlas-route-overlay[hidden]{display:none}
+.atlas-route-glow,.atlas-route-line{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.atlas-route-glow{stroke:#172c38;stroke-width:24;stroke-opacity:.72}
+.atlas-route-line{stroke:#f5d48b;stroke-width:10;stroke-dasharray:18 12;filter:drop-shadow(0 2px 5px rgba(20,25,28,.85))}
+.atlas-route-endpoint{fill:#f6e5b7;stroke:#253b43;stroke-width:6;filter:drop-shadow(0 2px 5px rgba(15,20,24,.8))}
+.atlas-pin-layer{z-index:4}
+.atlas-pin-event .atlas-pin-glyph{background:#8a6840;color:#fff1c9;border-color:#f0d29a;box-shadow:0 2px 8px #171b20aa}
+.atlas-layer-controls button[data-atlas-layer="event"]{border-color:#d6b77c66}
+.atlas-route-planner{display:grid;grid-template-columns:minmax(180px,1.4fr) minmax(135px,1fr) minmax(135px,1fr) auto;gap:10px;align-items:end;margin:14px 0;padding:14px 16px;border:1px solid #b8a77b55;border-radius:12px;background:linear-gradient(135deg,#1b2a31ee,#29372fe8);color:#eee4ce}
+.atlas-route-planner h3{margin:3px 0 4px;font-size:16px;color:#f1e6ca}
+.atlas-route-planner p{margin:0;color:#c7c5b5;font-size:12px;line-height:1.45}
+.atlas-route-planner label{display:grid;gap:5px;color:#e3d8bf;font-size:12px}
+.atlas-route-planner select{width:100%;min-height:38px;padding:7px 9px;border:1px solid #a9a17d77;border-radius:7px;background:#14232b;color:#f5ead0;font:inherit}
+.atlas-route-actions{display:flex;gap:7px}
+.atlas-route-actions button{min-height:38px;padding:7px 11px;border:1px solid #d5bb83;border-radius:7px;background:#7a6947;color:#fff1d0;font:inherit;font-size:12px;white-space:nowrap}
+.atlas-route-actions button[data-atlas-route-clear]{background:#26343a;border-color:#83928a;color:#e3e1d4}
+.atlas-route-summary{grid-column:1/-1;min-height:18px;padding-top:8px;border-top:1px solid #b8a77b33;font-variant-numeric:tabular-nums}
+.atlas-event-row a{display:inline-block;margin-top:4px;color:#d8c28f;font-size:11px;text-decoration:underline;text-underline-offset:2px}
+.atlas-zoom-detail-layer{opacity:0;transition:opacity .2s ease;pointer-events:none}
+.atlas-map-art[data-atlas-zoom-detail="regional"] [data-atlas-detail-level="regional"],
+.atlas-map-art[data-atlas-zoom-detail="local"] [data-atlas-detail-level="regional"],
+.atlas-map-art[data-atlas-zoom-detail="local"] [data-atlas-detail-level="local"]{opacity:.92}
+.atlas-zoom-detail-local{opacity:0}
+.atlas-legend .key-event{display:inline-grid;place-items:center;width:22px;height:22px;border:1px solid #d7b77b;border-radius:50%;background:#8a6840;color:#fff1c9;font-style:normal}
+@media(max-width:900px){.atlas-route-planner{grid-template-columns:1fr 1fr}.atlas-route-planner>div:first-child,.atlas-route-summary{grid-column:1/-1}.atlas-route-actions{grid-column:1/-1}}
+@media(max-width:520px){.atlas-route-planner{grid-template-columns:1fr;gap:9px;padding:12px}.atlas-route-planner>div:first-child,.atlas-route-summary,.atlas-route-actions{grid-column:1}.atlas-route-actions button{flex:1}.atlas-route-summary{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.atlas-zoom-detail-layer{transition:none}}
