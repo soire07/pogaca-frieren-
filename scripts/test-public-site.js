@@ -1863,12 +1863,12 @@ test('fantasy atlas artwork includes detailed terrain relief and layered landsca
 
 test('illustrated atlas preserves the source map aspect ratio so pins and discovery fog stay aligned on every screen',async()=>{
  const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
- const viewportRules=[...css.matchAll(/\\.atlas-map-viewport\\{([^}]*)\\}/g)];
+ const viewportRules=[...css.matchAll(/\.atlas-map-viewport\{([^}]*)\}/g)];
  const activeRule=viewportRules.at(-1)?.[1]||'';
- assert.match(activeRule,/aspect-ratio:\\s*3\\s*\\/\\s*2/);
- assert.match(activeRule,/min-height:\\s*0/);
- assert.match(activeRule,/max-width:\\s*1100px/);
- assert.doesNotMatch(css,/\\.atlas-map-viewport\\{min-height:300px\\}/);
+ assert.match(activeRule,/aspect-ratio:\s*3\s*\/\s*2/);
+ assert.match(activeRule,/min-height:\s*0/);
+ assert.match(activeRule,/max-width:\s*1100px/);
+ assert.doesNotMatch(css,/\.atlas-map-viewport\{min-height:300px\}/);
  const artwork=await readFile(new URL('../public-assets/frieren-world-map.svg',import.meta.url),'utf8');
  assert.match(artwork,/viewBox="0 0 1800 1200"/);
 });
