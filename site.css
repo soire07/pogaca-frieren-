@@ -787,3 +787,15 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 .public-chat-dm-group select[multiple]{min-height:96px}.public-chat-dm-group [data-site-dm-group-feedback]{margin:0;color:#d9c9f6;font-size:12px}
 .public-chat-dm-group [data-site-dm-group-leave]{justify-self:end}
 @media(max-width:620px){.public-chat-dm-group{padding:12px}.public-chat-dm-group [data-site-dm-group-leave]{width:100%}}
+
+
+.public-chat-dialog{width:min(92vw,480px);max-height:85vh;padding:0;border:1px solid #bca2ee88;border-radius:18px;background:#171326;color:#f4effb;box-shadow:0 24px 80px #000b}
+.public-chat-dialog::backdrop{background:#05030bcc;backdrop-filter:blur(4px)}
+.public-chat-dialog form{display:grid;gap:12px;padding:20px}
+.public-chat-dialog h3{margin:0;color:#eadcff;font-size:18px}
+.public-chat-dialog p{margin:0;color:#c7bad9;line-height:1.5}
+.public-chat-dialog input,.public-chat-dialog textarea,.public-chat-dialog select{width:100%;min-width:0;padding:11px 12px;border:1px solid #d8c2fa66;border-radius:10px;background:#0d0a17;color:#fff;font:inherit}
+.public-chat-dialog textarea{min-height:120px;resize:vertical}
+.public-chat-dialog-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.public-chat-dialog-actions button{min-height:42px}
+@media(max-width:620px){.public-chat-dialog form{padding:14px}.public-chat-dialog-actions button{flex:1}}
