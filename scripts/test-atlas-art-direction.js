@@ -14,6 +14,9 @@ test('Frieren atlas uses layered cartographic relief instead of flat decorative 
   assert.match(artwork, /GRÖSSE ORMANI/);
   assert.match(artwork, /MERKEZ TOPRAKLAR/);
   assert.doesNotMatch(artwork, /<circle[^>]+fill="black"/i);
+  assert.match(artwork, /clip-path="url\(#land-clip\)"/);
+  assert.match(artwork, /coastal shoals and small islands/);
+  assert.match(artwork, /fine regional elevation lines/);
 });
 
 test('atlas landmark symbols are compact, category-coded and keep labels out of the default view', async () => {
@@ -65,4 +68,26 @@ test('atlas marker decluttering keeps isolated positions and clamps pins to the 
     assert.ok(pin.x >= 1 && pin.x <= 99);
     assert.ok(pin.y >= 1 && pin.y <= 99);
   }
+});
+
+
+test('all atlas landmark categories are rendered through one collision-aware layout', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  assert.match(atlas, /import \{ declutterAtlasPins \} from '.\/atlas-pin-layout\.js'/);
+  assert.match(atlas, /const markerConfigs = \[/);
+  assert.match(atlas, /declutterAtlasPins\(markerConfigs\)/);
+  assert.match(atlas, /markerPins/);
+  assert.doesNotMatch(atlas, /regionPins\+cityPins\+bossPins\+dungeonPins/);
+});
+
+test('atlas CSS keeps every category distinct and city labels hidden until interaction', async () => {
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const refined = css.slice(css.lastIndexOf('Refined atlas presentation'));
+  assert.match(refined, /\.atlas-pin-region \.atlas-pin-glyph/);
+  assert.match(refined, /\.atlas-pin-city \.atlas-pin-glyph/);
+  assert.match(refined, /\.atlas-pin-boss \.atlas-pin-glyph/);
+  assert.match(refined, /\.atlas-pin-dungeon \.atlas-pin-glyph/);
+  assert.match(refined, /\.atlas-pin-city \.atlas-pin-label\{[^}]*opacity:0/);
+  assert.match(refined, /@media\(max-width:700px\)/);
+  assert.match(refined, /prefers-reduced-motion:reduce/);
 });
