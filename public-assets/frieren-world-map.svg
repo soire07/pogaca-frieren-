@@ -77,6 +77,7 @@
  </g>
  <!-- subtle coastal shallows -->
  <path d="M205 292C259 221 371 179 492 198 585 133 718 129 832 163 940 100 1075 119 1170 157 1304 107 1442 167 1524 248 1632 309 1665 412 1618 516 1677 625 1634 741 1582 826 1631 929 1521 1033 1390 1038 1284 1104 1160 1073 1073 1043 948 1118 825 1086 739 1032 624 1092 505 1057 414 1000 300 989 220 901 233 793 159 708 160 590 192 501 139 412 151 339 206 292Z" fill="url(#paper-fiber)" opacity=".65"/>
+ <g clip-path="url(#land-clip)">
  <!-- fine regional elevation lines and terrain transitions -->
  <g fill="none" stroke-linecap="round" stroke-linejoin="round" pointer-events="none">
   <g stroke="#6b735f" stroke-opacity=".32" stroke-width="2">
@@ -94,6 +95,7 @@
  </g>
  <!-- subtle sub-region boundary, not an RPG route -->
  <path d="M610 220C590 350 620 470 675 560S720 760 690 900M990 185C960 330 990 430 1040 515S1110 690 1080 850" fill="none" stroke="#665e4d" stroke-opacity=".28" stroke-width="2" stroke-dasharray="5 12"/>
+</g>
  <!-- coastal shoals and small islands add geographic scale -->
  <g fill="#c9c19e" stroke="#e1d5b7" stroke-width="2" opacity=".9">
   <path d="M92 365q24-18 48-4 18 13 2 27-28 13-50-2-14-9 0-21Z"/>
