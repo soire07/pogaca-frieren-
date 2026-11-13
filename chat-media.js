@@ -138,3 +138,15 @@ export async function deleteChatMediaForAccount(db,accountId){
  await db.query('DELETE FROM frieren_site_chat_media WHERE media_id=ANY($1::uuid[])',[ids]);
  return{status:'deleted',deleted:ids.length};
 }
+
+export async function discardChatMedia(db,{mediaId,accountId}){
+ if(!/^[0-9a-f-]{36}$/i.test(String(mediaId||''))||!ACCOUNT.test(String(accountId||'')))throw new Error('CHAT_MEDIA_ATTACHMENT_INVALID');
+ await ensureChatMediaSchema(db);
+ const row=await db.query('SELECT object_key FROM frieren_site_chat_media WHERE media_id=$1 AND owner_account_id=$2 AND message_id IS NULL',[mediaId,accountId]);
+ if(!row.rowCount)return{status:'not_found'};
+ if(!config())throw new Error('CHAT_MEDIA_STORAGE_NOT_CONFIGURED');
+ const response=await fetch(signChatMediaUrl('DELETE',row.rows[0].object_key,null,300),{method:'DELETE'});
+ if(!response.ok&&response.status!==404)throw new Error('CHAT_MEDIA_STORAGE_DELETE_FAILED');
+ await db.query('DELETE FROM frieren_site_chat_media WHERE media_id=$1 AND owner_account_id=$2 AND message_id IS NULL',[mediaId,accountId]);
+ return{status:'deleted'};
+}
