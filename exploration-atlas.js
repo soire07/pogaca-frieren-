@@ -1,45 +1,133 @@
 import { CREATURE_CATALOG } from './creatures.js';
+import {
+  FRIEREN_WORLD_SETTLEMENTS,
+  FRIEREN_WORLD_BOSS_LOCATIONS,
+  FRIEREN_WORLD_DUNGEON_LOCATIONS
+} from './exploration-world-locations.js';
 
-const BIOMES = {
- merkez:{name:'Altın Otlaklar',type:'Ilıman çayırlar',city:'Linden Meydanı',label:'Linden',x:26.4,y:57.5,cx:29.8,cy:62.8,npc:[['Mira','Gezgin büyücü'],['Eldan','Haritacı'],['Toma','Tüccar']],creatures:['mana_slime','forest_sprite'],className:'atlas-plains'},
- orman:{name:'Fısıltılı Mistik Orman',type:'Kadim orman',city:'Sylvan Köyü',label:'Sylvan',x:37.2,y:32.1,cx:41.2,cy:37.5,npc:[['Liora','Orman şifacısı'],['Fael','Rün araştırmacısı'],['Neris','Yol bekçisi']],creatures:['forest_sprite','rune_fox'],className:'atlas-forest'},
- harabeler:{name:'Kızıl Kum ve Kadim Harabeler',type:'Kurak çöl / harabe',city:'Aren Taş Şehri',label:'Aren',x:56.1,y:64.2,cx:60.2,cy:69.5,npc:[['Sahir','Kazı ustası'],['Nahla','Antika taciri'],['Orven','Yazıt uzmanı']],creatures:['mana_slime','ancient_drake'],className:'atlas-desert'},
- kuzey:{name:'Ayaz Geçidi',type:'Karlı dağ geçidi',city:'Frostholm',label:'Frostholm',x:57.8,y:26.3,cx:62.3,cy:32.5,npc:[['Eira','Dağ rehberi'],['Borin','Demirci'],['Sven','Sınır gözcüsü']],creatures:['frost_hare','rune_fox'],className:'atlas-snow'},
- yayla:{name:'Buzul Tacı Yaylaları',type:'Buzul ve yüksek dağ',city:'Hrafn Kalesi',label:'Hrafn',x:76.1,y:54.2,cx:79.2,cy:60.0,npc:[['Astrid','Kâhin'],['Rurik','Avcı'],['Helmi','Şifacı']],creatures:['frost_hare','ancient_drake'],className:'atlas-glacier'},
- aus:{name:'Kül Ateşi Volkan Kuşağı',type:'Volkanik arazi',city:'Emberwatch',label:'Ember',x:81.7,y:27.5,cx:85.8,cy:32.5,npc:[['Kael','Ateş büyücüsü'],['Varda','Maden ustası'],['Iven','Kervan koruyucusu']],creatures:['ancient_drake','mana_slime'],className:'atlas-volcano'}
-};
+const REGIONS = Object.freeze({
+  merkez:{name:'Merkez Topraklar',type:'Güney kıta ovaları',city:'Strahl',x:35,y:75,className:'atlas-plains'},
+  orman:{name:'Größe Ormanı',type:'Kadim orman kuşağı',city:'Fabel Köyü',x:31,y:49,className:'atlas-forest'},
+  harabeler:{name:'Graf Granat Bölgesi',type:'Kuzey yerleşimleri ve harabeler',city:'Graf Granat Bölgesi',x:55,y:53,className:'atlas-highlands'},
+  kuzey:{name:'Kühl Bölgesi',type:'Göller ve dağ geçitleri',city:'Äußerst',x:68,y:38,className:'atlas-north'},
+  yayla:{name:'Schwer Dağları',type:'Yüksek dağlar',city:'Kılıç Köyü',x:76,y:65,className:'atlas-mountains'},
+  aus:{name:'Ende',type:'Kıtanın en kuzey ucu',city:'İblis Kralı’nın Şatosu',x:88,y:19,className:'atlas-ende'}
+});
+const REGION_ANCHORS = Object.freeze({
+  merkez:{x:35,y:75},orman:{x:31,y:49},harabeler:{x:55,y:53},
+  kuzey:{x:68,y:38},yayla:{x:76,y:65},aus:{x:88,y:19}
+});
 const CREATURES = new Map(CREATURE_CATALOG.map(item => [item.key,item]));
+const FOG_PATHS = Object.freeze({
+  merkez:'M17 69 Q25 63 35 67 Q44 71 47 82 L40 91 Q28 90 20 83 Z',
+  orman:'M19 38 Q25 31 35 36 Q43 42 39 55 L30 61 Q20 55 17 47 Z',
+  harabeler:'M44 45 Q54 39 64 46 L68 57 Q61 66 50 63 L43 55 Z',
+  kuzey:'M59 26 Q68 20 76 27 L78 41 Q70 48 62 43 L57 34 Z',
+  yayla:'M68 56 Q77 49 85 57 L88 70 Q80 78 71 72 L66 64 Z',
+  aus:'M80 10 Q88 6 95 12 L97 25 Q91 32 83 27 L79 18 Z'
+});
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const position = (x,y) => 'left:'+x+'%;top:'+y+'%;';
 
-function pin({key,label,type,icon,x,y,focus='region',extraClass=''}) {
- return '<button type="button" class="atlas-pin atlas-pin-'+type+' '+extraClass+'" style="'+position(x,y)+'" data-atlas-layer-item="'+type+'" data-atlas-open="'+key+'" data-atlas-focus="'+focus+'" aria-label="'+escapeHtml(label)+'" title="'+escapeHtml(label)+'"><span class="atlas-pin-glyph" aria-hidden="true">'+icon+'</span><span class="atlas-pin-label">'+escapeHtml(label)+'</span></button>';
+function pin({key,label,type,icon,x,y,focus='region',extraClass='',subtitle=''}) {
+  const title = subtitle ? label+' · '+subtitle : label;
+  return '<button type="button" class="atlas-pin atlas-pin-'+type+' '+extraClass+'" style="'+position(x,y)+'" data-atlas-layer-item="'+type+'" data-atlas-open="'+escapeHtml(key)+'" data-atlas-focus="'+focus+'" data-atlas-target-key="'+escapeHtml(key)+'" aria-label="'+escapeHtml(title)+'" title="'+escapeHtml(title)+'"><span class="atlas-pin-glyph" aria-hidden="true">'+icon+'</span><span class="atlas-pin-label">'+escapeHtml(label)+'</span></button>';
 }
-function panel(item,index,esc) {
- const region=item.region,biome=BIOMES[region.key]||BIOMES.merkez;
- const list=rows=>'<ul>'+rows.join('')+'</ul>';
- const npc=list(biome.npc.map(([name,role])=>'<li><strong>'+esc(name)+'</strong><span>'+esc(role)+'</span></li>'));
- const mobs=list(biome.creatures.map(key=>CREATURES.get(key)).filter(Boolean).map(creature=>'<li><strong>'+esc((creature.emoji||'')+' '+creature.name)+'</strong><span>'+esc(creature.rarity||'Biyom canlısı')+'</span></li>'));
- const bosses=list(item.bosses.map(boss=>'<li data-atlas-focus-target="boss"><strong>☠ '+esc(boss.name)+'</strong><span>'+(boss.defeated?'Yenildi':boss.unlocked?'Karşılaşma açık':'Seviye '+boss.minLevel+' gerekli')+'</span></li>'));
- const dungeon=item.dungeon?'<li data-atlas-focus-target="dungeon"><strong>♜ '+esc(item.dungeon.name)+'</strong><span>'+(item.dungeon.unlocked?'Giriş açık':'Seviye '+item.dungeon.minLevel+' gerekli')+' · '+esc(item.dungeon.lootName||'Zindan sandıkları')+'</span></li>':'<li><strong>Sandık alanı</strong><span>Bu bölgede tanımlı zindan noktası yok.</span></li>';
- const loot=list(item.rareItems.map(entry=>'<li><strong>✧ '+esc(entry.name)+'</strong><span>'+(entry.ownedQuantity?'Envanterinde ×'+entry.ownedQuantity:'Henüz bulunmadı')+'</span></li>'));
- return '<section class="atlas-panel" data-atlas-panel="'+esc(region.key)+'" hidden><div class="atlas-hero"><small>BÖLGE '+(index+1)+' · '+esc(biome.type)+'</small><h3>'+esc(biome.name)+'</h3><p>'+esc(region.name)+' · '+esc(biome.city)+'</p><div><span>'+(item.discovered?'Keşfedildi':item.unlocked?'Keşfe açık':'Kilitli · Seviye '+region.minLevel)+'</span><span>'+item.visits+' keşif ziyareti</span></div></div><div class="atlas-detail-grid"><section><h4>Yerleşim ve NPC’ler</h4>'+npc+'</section><section><h4>Biyom canavarları</h4>'+mobs+'</section><section><h4>Boss ve zindan noktaları</h4>'+bosses+'<ul>'+dungeon+'</ul></section><section><h4>Sandıklar ve nadir ganimet</h4>'+loot+'</section></div></section>';
+
+function detailRow({key,name,description,icon,state='',focus=''}) {
+  return '<li class="exploration-detail-row '+state+'" '+(focus?'data-atlas-focus-target="'+focus+'"':'')+' data-atlas-target-key="'+escapeHtml(key)+'"><span class="exploration-detail-icon" aria-hidden="true">'+icon+'</span><span><strong>'+escapeHtml(name)+'</strong><small>'+escapeHtml(description)+'</small></span></li>';
 }
+
+function panel(item,index,settlements,esc) {
+  const region=item.region;
+  const geography=REGIONS[region.key]||REGIONS.merkez;
+  const localSettlements=settlements.filter(place=>place.regionKey===region.key);
+  const settlementRows=localSettlements.map(place=>detailRow({
+    key:place.key,name:place.name,description:place.subtitle,icon:'⌂',focus:'city'
+  })).join('');
+  const creatureRows=(geography.creatures||[]).map(key=>CREATURES.get(key)).filter(Boolean)
+    .map(creature=>detailRow({key:creature.key,name:(creature.emoji||'')+' '+creature.name,description:creature.rarity||'Biyom canlısı',icon:'✧'})).join('');
+  const bossRows=item.bosses.map(boss=>detailRow({
+    key:boss.key,name:boss.name,
+    description:(boss.defeated?'Yenildi':boss.unlocked?'Karşılaşma açık':'Seviye '+boss.minLevel+' gerekli')+(boss.location?' · '+boss.location.place:' · Bölge konumu'),
+    icon:'☠',state:boss.defeated?'is-defeated':boss.unlocked?'is-open':'is-locked',focus:'boss'
+  })).join('');
+  const dungeonRows=item.dungeons.map(dungeon=>detailRow({
+    key:dungeon.key,name:dungeon.name,
+    description:(dungeon.unlocked?'Giriş açık':'Seviye '+dungeon.minLevel+' gerekli')+' · '+(dungeon.lootName||'Zindan ganimeti')+(dungeon.location?' · '+dungeon.location.place:''),
+    icon:'◇',state:dungeon.unlocked?'is-open':'is-locked',focus:'dungeon'
+  })).join('');
+  const lootRows=item.rareItems.map(entry=>detailRow({
+    key:'loot-'+entry.name,name:entry.name,
+    description:(entry.ownedQuantity?'Envanterinde ×'+entry.ownedQuantity:'Henüz bulunmadı')+' · '+entry.sources.map(source=>source==='dungeon'?'Zindan':source==='boss_material'?'Boss malzemesi':'Boss').join(' / '),
+    icon:'✧',state:entry.ownedQuantity?'is-owned':'is-unowned'
+  })).join('');
+  const section=(heading,rows,empty='Bu bölgede kayıtlı nokta bulunmuyor.')=>'<section><h4>'+heading+'</h4><ul>'+(rows||'<li class="atlas-empty-row">'+empty+'</li>')+'</ul></section>';
+  return '<section class="atlas-panel" data-atlas-panel="'+esc(region.key)+'" hidden><div class="atlas-hero"><small>BÖLGE '+(index+1)+' · '+esc(geography.type)+'</small><h3>'+esc(geography.name)+'</h3><p>'+esc(region.name)+' · '+esc(geography.city)+'</p><div><span>'+(item.discovered?'Keşfedildi':item.unlocked?'Keşfe açık':'Kilitli · Seviye '+region.minLevel)+'</span><span>'+item.visits+' keşif ziyareti</span><span>Ustalık '+item.masteryLevel+'</span></div></div><div class="atlas-detail-grid">'+section('Anime yerleşimleri ve önemli noktalar',settlementRows)+section('Biyom canlıları',creatureRows)+section('Boss karşılaşmaları',bossRows)+section('Zindanlar',dungeonRows)+section('Nadir ganimet',lootRows)+'</div></section>';
+}
+
+function renderRegionList(rows,esc) {
+  const cards=rows.map((item,index)=>{
+    const region=item.region,geo=REGIONS[region.key]||REGIONS.merkez;
+    const status=item.discovered?'Keşfedildi':item.unlocked?'Açık · henüz keşfedilmedi':'Kilitli · Seviye '+region.minLevel+' gerekli';
+    const progress=item.unlocked
+      ? '<div class="progress" role="progressbar" aria-label="'+esc(region.name)+' ustalık ilerlemesi" aria-valuemin="0" aria-valuemax="3" aria-valuenow="'+item.visitsToNextMastery+'"><i style="width:'+item.masteryProgressPercent+'%"></i></div><small>Ustalık seviyesi '+item.masteryLevel+' · sonraki ödül '+item.visitsToNextMastery+'/3 keşif</small>'
+      : '<small>Bu bölge karakterin Seviye '+region.minLevel+' olduğunda açılır.</small>';
+    const bossRows=item.bosses.map(boss=>detailRow({
+      key:boss.key,name:boss.name,
+      description:(boss.defeated?'Yenildi':boss.unlocked?'Karşılaşma açık':'Seviye '+boss.minLevel+' gerekli')+(boss.location?' · '+boss.location.place:' · Bölge konumu'),
+      icon:'☠',state:boss.defeated?'is-defeated':boss.unlocked?'is-open':'is-locked',focus:'boss'
+    })).join('');
+    const dungeonRows=item.dungeons.map(dungeon=>detailRow({
+      key:dungeon.key,name:dungeon.name,
+      description:(dungeon.unlocked?'Zindan girişi açık':'Seviye '+dungeon.minLevel+' gerekli')+' · '+(dungeon.lootName||'Zindan ganimeti')+(dungeon.location?' · '+dungeon.location.place:''),
+      icon:'◇',state:dungeon.unlocked?'is-open':'is-locked',focus:'dungeon'
+    })).join('');
+    const lootRows=item.rareItems.map(loot=>detailRow({
+      key:'loot-'+loot.name,name:loot.name,
+      description:loot.sources.map(source=>source==='dungeon'?'Zindan ganimeti':source==='boss_material'?'Boss malzemesi':'Boss ganimeti').join(' · ')+' · '+(loot.ownedQuantity?'Envanterinde ×'+loot.ownedQuantity:'Henüz envanterinde yok'),
+      icon:'✧',state:loot.ownedQuantity?'is-owned':'is-unowned'
+    })).join('');
+    const details='<div class="exploration-region-details">'+
+      '<section><h4>Boss noktaları · '+item.bosses.length+'</h4><ul>'+(bossRows||'<li class="exploration-map-note">Bu bölgede boss karşılaşması tanımlı değil.</li>')+'</ul></section>'+
+      '<section><h4>Zindanlar · '+item.dungeons.length+'</h4><ul>'+(dungeonRows||'<li class="exploration-map-note">Bu bölgede zindan tanımlı değil.</li>')+'</ul><p class="exploration-map-note">Zindan işaretleri mevcut RPG karşılaşmalarını gösterir; harita üzerinden yeni ödül veya karşılaşma başlatılmaz.</p></section>'+
+      '<section><h4>Nadir ganimet noktaları</h4><ul>'+(lootRows||'<li class="exploration-map-note">Bu bölge için katalogda tanımlı nadir ganimet yok.</li>')+'</ul></section></div>';
+    return '<article class="card exploration-region-card is-'+item.state+'" id="region-'+esc(region.key)+'" data-region-key="'+esc(region.key)+'" data-region-state="'+item.state+'"><div class="eyebrow">'+(index+1)+'. '+esc(geo.name)+'</div><strong>Seviye '+region.minLevel+'+</strong><p>'+esc(status)+'</p><p>'+item.visits+' keşif ziyareti · '+esc(geo.city)+'</p>'+progress+details+'</article>';
+  }).join('');
+  return '<section class="atlas-region-list" aria-labelledby="atlas-region-list-title"><div class="atlas-list-heading"><div><span class="eyebrow">RPG BÖLGE KAYITLARI</span><h3 id="atlas-region-list-title">Keşif Bölgeleri ve Karşılaşmalar</h3><p>Önceki bölge listesinin işlevi korunur; bütün bosslar, zindanlar, ustalık ve ganimet kayıtları burada görünür.</p></div><span>'+rows.length+' bölge</span></div><div class="exploration-region-grid">'+cards+'</div><p class="market-meta">Keşif yapmak için Discord’da /kesif komutunu kullan. Her üç başarılı ziyaret bölge ustalığı ödülü kazandırır.</p></section>';
+}
+
 export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) {
- const rows=Array.isArray(mapContent?.regions)?mapContent.regions:[];
- const total=Math.max(1,Number(mapContent?.summary?.totalRegions)||rows.length||1);
- const discovered=Math.max(0,Number(mapContent?.summary?.discoveredRegions)||0);
- const percent=Math.max(0,Math.min(100,Math.round(discovered/total*100)));
- const points=rows.map((item,index)=>({item,biome:BIOMES[item.region.key]||BIOMES.merkez,index}));
- const regionPins=points.map(({item,biome,index})=>pin({key:item.region.key,label:biome.name,type:'region',icon:'✦',x:biome.x,y:biome.y,focus:'region',extraClass:biome.className})).join('');
- const cityPins=points.map(({item,biome})=>pin({key:item.region.key,label:biome.city,type:'city',icon:'⌂',x:biome.cx,y:biome.cy,focus:'city'})).join('');
- const bossPins=points.flatMap(({item,biome})=>item.bosses.map((boss,index)=>pin({key:item.region.key,label:boss.name,type:'boss',icon:'☠',x:Math.min(94,biome.x+4+index*2.4),y:Math.max(5,biome.y-6-index*2),focus:'boss'}))).join('');
- const dungeonPins=points.filter(point=>point.item.dungeon).map(({item,biome})=>pin({key:item.region.key,label:item.dungeon.name,type:'dungeon',icon:'◇',x:Math.max(5,biome.x-4.5),y:Math.min(92,biome.y+8),focus:'dungeon'})).join('');
- const panels=points.map(point=>panel(point.item,point.index,esc)).join('');
- const fogCutouts=points.filter(point=>point.item.discovered).map(point=>'<circle cx="'+point.biome.x+'" cy="'+point.biome.y+'" r="13" fill="black"/>').join('');
- const fog='<svg class="atlas-fog-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><mask id="atlas-discovery-mask" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><rect width="100" height="100" fill="white"/>'+fogCutouts+'</mask></defs><rect width="100" height="100" fill="#101a20" opacity=".62" mask="url(#atlas-discovery-mask)"/></svg>';
- const map='<div class="atlas-map-viewport" data-atlas-viewport tabindex="0" role="region" aria-label="Frieren Kuzey Kıtası interaktif haritası"><div class="atlas-map-camera" data-atlas-camera><div class="atlas-map-art atlas-world-map" role="group" aria-label="Biyomları ve yerleşimleri gösteren dünya haritası"><img class="atlas-map-image" src="/assets/frieren-world-map.svg" alt="Orman, altın otlaklar, çöl, karlı dağlar, buzul ve volkan bölgelerinden oluşan resimli fantezi dünya haritası" draggable="false">'+fog+'<div class="atlas-pin-layer">'+regionPins+cityPins+bossPins+dungeonPins+'</div></div></div><div class="atlas-map-tools" aria-label="Harita yakınlaştırma kontrolleri"><button type="button" data-atlas-zoom="-1" aria-label="Uzaklaştır">−</button><output data-atlas-zoom-value>100%</output><button type="button" data-atlas-zoom="1" aria-label="Yakınlaştır">+</button><button type="button" data-atlas-reset aria-label="Haritayı sıfırla">Sıfırla</button></div></div><div class="atlas-layer-controls" aria-label="Harita işaret katmanları"><span>GÖSTER</span><button type="button" data-atlas-layer="region" aria-pressed="true">Bölgeler</button><button type="button" data-atlas-layer="city" aria-pressed="true">Şehirler</button><button type="button" data-atlas-layer="boss" aria-pressed="true">Bosslar</button><button type="button" data-atlas-layer="dungeon" aria-pressed="true">Zindanlar</button><small>Yakınlaştırmak için + / − veya iki parmak kullan; haritayı sürükleyerek gez.</small></div>';
- const legend='<div class="atlas-legend"><span><i class="key-region">✦</i>Bölge</span><span><i class="key-city">⌂</i>Şehir</span><span><i class="key-boss">♜</i>Boss</span><span><i class="key-dungeon">◇</i>Zindan</span><small>Bilgileri açmak için işaretlere dokun.</small></div>';
- const modal='<div class="atlas-modal" data-atlas-modal hidden><button class="atlas-backdrop" type="button" data-atlas-close aria-label="Pencereyi kapat"></button><section class="atlas-modal-card" role="dialog" aria-modal="true" aria-label="Bölge ayrıntıları"><header><span>FRIEREN · KEŞİF KAYDI</span><button type="button" data-atlas-close aria-label="Kapat">×</button></header><div class="atlas-modal-content">'+panels+'</div></section></div>';
- return '<section class="section atlas-section" id="exploration-map" data-exploration-atlas><div class="section-head"><span class="eyebrow">MACERA ATLASI</span><h2>Kuzey Kıtası Dünya Haritası</h2><p>Keşfedilecek bölgeler, yerleşimler ve macera noktaları.</p></div><div class="atlas-progress"><div class="atlas-progress-copy"><span>KUZEY KITA · KEŞİF DURUMU</span><strong>'+percent+'% keşfedildi</strong></div><div class="atlas-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+percent+'" aria-label="Keşfedilen bölgeler"><i style="width:'+percent+'%"></i></div><small>'+discovered+' / '+rows.length+' bölge · Yenilen bosslar: '+Number(mapContent?.summary?.defeatedBosses||0)+' / '+Number(mapContent?.summary?.totalBosses||0)+' · Boss zaferleri · karakter geneli: '+Number(stats.boss_defeats||0)+' · Zindan zaferleri · karakter geneli: '+Number(stats.dungeon_wins||0)+'</small></div><article class="atlas-map-shell"><span class="atlas-map-paper atlas-paper" aria-hidden="true"></span>'+map+legend+'</article>'+modal+'</section>';
+  const rows=Array.isArray(mapContent?.regions)?mapContent.regions:[];
+  const total=Math.max(1,Number(mapContent?.summary?.totalRegions)||rows.length||1);
+  const discovered=Math.max(0,Number(mapContent?.summary?.discoveredRegions)||0);
+  const percent=Math.max(0,Math.min(100,Math.round(discovered/total*100)));
+  const points=rows.map((item,index)=>({item,geo:REGIONS[item.region.key]||REGIONS.merkez,index}));
+  const regionPins=points.map(({item,geo})=>pin({
+    key:item.region.key,label:geo.name,type:'region',icon:'✦',x:geo.x,y:geo.y,focus:'region',extraClass:geo.className
+  })).join('');
+  const cityPins=FRIEREN_WORLD_SETTLEMENTS.map(place=>pin({
+    key:place.regionKey,label:place.name,type:'city',icon:'⌂',x:place.x,y:place.y,focus:'city',subtitle:place.subtitle
+  })).join('');
+  const bossPins=points.flatMap(({item,geo})=>item.bosses.map(boss=>{
+    const location=boss.location||FRIEREN_WORLD_BOSS_LOCATIONS[boss.key];
+    const anchor=REGION_ANCHORS[item.region.key]||REGION_ANCHORS.merkez;
+    const point=location||{x:anchor.x,y:anchor.y,place:'Bölge boss alanı'};
+    return pin({key:item.region.key,label:boss.name,type:'boss',icon:'☠',x:point.x,y:point.y,focus:'boss',extraClass:boss.defeated?'is-defeated':'',subtitle:point.place});
+  })).join('');
+  const dungeonPins=points.flatMap(({item})=>item.dungeons.map(dungeon=>{
+    const point=dungeon.location||FRIEREN_WORLD_DUNGEON_LOCATIONS[dungeon.key];
+    if(!point)return '';
+    return pin({key:item.region.key,label:dungeon.name,type:'dungeon',icon:'◇',x:point.x,y:point.y,focus:'dungeon',subtitle:point.place});
+  })).join('');
+  const fogPaths=points.filter(point=>!point.item.discovered).map(point=>{
+    const path=FOG_PATHS[point.item.region.key];
+    return path?'<path d="'+path+'" fill="#243647" opacity=".18" stroke="#d4c4a1" stroke-opacity=".16" stroke-width=".35"/>':'';
+  }).join('');
+  const fog='<svg class="atlas-fog-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><filter id="atlas-fog-soft"><feGaussianBlur stdDeviation="1.2"/></filter></defs><g filter="url(#atlas-fog-soft)">'+fogPaths+'</g></svg>';
+  const panels=points.map(point=>panel(point.item,point.index,FRIEREN_WORLD_SETTLEMENTS,esc)).join('');
+  const map='<div class="atlas-map-viewport" data-atlas-viewport tabindex="0" role="region" aria-label="Frieren anime dünyası ve RPG keşif haritası"><div class="atlas-map-camera" data-atlas-camera><div class="atlas-map-art atlas-world-map" role="group" aria-label="Frieren dünyasının anime yerleşimleri, dağları, ormanları ve yolları"><img class="atlas-map-image" src="/assets/frieren-world-map.svg" alt="Frieren dünyasından esinlenen Merkez Topraklar, Kuzey Toprakları, Größe Ormanı, Kühl Bölgesi, Schwer Dağları ve Ende haritası" draggable="false">'+fog+'<div class="atlas-pin-layer">'+regionPins+cityPins+bossPins+dungeonPins+'</div></div></div><div class="atlas-map-tools" aria-label="Harita yakınlaştırma kontrolleri"><button type="button" data-atlas-zoom="-1" aria-label="Uzaklaştır">−</button><output data-atlas-zoom-value>100%</output><button type="button" data-atlas-zoom="1" aria-label="Yakınlaştır">+</button><button type="button" data-atlas-reset aria-label="Haritayı sıfırla">Sıfırla</button></div></div><div class="atlas-layer-controls" aria-label="Harita işaret katmanları"><span>GÖSTER</span><button type="button" data-atlas-layer="region" aria-pressed="true">RPG Bölgeleri</button><button type="button" data-atlas-layer="city" aria-pressed="true">Anime Yerleşimleri</button><button type="button" data-atlas-layer="boss" aria-pressed="true">Bosslar</button><button type="button" data-atlas-layer="dungeon" aria-pressed="true">Zindanlar</button><small>İşaretleri seçerek ayrıntıları aç. Haritayı sürükle veya iki parmakla yakınlaştır.</small></div>';
+  const legend='<div class="atlas-legend"><span><i class="key-region">✦</i>RPG bölgesi</span><span><i class="key-city">⌂</i>Anime yerleşimi</span><span><i class="key-boss">☠</i>RPG bossu</span><span><i class="key-dungeon">◇</i>RPG zindanı</span><small>Harita yerleşimleri anime coğrafyasına dayalı fan yapımı konumlandırmadır.</small></div>';
+  const modal='<div class="atlas-modal" data-atlas-modal hidden><button class="atlas-backdrop" type="button" data-atlas-close aria-label="Pencereyi kapat"></button><section class="atlas-modal-card" role="dialog" aria-modal="true" aria-label="Bölge ayrıntıları"><header><span>FRIEREN · KEŞİF KAYDI</span><button type="button" data-atlas-close aria-label="Kapat">×</button></header><div class="atlas-modal-content">'+panels+'</div></section></div>';
+  return '<section class="section atlas-section" id="exploration-map" data-exploration-atlas><div class="section-head"><span class="eyebrow">FRIEREN · DÜNYA ATLASI</span><h2>Frieren Dünyası</h2><p>Anime coğrafyasını temel alan dünya haritası; Poğaça Frieren RPG keşif bölgeleri, bossları ve zindanlarıyla bağlantılı.</p></div><div class="atlas-progress"><div class="atlas-progress-copy"><span>SEÇİLİ KARAKTER · KEŞİF DURUMU</span><strong>'+percent+'% keşfedildi</strong></div><div class="atlas-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+percent+'" aria-label="Keşfedilen bölgeler"><i style="width:'+percent+'%"></i></div><small>'+discovered+' / '+rows.length+' RPG bölgesi · Bosslar: '+Number(mapContent?.summary?.defeatedBosses||0)+' / '+Number(mapContent?.summary?.totalBosses||0)+' yenildi · Zindanlar: '+Number(mapContent?.summary?.totalDungeons||0)+' konum · Boss zaferleri: '+Number(stats.boss_defeats||0)+' · Zindan zaferleri: '+Number(stats.dungeon_wins||0)+'</small></div><article class="atlas-map-shell"><span class="atlas-map-paper atlas-paper" aria-hidden="true"></span>'+map+legend+'</article>'+renderRegionList(rows,esc)+modal+'</section>';
 }
