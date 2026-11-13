@@ -93,9 +93,39 @@ for (const scenario of scenarios) {
       },
       stats: {}
     });
-    await page.setContent('<!doctype html><html lang="tr"><head><link rel="stylesheet" href="' + baseUrl + '/assets/site.css?v=atlas-370-1"></head><body>' + atlasMarkup + '</body></html>');
+    await page.setContent('<!doctype html><html lang="tr"><head><link rel="stylesheet" href="' + baseUrl + '/assets/site.css?v=atlas-373-1"></head><body>' + atlasMarkup + '</body></html>');
     await page.waitForLoadState('networkidle', { timeout: 15000 });
-    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-371-1' });
+    const mapImage = page.locator('.atlas-map-image');
+    await mapImage.evaluate(image => image.decode());
+    const mapVisual = await page.evaluate(() => {
+      const viewport = document.querySelector('.atlas-map-viewport');
+      const image = document.querySelector('.atlas-map-image');
+      const rect = viewport.getBoundingClientRect();
+      const style = getComputedStyle(image);
+      return {
+        loaded: image.complete && image.naturalWidth > 0 && image.naturalHeight > 0,
+        imageRatio: image.naturalWidth / image.naturalHeight,
+        viewportRatio: rect.width / rect.height,
+        filter: style.filter,
+        source: image.getAttribute('src')
+      };
+    });
+    if (!mapVisual.loaded || Math.abs(mapVisual.imageRatio - 1.5) > 0.01) {
+      throw new Error(scenario.name + ' atlas artwork failed to load with its 3:2 source ratio: ' + JSON.stringify(mapVisual));
+    }
+    if (Math.abs(mapVisual.viewportRatio - 1.5) > 0.02) {
+      throw new Error(scenario.name + ' atlas viewport lost its 3:2 ratio: ' + JSON.stringify(mapVisual));
+    }
+    if (!mapVisual.filter.includes('saturate') || !mapVisual.source.includes('atlas-373-1')) {
+      throw new Error(scenario.name + ' atlas visual grade or cache-busted image source is missing: ' + JSON.stringify(mapVisual));
+    }
+    const artworkResponse = await page.request.get(baseUrl + '/assets/frieren-world-map.svg?v=atlas-373-1');
+    if (!artworkResponse.ok()) throw new Error(scenario.name + ' atlas SVG asset HTTP ' + artworkResponse.status());
+    const artwork = await artworkResponse.text();
+    for (const layer of ['biome-edge', 'atlas-forest-canopy', 'atlas-mountain-relief', 'atlas-meadow-texture', 'atlas-coastline-detail', 'atlas-tundra-texture']) {
+      if (!artwork.includes(layer)) throw new Error(scenario.name + ' atlas SVG is missing visual layer ' + layer);
+    }
+    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-373-1' });
     const routeFrom = page.locator('[data-atlas-route-from]');
     const routeTo = page.locator('[data-atlas-route-to]');
     await routeFrom.selectOption('royal-capital');
