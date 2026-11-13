@@ -151,6 +151,7 @@ export function buildExplorationMapContent({
       masteryProgressPercent: Math.round(visitsToNextMastery / 3 * 100),
       bosses: regionBosses,
       dungeons: mappedDungeons,
+      dungeonWins: Math.max(0, Number(dungeonWins) || 0),
       // Keep the legacy singular field for existing consumers while exposing every dungeon.
       dungeon: mappedDungeons[0] || null,
       rareItems: [...rareItemsByName.values()].sort((a, b) => a.name.localeCompare(b.name, 'tr'))
