@@ -1598,3 +1598,14 @@ test('web exploration atlas and Discord /kesif share one region catalog', async 
  assert.match(command,/configured\.minLevel = region\.minLevel/);
  assert.match(site,/EXPLORATION_REGION_CATALOG/);
 });
+
+test('character encyclopedia uses the existing catalog with closed spoilers and working filter hooks', async () => {
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/ansiklopedi'),response,{db:null}),true);
+ assert.equal(response.status,200);
+ for(const expected of ['Karakter Ansiklopedisi','Frieren','Fern','Satoru Gojo','data-character-search','data-character-anime','data-character-rarity','data-character-spoiler-toggle','data-character-spoiler hidden'])assert.ok(response.body.includes(expected),expected);
+ const script=await readFile(new URL('../public-assets/character-encyclopedia.js',import.meta.url),'utf8');
+ assert.match(script,/addEventListener\('input'/);
+ assert.match(script,/data-character-spoiler-toggle/);
+ assert.match(script,/aria-expanded/);
+});
