@@ -1542,7 +1542,7 @@ test('global account profile has a complete Frieren identity layout and keeps RP
   const accountId='site_123e4567-e89b-12d3-a456-426614174000';
   const db={async query(sql){if(sql.includes('SELECT user_id FROM site_discord_links'))return{rows:[],rowCount:0};if(sql.includes('SELECT 1 FROM frieren_profile_media'))return{rows:[],rowCount:0};return{rows:[],rowCount:0};}};
   const response=res();assert.equal(await handlePublicSiteRequest(request('/profil',{id:accountId,username:'Gezgin'}),response,{db}),true);
-  for(const expected of ['account-profile-showcase','account-profile-grid','GİZLİLİK VE GÜVENLİK','/kesfet#topluluk-sohbeti','/hesap-merkezi','/maceraci'])assert.ok(response.body.includes(expected),expected);
+  for(const expected of ['account-profile-showcase','account-profile-grid','GİZLİLİK VE GÜVENLİK','/kesfet#topluluk-sohbeti','/hesap-merkezi','/maceraci','data-theme-gallery','data-theme-choice','data-theme-preview','aria-pressed'])assert.ok(response.body.includes(expected),expected);
   assert.doesNotMatch(response.body,/Sunucu seç|Karakter seç/);
 });
 
