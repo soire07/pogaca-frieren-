@@ -499,6 +499,7 @@ export async function deleteSiteAccount(db, accountId, confirmation) {
     const groupTable = await client.query("SELECT to_regclass('frieren_site_dm_groups') AS table_name");
     if (groupTable.rows?.[0]?.table_name) {
       await client.query('DELETE FROM frieren_site_dm_group_messages WHERE sender_account_id=$1',[accountId]);
+      await client.query('DELETE FROM frieren_site_dm_group_reads WHERE reader_account_id=$1',[accountId]);
       await client.query('DELETE FROM frieren_site_dm_group_members WHERE account_id=$1',[accountId]);
       await client.query('UPDATE frieren_site_dm_groups g SET created_by=(SELECT gm.account_id FROM frieren_site_dm_group_members gm WHERE gm.group_id=g.group_id ORDER BY gm.joined_at,gm.account_id LIMIT 1) WHERE g.created_by=$1 AND EXISTS(SELECT 1 FROM frieren_site_dm_group_members gm WHERE gm.group_id=g.group_id)',[accountId]);
       await client.query('DELETE FROM frieren_site_dm_groups g WHERE NOT EXISTS(SELECT 1 FROM frieren_site_dm_group_members gm WHERE gm.group_id=g.group_id)');
