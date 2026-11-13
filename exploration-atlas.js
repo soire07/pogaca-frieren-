@@ -2,11 +2,11 @@ import { CREATURE_CATALOG } from './creatures.js';
 
 const BIOMES = {
  merkez:{name:'Altın Otlaklar',type:'Ilıman çayırlar',city:'Linden Meydanı',label:'Linden',x:26.4,y:57.5,cx:29.8,cy:62.8,npc:[['Mira','Gezgin büyücü'],['Eldan','Haritacı'],['Toma','Tüccar']],creatures:['mana_slime','forest_sprite'],className:'atlas-plains'},
- orman:{name:'Fısıltılı Mistik Orman',type:'Kadim orman',city:'Sylvan Köyü',label:'Sylvan',x:37.2,y:34.1,cx:41.2,cy:39.0,npc:[['Liora','Orman şifacısı'],['Fael','Rün araştırmacısı'],['Neris','Yol bekçisi']],creatures:['forest_sprite','rune_fox'],className:'atlas-forest'},
- harabeler:{name:'Kızıl Kum ve Kadim Harabeler',type:'Kurak çöl / harabe',city:'Aren Taş Şehri',label:'Aren',x:54.3,y:65.8,cx:58.2,cy:70.0,npc:[['Sahir','Kazı ustası'],['Nahla','Antika taciri'],['Orven','Yazıt uzmanı']],creatures:['mana_slime','ancient_drake'],className:'atlas-desert'},
- kuzey:{name:'Ayaz Geçidi',type:'Karlı dağ geçidi',city:'Frostholm',label:'Frostholm',x:69.0,y:34.0,cx:73.2,cy:39.0,npc:[['Eira','Dağ rehberi'],['Borin','Demirci'],['Sven','Sınır gözcüsü']],creatures:['frost_hare','rune_fox'],className:'atlas-snow'},
- yayla:{name:'Buzul Tacı Yaylaları',type:'Buzul ve yüksek dağ',city:'Hrafn Kalesi',label:'Hrafn',x:78.0,y:60.0,cx:82.0,cy:64.0,npc:[['Astrid','Kâhin'],['Rurik','Avcı'],['Helmi','Şifacı']],creatures:['frost_hare','ancient_drake'],className:'atlas-glacier'},
- aus:{name:'Kül Ateşi Volkan Kuşağı',type:'Volkanik arazi',city:'Emberwatch',label:'Ember',x:82.0,y:28.0,cx:86.0,cy:32.5,npc:[['Kael','Ateş büyücüsü'],['Varda','Maden ustası'],['Iven','Kervan koruyucusu']],creatures:['ancient_drake','mana_slime'],className:'atlas-volcano'}
+ orman:{name:'Fısıltılı Mistik Orman',type:'Kadim orman',city:'Sylvan Köyü',label:'Sylvan',x:37.2,y:32.1,cx:41.2,cy:37.5,npc:[['Liora','Orman şifacısı'],['Fael','Rün araştırmacısı'],['Neris','Yol bekçisi']],creatures:['forest_sprite','rune_fox'],className:'atlas-forest'},
+ harabeler:{name:'Kızıl Kum ve Kadim Harabeler',type:'Kurak çöl / harabe',city:'Aren Taş Şehri',label:'Aren',x:56.1,y:64.2,cx:60.2,cy:69.5,npc:[['Sahir','Kazı ustası'],['Nahla','Antika taciri'],['Orven','Yazıt uzmanı']],creatures:['mana_slime','ancient_drake'],className:'atlas-desert'},
+ kuzey:{name:'Ayaz Geçidi',type:'Karlı dağ geçidi',city:'Frostholm',label:'Frostholm',x:57.8,y:26.3,cx:62.3,cy:32.5,npc:[['Eira','Dağ rehberi'],['Borin','Demirci'],['Sven','Sınır gözcüsü']],creatures:['frost_hare','rune_fox'],className:'atlas-snow'},
+ yayla:{name:'Buzul Tacı Yaylaları',type:'Buzul ve yüksek dağ',city:'Hrafn Kalesi',label:'Hrafn',x:76.1,y:54.2,cx:79.2,cy:60.0,npc:[['Astrid','Kâhin'],['Rurik','Avcı'],['Helmi','Şifacı']],creatures:['frost_hare','ancient_drake'],className:'atlas-glacier'},
+ aus:{name:'Kül Ateşi Volkan Kuşağı',type:'Volkanik arazi',city:'Emberwatch',label:'Ember',x:81.7,y:27.5,cx:85.8,cy:32.5,npc:[['Kael','Ateş büyücüsü'],['Varda','Maden ustası'],['Iven','Kervan koruyucusu']],creatures:['ancient_drake','mana_slime'],className:'atlas-volcano'}
 };
 const CREATURES = new Map(CREATURE_CATALOG.map(item => [item.key,item]));
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -33,7 +33,7 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
  const points=rows.map((item,index)=>({item,biome:BIOMES[item.region.key]||BIOMES.merkez,index}));
  const regionPins=points.map(({item,biome,index})=>pin({key:item.region.key,label:biome.name,type:'region',icon:'✦',x:biome.x,y:biome.y,focus:'region',extraClass:biome.className})).join('');
  const cityPins=points.map(({item,biome})=>pin({key:item.region.key,label:biome.city,type:'city',icon:'⌂',x:biome.cx,y:biome.cy,focus:'city'})).join('');
- const bossPins=points.flatMap(({item,biome})=>item.bosses.map((boss,index)=>pin({key:item.region.key,label:boss.name,type:'boss',icon:'♜',x:Math.min(94,biome.x+4+index*2.4),y:Math.min(88,biome.y+5+index*2),focus:'boss'}))).join('');
+ const bossPins=points.flatMap(({item,biome})=>item.bosses.map((boss,index)=>pin({key:item.region.key,label:boss.name,type:'boss',icon:'☠',x:Math.min(94,biome.x+4+index*2.4),y:Math.min(88,biome.y+5+index*2),focus:'boss'}))).join('');
  const dungeonPins=points.filter(point=>point.item.dungeon).map(({item,biome})=>pin({key:item.region.key,label:item.dungeon.name,type:'dungeon',icon:'◇',x:Math.max(5,biome.x-4.5),y:Math.min(88,biome.y+5),focus:'dungeon'})).join('');
  const panels=points.map(point=>panel(point.item,point.index,esc)).join('');
  const map='<div class="atlas-map-viewport" aria-label="Frieren Kuzey Kıtası interaktif haritası"><div class="atlas-map-art" role="group" aria-label="Biyomları ve yerleşimleri gösteren dünya haritası"><img class="atlas-map-image" src="/assets/frieren-world-map.svg" alt="Orman, altın otlaklar, çöl, karlı dağlar, buzul ve volkan bölgelerinden oluşan resimli fantezi dünya haritası" draggable="false"><div class="atlas-pin-layer">'+regionPins+cityPins+bossPins+dungeonPins+'</div></div></div>';
