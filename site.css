@@ -984,3 +984,11 @@ form[aria-busy="true"] button[type="submit"]{cursor:wait}
 @media (prefers-reduced-motion: no-preference) {
   .notification-card { transition: border-color .18s ease, box-shadow .18s ease; }
 }
+
+/* RPG adventure journal collection cards. */
+.journal-collection-card { display: grid; align-content: start; gap: 12px; }
+.journal-collection-card > strong { font-size: 1.25rem; color: #f2eaff; }
+.journal-collection-card .progress { height: 9px; background: rgba(255,255,255,.08); border: 1px solid rgba(185,155,233,.14); }
+.journal-collection-card .progress i { background: linear-gradient(90deg,#8064bd,#c5a9f4); }
+.journal-collection-card small { color: #bcb4d0; }
+.journal-collection-state { margin: 0; color: #d4c5f4; font-weight: 650; }
