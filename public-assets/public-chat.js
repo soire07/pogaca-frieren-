@@ -20,7 +20,7 @@
   const response=await fetch('/api/chat-media/upload',{method:'POST',headers:{'Content-Type':file.type,'X-CSRF-Token':csrf,'X-Chat-Scope':scope,'X-Chat-Target':target||''},body:file});
   const data=await response.json().catch(()=>({}));
   if(!response.ok||data.status!=='uploaded'){
-   const message=data.error==='media_storage_not_configured'?'Dosya deposu henüz etkinleştirilmedi. Owner tarafında R2 ayarları gerekli.':data.error==='media_daily_quota'?'24 saatlik dosya yükleme kotan doldu.':data.error==='media_size_invalid'||data.error==='media_too_large'?'Dosya boyutu izin verilen sınırı aşıyor.':data.error==='media_type_invalid'?'Dosyanın gerçek biçimi desteklenmiyor.':'Dosya yüklenemedi. Tekrar dene.';
+   const message=data.error==='media_storage_not_configured'?'Dosya deposu henüz etkinleştirilmedi. Owner tarafında R2 ayarları gerekli.':data.error==='media_daily_quota'?'24 saatlik dosya yükleme kotan doldu.':data.error==='media_storage_quota'?'Sohbet dosyaları için ayrılan ücretsiz depolama alanı doldu.':data.error==='media_size_invalid'||data.error==='media_too_large'?'Dosya boyutu izin verilen sınırı aşıyor.':data.error==='media_type_invalid'?'Dosyanın gerçek biçimi desteklenmiyor.':'Dosya yüklenemedi. Tekrar dene.';
    throw new Error(message);
   }
   if(status)status.textContent='Dosya yüklendi.';
