@@ -105,7 +105,7 @@ test('settlement labels open horizontally beside the village pin and flip inward
 
 
 test('current canon and RPG map coordinates are collision-adjusted as one visual layer', async () => {
-  const { declutterAtlasPins } = await import('../atlas-pin-layout.js');
+  const { declutterAtlasPins, isInsideAtlasLand } = await import('../atlas-pin-layout.js');
   const {
     FRIEREN_WORLD_SETTLEMENTS,
     FRIEREN_WORLD_BOSS_LOCATIONS,
@@ -122,6 +122,9 @@ test('current canon and RPG map coordinates are collision-adjusted as one visual
     ...ATLAS_HISTORICAL_EVENTS.map(event=>({id:'event:'+event.id,type:'event',x:event.x,y:event.y}))
   ];
   const arranged = declutterAtlasPins(markers);
+  for (const marker of arranged) {
+    assert.ok(isInsideAtlasLand(marker.x, marker.y), 'marker must stay on the illustrated landmass: ' + marker.id);
+  }
   for (let i = 0; i < arranged.length; i++) {
     for (let j = i + 1; j < arranged.length; j++) {
       const dx = arranged[i].x - arranged[j].x;
