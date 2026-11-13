@@ -34,6 +34,20 @@ test('account-only player routes reject legacy Discord sessions before querying 
   }
 });
 
+test('public landing exposes complete social preview metadata for link sharing', async () => {
+  const response = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/tanitim', headers: {} }, response), true);
+  assert.equal(response.status, 200);
+  assert.match(response.body, /property="og:site_name" content="Poğaça Frieren"/);
+  assert.match(response.body, /property="og:title"/);
+  assert.match(response.body, /property="og:description"/);
+  assert.match(response.body, /property="og:image" content="https:\/\/frierenbot\.vercel\.app\/assets\/site-banner\.webp"/);
+  assert.match(response.body, /property="og:image:width" content="1200"/);
+  assert.match(response.body, /property="og:image:height" content="630"/);
+  assert.match(response.body, /name="twitter:card" content="summary_large_image"/);
+  assert.match(response.body, /name="twitter:image"/);
+});
+
 test('robots policy exposes the public SEO landing and noindex login discovery path', async () => {
   const response = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/robots.txt', headers: {} }, response), true);
