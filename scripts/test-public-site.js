@@ -1200,12 +1200,10 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.ok(!calls.some(call=>/INSERT INTO daily_mission_claims|UPDATE users SET coins/i.test(call.sql)));
  assert.match(response.body,/Kuzey Kıtası Dünya Haritası/);
  assert.match(response.body,/atlas-world-map/);
+ assert.match(response.body,/atlas-pin-layer/);
+ assert.match(response.body,/style="left:26\.4%;top:57\.5%;"/);
  assert.match(response.body,/atlas-forest/);
- assert.match(response.body,/atlas-paper-bg/);
  assert.match(response.body,/atlas-desert/);
- assert.match(response.body,/atlas-compass/);
- assert.match(response.body,/atlas-route/);
- assert.match(response.body,/is-locked/);
  assert.match(response.body,/atlas-snow/);
  assert.match(response.body,/Boss zaferleri · karakter geneli/);
  assert.match(response.body,/Zindan zaferleri · karakter geneli/);
@@ -1221,10 +1219,9 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/bölge ·/);
  assert.match(response.body,/Yenilen bosslar/);
  assert.match(response.body,/Sandık alanı/);
- assert.match(response.body,/atlas-city-label/);
- assert.match(response.body,/data-region-key="merkez"/);
- assert.match(response.body,/href="#region-merkez"/);
- assert.match(response.body,/aria-label="Frieren RPG dünya haritası"/);
+ assert.match(response.body,/atlas-pin-label/);
+ assert.match(response.body,/data-atlas-open="merkez"/);
+ assert.match(response.body,/aria-label="Frieren Kuzey Kıtası interaktif haritası"/);
  assert.match(response.body,/Merkez Topraklar/);
  assert.match(response.body,/Büyük Orman Yolu/);
  assert.match(response.body,/data-atlas-panel="merkez"/);
