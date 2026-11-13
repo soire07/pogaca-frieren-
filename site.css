@@ -1589,5 +1589,4 @@ body.atlas-modal-open{overflow:hidden}
 .atlas-pin:focus-visible{z-index:8}
 .atlas-pin:focus-visible .atlas-pin-label{opacity:1}
 .atlas-pin[hidden]{display:none}
-.atlas-map-viewport{background:#294653}
 .atlas-map-art{isolation:isolate}
