@@ -1246,7 +1246,7 @@ test('owner profile overrides VIP and renders the exclusive role, title, blood X
   const db={async query(sql){
     if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return{rows:[],rowCount:0};
     if(sql.includes('INSERT INTO guild_daily_quests'))return{rows:[],rowCount:0};
-    if(sql.includes('FROM guild_daily_quests WHERE guild_id=$1'))return{rows:[],rowCount:0};
+    if(sql.includes('FROM guild_daily_quests WHERE guild_id=$1'))return{rows:[{quest_key:'disabled',title:'Kapalı görev',description:'Kapalı görev açıklaması',objective_type:'adventure',class_name:null,reward_coins:0,active:false,is_system:false}],rowCount:1};
     if(sql.includes('FROM daily_mission_claims'))return{rows:[],rowCount:0};
     if(sql.includes('FROM site_discord_links l JOIN users u'))return{rows:[profile],rowCount:1};
     if(sql.includes('SELECT show_stats,show_achievements'))return{rows:[{show_stats:true,show_achievements:true,show_collections:true,show_activity:true,show_cosmetics:true,active_title:'Yıldız Büyücüsü'}],rowCount:1};
