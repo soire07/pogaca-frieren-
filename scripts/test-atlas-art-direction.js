@@ -162,12 +162,14 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   const client = await readFile(new URL('../public-assets/exploration-atlas.js', import.meta.url), 'utf8');
   const locations = await readFile(new URL('../exploration-world-locations.js', import.meta.url), 'utf8');
   for (const layer of ['atlas-waterways', 'atlas-trails', 'atlas-settled-land']) {
-    assert.match(artwork, new RegExp('data-atlas-geography-layer="' + layer + '"'));
+    assert.match(atlas, new RegExp('data-atlas-geography-layer="' + layer + '"'));
   }
-  assert.match(artwork, /atlas-river-main/);
-  assert.match(artwork, /atlas-lake/);
-  assert.match(artwork, /atlas-foothill-transition/);
-  assert.match(artwork, /atlas-field-mosaic/);
+  assert.match(atlas, /atlas-geography-overlay/);
+  assert.match(atlas, /atlas-inline-land-clip/);
+  assert.match(atlas, /atlas-river-main/);
+  assert.match(atlas, /atlas-lake/);
+  assert.match(atlas, /atlas-foothill-transition/);
+  assert.match(atlas, /atlas-field-mosaic/);
   for (const layer of ['waterways', 'trails', 'settled-land']) {
     assert.match(atlas, new RegExp('data-atlas-geography="' + layer + '"'));
     assert.match(client, new RegExp('data-atlas-geography-layer="' + layer + '"'));
