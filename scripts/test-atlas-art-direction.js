@@ -261,13 +261,27 @@ test('painterly terrain avoids tiled forest stamps and identical repeated mounta
 test('boss map markers have distinct archetypes while canonical encounter coordinates remain untouched', async () => {
   const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
   const locations = await readFile(new URL('../exploration-world-locations.js', import.meta.url), 'utf8');
-  for (const key of ['level_1','level_10','level_20','level_35','level_50','north-general','glass-wyrm','fallen-mage','zeldeila','domaltazor','the-fool']) {
-    assert.match(atlas, new RegExp("['\\\"]?" + key.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&') + "['\\\"]?:\\['[a-z-]+','[^']+'\\]"), 'boss should have a unique map archetype: '+key);
-  }
+  const archetypes = [
+    "level_1:['wildbeast','🐺']", "level_10:['ancient','🗿']", "level_20:['demon','👹']",
+    "level_35:['warlord','🩸']", "level_50:['arcane','♛']", "'north-general':['general','⚔']",
+    "'glass-wyrm':['wyrm','🐉']", "'fallen-mage':['fallen','🪽']", "zeldeila:['apex','♾']",
+    "domaltazor:['executioner','🦴']", "'the-fool':['trickster','🃏']"
+  ];
+  for (const archetype of archetypes) assert.ok(atlas.includes(archetype), 'boss should have its own map archetype: '+archetype);
   assert.match(atlas, /boss-archetype-/);
   assert.match(atlas, /icon,x:point\.x,y:point\.y/);
   assert.match(locations, /level_1: Object\.freeze\(\{ regionKey:'merkez', x:43, y:72/);
   assert.match(locations, /'glass-wyrm': Object\.freeze\(\{ regionKey:'kuzey', x:62, y:49/);
+});
+
+test('boss archetypes receive distinct desktop and mobile visual treatments', async () => {
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const visualPass = css.slice(css.lastIndexOf('Boss visual identities'));
+  for (const archetype of ['wildbeast','ancient','demon','warlord','arcane','general','wyrm','fallen','apex','executioner','trickster']) {
+    assert.ok(visualPass.includes('.boss-archetype-'+archetype), 'missing boss visual treatment: '+archetype);
+  }
+  assert.match(visualPass, /@media\(max-width:700px\)/);
+  assert.match(visualPass, /prefers-reduced-motion:reduce/);
 });
 
 test('each major biome has its own painterly signature without changing the 3:2 map canvas', async () => {
