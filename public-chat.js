@@ -48,7 +48,7 @@ export async function ensurePublicChatSchema(db){
  try{await pending;}catch(error){publicChatSchemaReady.delete(db);throw error;}
 }
 
-export async function listPublicChatMessages(db,{limit=100,viewerAccountId=null,before=null,search='',ownerAccountIds=[]}={}){
+export async function listPublicChatMessages(db,{limit=100,viewerAccountId=null,before=null,search='',ownerAccountIds=[],pinnedOnly=false}={}){
  const count=Math.max(1,Math.min(100,Math.floor(Number(limit)||100))),cursor=before&&Number.isFinite(Date.parse(before))?new Date(before).toISOString():null,term=clean(search,80,'PUBLIC_CHAT_SEARCH_INVALID',{optional:true});
  const viewer=viewerAccountId&&ACCOUNT_ID.test(String(viewerAccountId))?String(viewerAccountId):null;
  const owners=Array.isArray(ownerAccountIds)?[...new Set(ownerAccountIds.map(value=>String(value||'')).filter(value=>ACCOUNT_ID.test(value)))]:[];
@@ -71,10 +71,11 @@ export async function listPublicChatMessages(db,{limit=100,viewerAccountId=null,
   LEFT JOIN frieren_site_discord_accounts dsa ON dsa.account_id=REPLACE(m.account_id,'site_','')::uuid
   WHERE m.hidden=FALSE AND m.created_at>=NOW()-INTERVAL '30 days'
    AND ($2::text IS NULL OR NOT EXISTS(SELECT 1 FROM frieren_public_chat_blocks b WHERE b.blocker_account_id=$2 AND b.blocked_account_id=m.account_id))
-   AND ($3::timestamptz IS NULL OR (m.created_at<$3 AND m.pinned_at IS NULL))
+   AND ($3::timestamptz IS NULL OR m.created_at<$3)
+   AND ($6::boolean=FALSE OR m.pinned_at IS NOT NULL)
    AND ($4::text='' OR m.username ILIKE '%'||$4||'%' OR ap.display_name ILIKE '%'||$4||'%' OR m.body ILIKE '%'||$4||'%')
-  ORDER BY (m.pinned_at IS NOT NULL) DESC,m.created_at DESC,m.message_id DESC LIMIT $1`,[count,viewer,cursor,term,owners]);
- return result.rows.reverse().sort((a,b)=>Number(Boolean(b.pinned_at))-Number(Boolean(a.pinned_at))).map(({discord_user_id,discord_avatar_hash,media_object_key,...row})=>({...row,avatar_url:row.avatar_url||buildDiscordAvatarUrl(discord_user_id,discord_avatar_hash),media_url:media_object_key?getChatMediaReadUrl({object_key:media_object_key,mime_type:row.media_mime_type}):null}));
+  ORDER BY CASE WHEN $6::boolean THEN m.pinned_at ELSE m.created_at END DESC,m.created_at DESC,m.message_id DESC LIMIT $1`,[count,viewer,cursor,term,owners,Boolean(pinnedOnly)]);
+ return result.rows.reverse().map(({discord_user_id,discord_avatar_hash,media_object_key,...row})=>({...row,avatar_url:row.avatar_url||buildDiscordAvatarUrl(discord_user_id,discord_avatar_hash)||'/site-avatar.webp',media_url:media_object_key?getChatMediaReadUrl({object_key:media_object_key,mime_type:row.media_mime_type}):null}));
 }
 
 export async function sendPublicChatMessage(db,{accountId,username,body,replyToMessageId=null,mediaId=null}){
