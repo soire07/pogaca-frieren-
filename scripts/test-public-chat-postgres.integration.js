@@ -77,6 +77,14 @@ test('site private messages enforce accepted friendships, block rules, receipts 
   assert.equal((await markSiteDmGroupMessagesRead(scoped,{accountId:b,groupId:group.groupId})).status,'read');
   await scoped.query('INSERT INTO frieren_public_chat_blocks(blocker_account_id,blocked_account_id,blocked_username) VALUES($1,$2,$3)',[b,a,'Gezgin']);
   assert.equal((await listSiteDmGroupMessages(scoped,{accountId:b,groupId:group.groupId})).messages.length,0);
+  await scoped.query('DELETE FROM frieren_public_chat_blocks WHERE blocker_account_id=$1 AND blocked_account_id=$2',[b,a]);
+  await scoped.query('INSERT INTO frieren_public_chat_blocks(blocker_account_id,blocked_account_id,blocked_username) VALUES($1,$2,$3)',[a,c,'Fern']);
+  const reverseBlocked=await sendSiteDmGroupMessage(scoped,{senderAccountId:c,groupId:group.groupId,body:'Engellenen üyeden mesaj'});
+  assert.equal(reverseBlocked.status,'sent');
+  const creatorInbox=await listSiteDmGroupMessages(scoped,{accountId:a,groupId:group.groupId});
+  assert.equal(creatorInbox.messages.some(message=>message.sender_account_id===c),false,'messages from a member who blocked the viewer must remain hidden');
+  const creatorRead=await markSiteDmGroupMessagesRead(scoped,{accountId:a,groupId:group.groupId});
+  assert.equal(creatorRead.status,'read');
   assert.equal((await leaveSiteDmGroup(scoped,{accountId:a,groupId:group.groupId})).status,'left');
   assert.equal((await sendSiteDirectMessage(scoped,{senderAccountId:a,recipientAccountId:b,body:'Engel sonrası'})).status,'not_allowed');
   assert.deepEqual((await listSiteDirectMessages(scoped,{accountId:a,otherAccountId:b})),{status:'not_allowed',messages:[]});
