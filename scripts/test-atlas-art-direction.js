@@ -137,12 +137,12 @@ test('Frieren atlas adds subtle northern snowfall and forest mist without changi
   const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
   const site = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
   assert.match(atlas, /<div class="atlas-atmosphere-layer" aria-hidden="true"><\/div>/);
-  assert.match(atlas, /frieren-world-map\.svg\?v=atlas-374-1/);
+  assert.match(atlas, /frieren-world-map\.svg\?v=atlas-375-1/);
   assert.match(css, /\.atlas-atmosphere-layer::before/);
   assert.match(css, /atlas-northfall/);
   assert.match(css, /atlas-forest-mist/);
   assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-atmosphere-layer::before/);
-  assert.match(site, /site\.css\?v=atlas-374-1/);
+  assert.match(site, /site\.css\?v=atlas-375-1/);
 });
 
 
@@ -204,8 +204,8 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   assert.match(client, /data-atlas-geography/);
   assert.ok(client.includes("querySelectorAll('[data-atlas-geography-layer="), 'client must locate the SVG layer rendered by the server module');
   assert.match(client, /toggleAttribute\('hidden',!enabled\)/, 'SVG layer visibility must use a real hidden attribute');
-  assert.match(atlas, /atlas-374-1/);
-  assert.match(site, /exploration-atlas\.js\?v=atlas-374-1/);
+  assert.match(atlas, /atlas-375-1/);
+  assert.match(site, /exploration-atlas\.js\?v=atlas-375-1/);
   assert.match(locations, /x:39, y:79/);
   assert.match(locations, /level_1: Object\.freeze\(\{ regionKey:'merkez', x:43, y:72/);
 });
@@ -255,4 +255,43 @@ test('painterly terrain avoids tiled forest stamps and identical repeated mounta
   const colorGrade = css.slice(css.lastIndexOf('Painterly atlas color grade'));
   assert.match(colorGrade, /\.atlas-map-viewport\{[^}]*aspect-ratio:3\/2/, '3:2 viewport ratio must remain authoritative');
   assert.match(colorGrade, /@media\(max-width:700px\)/, 'mobile map treatment must remain explicit');
+});
+
+
+test('boss map markers have distinct archetypes while canonical encounter coordinates remain untouched', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  const locations = await readFile(new URL('../exploration-world-locations.js', import.meta.url), 'utf8');
+  const archetypes = [
+    "level_1:['wildbeast','🐺']", "level_10:['ancient','🗿']", "level_20:['demon','👹']",
+    "level_35:['warlord','🩸']", "level_50:['arcane','♛']", "'north-general':['general','⚔']",
+    "'glass-wyrm':['wyrm','🐉']", "'fallen-mage':['fallen','🪽']", "zeldeila:['apex','♾']",
+    "domaltazor:['executioner','🦴']", "'the-fool':['trickster','🃏']"
+  ];
+  for (const archetype of archetypes) assert.ok(atlas.includes(archetype), 'boss should have its own map archetype: '+archetype);
+  assert.match(atlas, /boss-archetype-/);
+  assert.match(atlas, /icon,x:point\.x,y:point\.y/);
+  assert.match(locations, /level_1: Object\.freeze\(\{ regionKey:'merkez', x:43, y:72/);
+  assert.match(locations, /'glass-wyrm': Object\.freeze\(\{ regionKey:'kuzey', x:62, y:49/);
+});
+
+test('boss archetypes receive distinct desktop and mobile visual treatments', async () => {
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const visualPass = css.slice(css.lastIndexOf('Boss visual identities'));
+  for (const archetype of ['wildbeast','ancient','demon','warlord','arcane','general','wyrm','fallen','apex','executioner','trickster']) {
+    assert.ok(visualPass.includes('.boss-archetype-'+archetype), 'missing boss visual treatment: '+archetype);
+  }
+  assert.match(visualPass, /@media\(max-width:700px\)/);
+  assert.match(visualPass, /prefers-reduced-motion:reduce/);
+});
+
+test('each major biome has its own painterly signature without changing the 3:2 map canvas', async () => {
+  const artwork = await readFile(new URL('../public-assets/frieren-world-map.svg', import.meta.url), 'utf8');
+  assert.match(artwork, /viewBox="0 0 1800 1200"/);
+  for (const layer of ['biome-central-meadow','biome-great-forest','biome-ancient-ruins','biome-northern-ice','biome-schwer-highlands','biome-ausserst-arcana']) {
+    assert.ok(artwork.includes(layer), 'missing regional biome signature: '+layer);
+  }
+  assert.match(artwork, /atlas-biome-signatures/);
+  assert.match(artwork, /pointer-events="none"/);
+  assert.match(artwork, /GRÖSSE ORMANI/);
+  assert.match(artwork, /KUZEY PLATOSU/);
 });
