@@ -1190,6 +1190,12 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.doesNotMatch(response.body,/Ön safta nöbet/);
  assert.ok(!calls.some(call=>/INSERT INTO daily_mission_claims|UPDATE users SET coins/i.test(call.sql)));
  assert.match(response.body,/Keşif Haritası/);
+ assert.match(response.body,/exploration-map-scene/);
+ assert.match(response.body,/exploration-map-terrain/);
+ assert.match(response.body,/exploration-map-landmark/);
+ assert.match(response.body,/data-region-key="merkez"/);
+ assert.match(response.body,/href="#region-merkez"/);
+ assert.match(response.body,/aria-label="Frieren RPG dünya haritası"/);
  assert.match(response.body,/Merkez Topraklar/);
  assert.match(response.body,/Büyük Orman Yolu/);
  assert.match(response.body,/Ustalık seviyesi 1/);
