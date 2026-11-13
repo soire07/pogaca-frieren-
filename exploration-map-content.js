@@ -13,12 +13,25 @@ function bossJournalKey(boss) {
 
 const BOSS_REGION_KEYS = Object.freeze({
   'Merkez Topraklar': 'merkez',
+  'Merkez': 'merkez',
+  'merkez': 'merkez',
   'Büyük Orman Yolu': 'orman',
+  'Büyük Orman': 'orman',
+  'Orman': 'orman',
+  'orman': 'orman',
   'Kadim Harabeler': 'harabeler',
+  'Harabeler': 'harabeler',
+  'harabeler': 'harabeler',
   'Kuzey Toprakları': 'kuzey',
+  'Kuzey': 'kuzey',
+  'kuzey': 'kuzey',
   'Kuzey Topraklarına Giden Yol': 'kuzey',
   'Kuzey Yaylaları': 'yayla',
-  'Äußerst Sınav Rotası': 'aus'
+  'Yayla': 'yayla',
+  'yayla': 'yayla',
+  'Äußerst Sınav Rotası': 'aus',
+  'Äußerst': 'aus',
+  'aus': 'aus'
 });
 
 function normalizeItemList(value) {
@@ -44,6 +57,8 @@ function dungeonRegionKey(dungeon) {
 
 function bossRegionKey(boss) {
   const key = itemKey(boss);
+  const regionKey = String(boss?.regionKey || '').trim();
+  if (EXPLORATION_REGION_CATALOG.some(region => region.key === regionKey)) return regionKey;
   const configured = FRIEREN_WORLD_BOSS_LOCATIONS[key]?.regionKey;
   if (configured) return configured;
   const explicit = BOSS_REGION_KEYS[String(boss?.region || '').trim()];
