@@ -1,4 +1,4 @@
-import { deleteChatMediaForAccount } from './chat-media.js';
+import { deleteChatMediaForAccount, getChatMediaReadUrl } from './chat-media.js';
 import { randomUUID } from 'node:crypto';
 
 const ACCOUNT_ID = /^site_([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
@@ -465,7 +465,7 @@ export async function exportSiteAccountData(db, accountId) {
   if(dmTable.rows?.[0]?.table_name)mediaPredicates.push("EXISTS(SELECT 1 FROM frieren_site_direct_messages dm WHERE dm.message_id=cm.message_id AND (dm.sender_account_id=$1 OR dm.recipient_account_id=$1))");
   if(groupTable.rows?.[0]?.table_name)mediaPredicates.push("EXISTS(SELECT 1 FROM frieren_site_dm_group_messages gm JOIN frieren_site_dm_group_members mine ON mine.group_id=gm.group_id WHERE gm.message_id=cm.message_id AND mine.account_id=$1)");
   const siteChatMedia=chatMediaTable.rows?.[0]?.table_name
-    ?await db.query('SELECT cm.media_id,cm.scope_type,cm.scope_key,cm.mime_type,cm.size_bytes,cm.message_id,cm.created_at,cm.attached_at FROM frieren_site_chat_media cm WHERE '+mediaPredicates.join(' OR ')+' ORDER BY cm.created_at,cm.media_id',[accountId])
+    ?await db.query('SELECT cm.media_id,cm.scope_type,cm.scope_key,cm.mime_type,cm.size_bytes,cm.message_id,cm.created_at,cm.attached_at,cm.object_key FROM frieren_site_chat_media cm WHERE '+mediaPredicates.join(' OR ')+' ORDER BY cm.created_at,cm.media_id',[accountId])
     :{rows:[]};
   const ticketsResult = await db.query(
     'SELECT ticket_id,category,subject,message,status,created_at,updated_at FROM frieren_support_tickets WHERE account_id=$1 ORDER BY created_at,ticket_id',
@@ -488,7 +488,7 @@ export async function exportSiteAccountData(db, accountId) {
     siteDirectMessageGroups: siteDirectMessageGroups.rows,
     siteDirectGroupMessages: siteDirectGroupMessages.rows,
     siteDirectGroupReads: siteDirectGroupReads.rows,
-    siteChatMedia: siteChatMedia.rows,
+    siteChatMedia: siteChatMedia.rows.map(({object_key,...media})=>({...media,download_url:getChatMediaReadUrl({object_key,mime_type:media.mime_type})})),
     supportTickets: tickets,
     deletionScope: 'Deleting the site account removes this portal identity and its Discord links. Discord-owned RPG profiles and guild game records remain intact.'
   };
