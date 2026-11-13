@@ -1203,9 +1203,9 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/exploration-map-fog/);
  assert.match(response.body,/Boss zaferleri · karakter geneli/);
  assert.match(response.body,/Zindan zaferleri · karakter geneli/);
- assert.match(response.body,/data-map-marker-type="boss"/);
- assert.match(response.body,/data-map-marker-type="chest"/);
- assert.match(response.body,/data-map-marker-type="relic"/);
+ assert.doesNotMatch(response.body,/data-map-marker-type="boss"/);
+ assert.doesNotMatch(response.body,/data-map-marker-type="chest"/);
+ assert.doesNotMatch(response.body,/data-map-marker-type="relic"/);
  assert.match(response.body,/Boss noktaları/);
  assert.match(response.body,/Schattenwolf/);
  assert.match(response.body,/Merkez Topraklar Mahzeni/);
@@ -1811,16 +1811,21 @@ test('spellbook search and mastery filters update visible entries and empty stat
 });
 
 
-test('exploration map uses a responsive game layout with separated map and region cards', async () => {
+test('exploration map keeps the map visually uncluttered and moves detail markers into region cards', async () => {
  const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
  const site=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
  const refined=css.slice(css.lastIndexOf('/* Refined Frieren exploration map UI */'));
- assert.ok(refined.length>0,'refined map styles must be present');
+ const mapBuilder=site.slice(site.indexOf('const mapNodes='),site.indexOf('const mapTerrain='));
+ const mapSection=site.slice(site.indexOf('const explorationMapSection='),site.indexOf('const notices='));
  assert.match(refined,/\.exploration-map-scroll\s*\{[^}]*overflow-x:\s*auto/s);
  assert.match(refined,/\.exploration-map-svg\s*\{[^}]*min-width:\s*0/s);
  assert.match(refined,/\.exploration-region-grid\s*\{[^}]*grid-template-columns/s);
  assert.match(refined,/@media\s*\(max-width:\s*560px\)/);
  assert.match(refined,/prefers-reduced-motion/);
- assert.match(site,/class="exploration-region-grid"/);
- assert.match(refined,/exploration-map-marker/);
+ assert.match(mapBuilder,/data-region-key=/);
+ assert.doesNotMatch(mapBuilder,/exploration-map-node-visits|exploration-map-label/);
+ assert.doesNotMatch(mapSection,/\+mapNodes\+mapMarkers\+/);
+ assert.match(mapSection,/\+mapNodes\+'<\/svg>/);
+ assert.match(mapSection,/class="exploration-region-grid"/);
+ assert.match(mapSection,/mapCards/);
 });
