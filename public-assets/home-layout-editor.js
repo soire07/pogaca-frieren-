@@ -1,0 +1,18 @@
+(()=>{'use strict';
+const root=document.querySelector('[data-home-layout-editor]');
+if(!root||root.dataset.homeLayoutReady==='true')return;
+const grid=root.querySelector('[data-home-layout-grid]');
+const status=root.querySelector('[data-home-layout-status]');
+if(!grid)return;
+let dragged=null;
+const slots=()=>Array.from(grid.querySelectorAll('[data-home-layout-slot]'));
+const announce=message=>{if(status)status.textContent=message;};
+const sync=()=>slots().forEach((slot,index)=>{const position=slot.querySelector('[name="layoutPosition"]');if(position)position.value=String(index);const heading=slot.querySelector('h3');if(heading)heading.textContent='Yerleşim '+(index+1);});
+const move=(slot,direction)=>{const all=slots(),index=all.indexOf(slot),target=all[index+(direction==='up'?-1:1)];if(!target){announce(direction==='up'?'Bu kart zaten ilk sırada.':'Bu kart zaten son sırada.');return;}if(direction==='up')grid.insertBefore(slot,target);else grid.insertBefore(target,slot);sync();slot.focus();announce('Yerleşim sırası güncellendi. Kaydetmek için Yerleşimi kaydet düğmesine bas.');};
+grid.addEventListener('click',event=>{const button=event.target.closest('[data-home-layout-move]');if(!button)return;const slot=button.closest('[data-home-layout-slot]');if(slot)move(slot,button.dataset.homeLayoutMove);});
+grid.addEventListener('dragstart',event=>{const slot=event.target.closest('[data-home-layout-slot]');if(!slot)return;dragged=slot;slot.classList.add('is-dragging');event.dataTransfer?.setData('text/plain','home-layout-slot');if(event.dataTransfer)event.dataTransfer.effectAllowed='move';});
+grid.addEventListener('dragover',event=>{if(!dragged)return;event.preventDefault();const target=event.target.closest('[data-home-layout-slot]');slots().forEach(slot=>slot.classList.toggle('is-drop-target',slot===target));});
+grid.addEventListener('drop',event=>{if(!dragged)return;event.preventDefault();const target=event.target.closest('[data-home-layout-slot]');if(target&&target!==dragged){const rect=target.getBoundingClientRect();const after=event.clientY>rect.top+rect.height/2;grid.insertBefore(dragged,after?target.nextSibling:target);sync();announce('Yerleşim sırası güncellendi. Kaydetmek için Yerleşimi kaydet düğmesine bas.');} });
+grid.addEventListener('dragend',()=>{if(dragged)dragged.classList.remove('is-dragging');slots().forEach(slot=>slot.classList.remove('is-drop-target'));dragged=null;});
+root.dataset.homeLayoutReady='true';
+})();

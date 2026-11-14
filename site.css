@@ -2122,3 +2122,17 @@ footer nav a{min-width:0;max-width:100%;overflow-wrap:anywhere}
 .player-cosmetic-spell-trail[data-spell-trail="frost_trail"] span:first-child{color:#bfe7ff;text-shadow:0 0 14px #7bcaff}
 .player-cosmetic-victory-pose{width:max-content;max-width:100%;padding:4px 9px;border:1px solid #d7b56b88;border-radius:999px;background:#c79c3822;color:#f1d89b;font-size:11px}
 @media(max-width:560px){.player-cosmetic-identity{gap:13px;padding:13px}.player-cosmetic-avatar{flex-basis:68px;width:68px;height:68px}.player-cosmetic-avatar span{font-size:34px}.player-cosmetic-nameplate{padding:7px 10px}}
+
+
+/* Accessible interactive player-home layout editor. */
+.home-layout-editor{align-items:stretch}
+.home-layout-slot{min-width:0;cursor:grab;transition:border-color .16s ease,transform .16s ease,opacity .16s ease}
+.home-layout-slot:focus-within{outline:2px solid #b99aff;outline-offset:2px}
+.home-layout-slot.is-dragging{opacity:.42;border:1px dashed #c8a8ff;transform:scale(.985)}
+.home-layout-slot.is-drop-target{border-color:#c8a8ff;box-shadow:0 0 0 2px #c8a8ff33}
+.home-layout-slot-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.home-layout-slot-heading h3{margin:0}
+.home-layout-slot-actions{display:flex;align-items:center;gap:6px}
+.home-layout-slot-actions .btn{min-width:36px;min-height:36px;padding:5px 10px}
+.home-layout-drag-handle{color:#c7b3e5;font-size:1.35rem;cursor:grab;user-select:none}
+@media(prefers-reduced-motion:reduce){.home-layout-slot{transition:none}}
