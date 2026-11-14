@@ -368,7 +368,6 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
                     if baseline_by_id.get(case_id, {}).get("passed") is not True
                     and candidate_by_id.get(case_id, {}).get("passed") is True
                 ]
-                from .quality_evaluation import build_score_binding
                 try:
                     baseline_binding = build_score_binding(baseline_report.get("checkpoint_sha256"), baseline_outputs)
                 except ValueError:
