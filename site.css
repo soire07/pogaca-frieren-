@@ -2057,3 +2057,7 @@ html:has(.encyclopedia-page),body:has(.encyclopedia-page){width:100%;max-width:1
   .atlas-map-art [data-atlas-geography-layer="demon-wastes"] .atlas-ashen-ground{opacity:.3}
   .atlas-map-art [data-atlas-geography-layer="demon-wastes"] .atlas-demon-fog{opacity:.24}
 }
+
+/* The shared footer is present on every category page. Let its links wrap on narrow screens. */
+footer nav{flex-wrap:wrap;min-width:0;max-width:100%}
+footer nav a{min-width:0;max-width:100%;overflow-wrap:anywhere}
