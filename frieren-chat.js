@@ -76,12 +76,13 @@ export async function generateFrierenReply({ history = [], userMessage, memories
   try {
     const messages = buildFrierenMessages({ history, userMessage, memories, chatSettings });
     const systemMessage = messages.find(item => item.role === 'system');
-    const contents = messages
-      .filter(item => item.role !== 'system')
-      .map(item => ({
-        role: item.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: item.content }]
-      }));
+    const contents = [];
+    for (const item of messages.filter(entry => entry.role !== 'system')) {
+      const role = item.role === 'assistant' ? 'model' : 'user';
+      const previous = contents.at(-1);
+      if (previous?.role === role) previous.parts.push({ text: item.content });
+      else contents.push({ role, parts: [{ text: item.content }] });
+    }
     const response = await fetchImpl('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
       method: 'POST',
       headers: {
