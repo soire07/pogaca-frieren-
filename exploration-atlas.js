@@ -140,6 +140,18 @@ function buildAtlasSettlementSilhouettes(settlements=FRIEREN_WORLD_SETTLEMENTS,m
   return `<g class="atlas-settlement-architecture atlas-settlement-silhouettes" aria-hidden="true" pointer-events="none">${groups}</g>`;
 }
 
+export function getAtlasBiomeCompletionPercent(item={}) {
+  const bosses=Array.isArray(item.bosses)?item.bosses:[];
+  const dungeons=Array.isArray(item.dungeons)?item.dungeons:[];
+  const rareItems=Array.isArray(item.rareItems)?item.rareItems:[];
+  const total=1+bosses.length+dungeons.length+rareItems.length;
+  const completed=(item.discovered||Number(item.visits)>0?1:0)+
+    bosses.filter(boss=>boss.defeated).length+
+    Math.min(dungeons.length,Math.max(0,Number(item.dungeonWins)||0))+
+    rareItems.filter(loot=>Number(loot.ownedQuantity)>0).length;
+  return Math.max(0,Math.min(100,Math.round(completed/total*100)));
+}
+
 function buildAtlasBiomeLabels(points) {
   const anchors = Object.freeze({
     orman:{x:23,y:39}, merkez:{x:31,y:76}, harabeler:{x:49,y:55},
@@ -148,7 +160,7 @@ function buildAtlasBiomeLabels(points) {
   return '<div class="atlas-biome-label-layer" aria-label="Biyom adları ve tamamlanma yüzdeleri">'+points.map(({item,geo})=>{
     const anchor=anchors[item.region.key];
     if(!anchor)return '';
-    const progress=Math.max(0,Math.min(100,Math.round(Number(item.masteryProgressPercent)||0)));
+    const progress=getAtlasBiomeCompletionPercent(item);
     const name=escapeHtml(geo.name);
     return '<div class="atlas-biome-label" data-atlas-biome-label="'+escapeHtml(item.region.key)+'" style="left:'+anchor.x+'%;top:'+anchor.y+'%" aria-label="'+name+' · Tamamlanma '+progress+'%"><strong>'+name+'</strong><small>Tamamlanma '+progress+'%</small></div>';
   }).join('')+'</div>';
