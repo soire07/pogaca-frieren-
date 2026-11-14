@@ -140,7 +140,7 @@ test('Frieren atlas adds subtle northern snowfall and forest mist without changi
   const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
   const site = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
   assert.match(atlas, /<div class="atlas-atmosphere-layer" aria-hidden="true"><\/div>/);
-  assert.match(atlas, /frieren-world-map\.svg\?v=atlas-377-1/);
+  assert.match(atlas, /frieren-world-map\.svg\?v=atlas-379-1/);
   assert.match(css, /\.atlas-atmosphere-layer::before/);
   assert.match(css, /atlas-northfall/);
   assert.match(css, /atlas-forest-mist/);
@@ -220,8 +220,8 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   assert.match(client, /data-atlas-geography/);
   assert.ok(client.includes("querySelectorAll('[data-atlas-geography-layer="), 'client must locate the SVG layer rendered by the server module');
   assert.match(client, /toggleAttribute\('hidden',!enabled\)/, 'SVG layer visibility must use a real hidden attribute');
-  assert.match(atlas, /atlas-377-1/);
-  assert.match(site, /exploration-atlas\.js\?v=atlas-377-1/);
+  assert.match(atlas, /atlas-379-1/);
+  assert.match(site, /exploration-atlas\.js\?v=atlas-379-1/);
   assert.match(locations, /x:39, y:79/);
   assert.match(locations, /level_1: Object\.freeze\(\{ regionKey:'merkez', x:43, y:72/);
 });
@@ -538,8 +538,8 @@ test('six biome art direction keeps every regional signature distinct and the de
   for (const biome of ['central-meadow','great-forest','ancient-ruins','northern-ice','schwer-highlands','ausserst-arcana']) {
     assert.match(artDirection, new RegExp('\\.biome-' + biome + '\\{'), 'missing visual treatment for ' + biome);
   }
-  assert.match(artDirection, /atlas-ashen-ground[\\s\\S]*?opacity:\\.34/);
-  assert.match(artDirection, /atlas-demon-fog[\\s\\S]*?opacity:\\.3/);
-  assert.match(artDirection, /atlas-biome-transition[\\s\\S]*?opacity:\\.24/);
-  assert.match(artDirection, /@media\\(max-width:700px\\)/);
+  assert.match(artDirection, /atlas-ashen-ground[\s\S]*?opacity:\.34/);
+  assert.match(artDirection, /atlas-demon-fog[\s\S]*?opacity:\.3/);
+  assert.match(artDirection, /atlas-biome-transition[\s\S]*?opacity:\.24/);
+  assert.match(artDirection, /@media\(max-width:700px\)/);
 });
