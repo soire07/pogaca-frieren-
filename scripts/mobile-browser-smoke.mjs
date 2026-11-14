@@ -138,15 +138,16 @@ for (const scenario of scenarios) {
         };
       });
     });
-    const biomeLabelLandFailures = biomeLabelArt.filter(label => {
+    const biomeLabelLandFailures = biomeLabelArt.map(label => {
       const box = label.landBox;
+      const failedSamples = [];
       for (let x = 0; x <= 4; x++) for (let y = 0; y <= 2; y++) {
         const px = box.left + (box.right - box.left) * x / 4;
         const py = box.top + (box.bottom - box.top) * y / 2;
-        if (!isInsideAtlasLand(px, py, 0.15)) return true;
+        if (!isInsideAtlasLand(px, py, 0.15)) failedSamples.push({ x: Number(px.toFixed(3)), y: Number(py.toFixed(3)) });
       }
-      return false;
-    });
+      return failedSamples.length ? { key: label.key, box, failedSamples } : null;
+    }).filter(Boolean);
     if (biomeLabelArt.length !== 6 || biomeLabelLandFailures.length ||
         biomeLabelArt.some(label => !label.text.includes('Tamamlanma') || !/[0-9]+%/.test(label.text) || !label.insideViewport)) {
       throw new Error(scenario.name + ' biome labels/progress are missing or outside the map viewport: ' + JSON.stringify({ labels:biomeLabelArt, landFailures:biomeLabelLandFailures }));
