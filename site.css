@@ -1991,3 +1991,23 @@ body.atlas-modal-open{overflow:hidden}
     filter:drop-shadow(0 7px 6px #070910e8) drop-shadow(0 0 9px #7d353a66);
   }
 }
+
+/* Prevent long character metadata and card grid tracks from widening iOS Safari. */
+.encyclopedia-page{box-sizing:border-box;width:100%;max-width:100%;min-width:0;overflow-x:clip}
+.encyclopedia-toolbar,.encyclopedia-character-grid,.encyclopedia-character-card{box-sizing:border-box;min-width:0;max-width:100%}
+.encyclopedia-character-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
+.encyclopedia-character-card,.encyclopedia-character-heading,.encyclopedia-character-heading>div{min-width:0}
+.encyclopedia-character-heading{grid-template-columns:48px minmax(0,1fr) minmax(0,auto)}
+.encyclopedia-character-heading h2,.encyclopedia-character-heading small,.character-spoiler{min-width:0;overflow-wrap:anywhere;word-break:normal}
+.encyclopedia-character-card button{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:420px){.encyclopedia-character-grid{grid-template-columns:minmax(0,1fr)}.encyclopedia-character-heading{grid-template-columns:40px minmax(0,1fr)}.encyclopedia-rarity{grid-column:2;justify-self:start}.encyclopedia-character-emoji{width:40px;height:40px}}
+
+/* Hard viewport containment for the public encyclopedia on iOS WebKit. */
+html:has(.encyclopedia-page),body:has(.encyclopedia-page){width:100%;max-width:100%;overflow-x:hidden}
+.encyclopedia-page{width:auto;max-width:100%;overflow-x:hidden}
+.encyclopedia-page :where(*,::before,::after){box-sizing:border-box;min-width:0}
+.encyclopedia-toolbar{grid-template-columns:minmax(0,1fr)}
+.encyclopedia-toolbar label,.encyclopedia-toolbar input,.encyclopedia-toolbar select,.encyclopedia-toolbar output{max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere}
+.encyclopedia-character-grid{grid-template-columns:minmax(0,1fr)}
+.encyclopedia-character-heading{grid-template-columns:40px minmax(0,1fr)}
+.encyclopedia-rarity{grid-column:2;justify-self:start;white-space:normal}
