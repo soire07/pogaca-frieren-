@@ -466,3 +466,13 @@ test('Ende and Demon King castle use inward display anchors and zoom never shrin
   assert.ok(atlas.includes('data-atlas-geography-layer="waterways" class="atlas-waterways">'));
   assert.ok(!atlas.includes('class="atlas-waterways"> class="atlas-waterways">'));
 });
+
+test('castle architecture has masonry courses and the Demon King fortress has lit defensive towers', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  const templatesStart = atlas.indexOf('const settlementSilhouetteTemplates = Object.freeze({');
+  const templatesEnd = atlas.indexOf('function buildAtlasSettlementSilhouettes', templatesStart);
+  const templates = atlas.slice(templatesStart, templatesEnd);
+  assert.match(templates, /castle-masonry-detail/);
+  assert.match(templates, /castle-ember-lights/);
+  assert.match(templates, /demon-fortress/);
+});
