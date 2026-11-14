@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1200" role="img" aria-labelledby="map-title map-desc">
-<title id="map-title">Frieren dünyası — detaylı fantastik dünya atlası</title>
+<title id="map-title">Frieren dünyası — painterly topoğrafik dünya atlası</title>
 <desc id="map-desc">Frieren animesinin Kuzey ve Merkez Topraklarından esinlenen, fan yapımı; yükselti gölgelendirmesi, doğal biyom geçişleri, nehirler, göller, kırsal alanlar ve geçitler içeren interaktif RPG harita zemini.</desc>
 <defs>
  <linearGradient id="ocean" x1="0" y1="0" x2="0.9" y2="1"><stop stop-color="#142b3a"/><stop offset=".48" stop-color="#1c3b4a"/><stop offset="1" stop-color="#102633"/></linearGradient>
@@ -107,33 +107,32 @@
  <!-- broad, blended biomes -->
  <path d="M1020 82C1220 70 1470 130 1585 300L1640 470C1515 515 1400 450 1290 465 1150 445 1055 356 1000 240Z" fill="url(#north-ice)" filter="url(#biome-edge)" opacity=".92"/>
  <path d="M1040 120C1210 96 1450 150 1550 305 1500 366 1410 405 1300 380 1185 368 1110 290 1040 230Z" fill="none" stroke="#f2f0e5" stroke-opacity=".58" stroke-width="7"/>
- <path d="M185 330C280 245 430 256 550 322 645 373 690 496 630 596 545 676 390 646 285 579 207 526 175 429 185 330Z" fill="url(#forest-depth)" filter="url(#biome-edge)" opacity=".94"/>
- <path d="M185 330C280 245 430 256 550 322 645 373 690 496 630 596 545 676 390 646 285 579 207 526 175 429 185 330Z" fill="url(#forest-canopy)" filter="url(#biome-edge)" opacity=".22"/>
- <g opacity=".24"><use href="#atlas-pine" x="290" y="365"/><use href="#atlas-pine" x="390" y="430"/><use href="#atlas-pine" x="505" y="370"/><use href="#atlas-pine" x="560" y="500"/></g>
+ <g class="atlas-forest-groves">
+  <path d="M205 355Q236 286 318 284Q378 254 434 292Q495 278 548 333Q605 367 590 430Q624 486 575 535Q530 588 466 570Q411 612 351 576Q285 584 251 530Q196 497 211 438Q179 394 205 355Z" fill="url(#forest-depth)" filter="url(#biome-edge)" opacity=".78"/>
+  <path d="M214 363Q250 304 320 300Q379 270 434 307Q492 291 540 343Q588 380 570 430Q600 477 558 520Q510 560 462 548Q407 584 357 555Q293 563 264 515Q218 480 230 435Q199 398 214 363Z" fill="url(#forest-canopy)" opacity=".2"/>
+  <path d="M235 525Q260 480 314 480Q358 460 397 490Q430 520 410 558Q375 590 329 574Q276 587 248 558Z" fill="#254b3e" filter="url(#biome-edge)" opacity=".5"/>
+  <path d="M448 310Q486 278 529 305Q572 320 574 360Q553 395 510 388Q464 394 443 361Z" fill="#315b48" filter="url(#biome-edge)" opacity=".52"/>
+ </g>
  <path d="M230 700C355 590 535 614 665 675 775 731 820 884 720 1010 585 1100 390 1040 280 955 205 890 190 784 230 700Z" fill="url(#central-meadow)" filter="url(#biome-edge)" opacity=".86"/>
  <path d="M675 470C810 390 1000 415 1115 520 1225 622 1190 805 1040 865 900 925 735 842 680 720 640 632 635 540 675 470Z" fill="url(#sandstone)" filter="url(#biome-edge)" opacity=".42"/>
  <path d="M675 470C810 390 1000 415 1115 520 1225 622 1190 805 1040 865 900 925 735 842 680 720 640 632 635 540 675 470Z" fill="url(#rock-hatch)" opacity=".36"/>
  <!-- mountain systems with layered ridgelines, not repeated cartoon peaks -->
- <path d="M680 240C760 190 850 190 925 236 1010 190 1115 210 1185 280L1265 405C1160 465 1080 425 1000 390 900 450 795 410 715 360Z" fill="#657b7a" opacity=".5"/>
- <g opacity=".96">
-  <path d="M690 357 735 304 770 321 818 242 850 275 898 208 936 249 978 218 1025 270 1065 245 1110 301 1150 286 1198 352 1242 390 1190 414 1125 385 1070 405 1012 371 958 403 900 369 844 392 788 360 730 380Z" fill="#405a5e" opacity=".56"/>
-  <path d="M700 347 748 294 780 319 820 232 852 271 900 194 939 246 982 207 1025 262 1068 238 1110 293 1154 278 1202 345 1250 387" fill="none" stroke="#e2e3d6" stroke-opacity=".55" stroke-width="7" stroke-linejoin="round"/>
-  <path d="m748 294 20 45 37-21 15-86 32 56 48-94 39 52 43-45 43 55 43-24 42 55 44-15 48 65" fill="none" stroke="#9aada7" stroke-opacity=".8" stroke-width="13" stroke-linejoin="round"/>
-  <path d="m820 232 15 48 17-9 48-77 18 57 21-5 43-39 18 48 24-3 44 39 20-17 41 52" fill="none" stroke="#d5ddd3" stroke-opacity=".72" stroke-width="4" stroke-linejoin="round"/>
-  <path d="m900 194 20 59 19-7 43-39 21 59 19-4 43 39 23-14 40 56" fill="none" stroke="#f1eee0" stroke-opacity=".7" stroke-width="2.8" stroke-linejoin="round"/>
-  <path d="M725 365q80-32 142-3t137-3 150 15 94 28" fill="none" stroke="#293f48" stroke-opacity=".45" stroke-width="17" stroke-linecap="round"/>
-  <path d="M1040 548 1080 518 1114 548 1156 510 1198 554 1234 535 1276 590 1318 575 1365 640 1400 702 1368 766 1320 802 1270 766 1230 787 1178 744 1135 758 1090 711 1050 676 1024 616Z" fill="#425d60" opacity=".42"/>
-  <path d="M1040 548 1080 518 1114 548 1156 510 1198 554 1234 535 1276 590 1318 575 1365 640 1400 702 1368 766" fill="none" stroke="#d9dfd2" stroke-opacity=".54" stroke-width="6" stroke-linejoin="round"/>
-  <path d="m1080 518 25 62 49-70 44 68 36-43 42 65 42-25 47 65 35 62" fill="none" stroke="#a8b9b1" stroke-opacity=".7" stroke-width="12" stroke-linejoin="round"/>
-  <path d="m1156 510 14 64 28-6 44-33 18 68 24-6 34 46 24-15 36 74" fill="none" stroke="#eef0e3" stroke-opacity=".62" stroke-width="3.5" stroke-linejoin="round"/>
-  <path d="M1018 690q105-65 193-12t154 87" fill="none" stroke="#2c444b" stroke-opacity=".42" stroke-width="19" stroke-linecap="round"/>
+ <g class="atlas-mountain-backdrop" pointer-events="none">
+ <path d="M675 330Q760 242 845 266Q910 204 988 238Q1070 192 1158 270Q1228 320 1270 405Q1195 454 1120 422Q1040 456 970 418Q885 458 808 414Q735 406 675 330Z" fill="#657b7a" opacity=".38"/>
+ <path d="M690 338Q766 270 844 286Q913 225 986 257Q1067 213 1146 282Q1212 337 1242 396" fill="none" stroke="#dce4d9" stroke-opacity=".5" stroke-width="5" stroke-linecap="round"/>
+ <path d="M712 356Q786 297 854 310Q920 256 986 286Q1055 246 1125 309Q1180 356 1218 410" fill="none" stroke="#9aadaa" stroke-opacity=".72" stroke-width="13" stroke-linecap="round"/>
+ <path d="M754 375Q824 326 878 339Q938 291 997 316Q1055 284 1110 333Q1157 371 1191 419" fill="none" stroke="#e6e9dc" stroke-opacity=".42" stroke-width="2.4" stroke-linecap="round"/>
+ <path d="M1010 555Q1080 493 1152 520Q1212 488 1280 552Q1360 612 1400 720Q1360 795 1286 810Q1208 844 1132 786Q1055 732 1010 650Z" fill="#687c78" opacity=".34"/>
+ <path d="M1030 590Q1094 530 1158 548Q1220 515 1280 580Q1340 642 1372 718" fill="none" stroke="#e2e7dc" stroke-opacity=".48" stroke-width="5" stroke-linecap="round"/>
+ <path d="M1050 618Q1110 565 1168 580Q1222 550 1274 612Q1320 665 1350 730" fill="none" stroke="#a8b9b1" stroke-opacity=".7" stroke-width="12" stroke-linecap="round"/>
  </g>
- <path d="M770 430C875 385 990 410 1080 465 1170 520 1210 610 1160 690" fill="none" stroke="#d4ded2" stroke-opacity=".46" stroke-width="6"/>
- <path d="M790 458C890 418 990 440 1070 490 1135 530 1165 590 1138 645" fill="none" stroke="#3d5b61" stroke-opacity=".35" stroke-width="12"/>
- <!-- Schwer mountain chain -->
- <path d="M1050 530C1155 465 1260 500 1345 580 1430 655 1455 765 1380 850 1280 890 1165 830 1090 765 1020 700 1000 600 1050 530Z" fill="#687c78" opacity=".4"/>
- <g opacity=".88"><use href="#ridge" x="1040" y="555"/><use href="#ridge" x="1170" y="590"/><use href="#ridge" x="1300" y="655"/><use href="#ridge" x="1190" y="735"/></g>
- <path d="M1020 820C1130 760 1260 795 1360 875" fill="none" stroke="#e6e1cf" stroke-opacity=".5" stroke-width="5"/>
+ <!-- Lower foothill strata: broad, broken ridges rather than repeated peak icons. -->
+ <g class="atlas-schwer-foothills" fill="none" stroke-linecap="round">
+  <path d="M1035 625Q1110 550 1180 580T1320 650Q1390 720 1360 800" stroke="#344f56" stroke-opacity=".42" stroke-width="29"/>
+  <path d="M1035 610Q1110 535 1180 565T1320 635Q1380 700 1350 785" stroke="#a8b9b1" stroke-opacity=".68" stroke-width="14"/>
+  <path d="M1055 600Q1120 535 1185 555T1310 625Q1365 690 1340 770" stroke="#eef0e3" stroke-opacity=".55" stroke-width="3"/>
+  <path d="M1080 680Q1150 625 1210 650T1325 725M1110 730Q1170 685 1230 705T1330 770" stroke="#526b6b" stroke-opacity=".42" stroke-width="6"/>
+ </g>
  <!-- relief shadows and foothill systems -->
  <g opacity=".22"><use href="#atlas-hill" x="340" y="710"/><use href="#atlas-hill" x="505" y="810"/><use href="#atlas-hill" x="620" y="900"/></g>
  <g opacity=".55"><use href="#hillshade" x="330" y="610"/><use href="#hillshade" x="480" y="660"/><use href="#hillshade" x="600" y="790"/><use href="#hillshade" x="350" y="870"/><use href="#hillshade" x="520" y="925"/><use href="#hillshade" x="1350" y="450"/></g>
@@ -199,50 +198,35 @@
 
 <!-- Painterly terrain pass: irregular canopy groves, varied alpine massifs and regional ground texture. -->
 <g clip-path="url(#land-clip)" pointer-events="none">
- <g class="atlas-forest-canopy" opacity=".96">
-  <path d="M205 365C255 290 365 267 455 302 550 325 625 410 625 493 608 578 523 635 425 625 330 633 235 566 211 482 190 434 190 398 205 365Z" fill="#17392f" opacity=".24" filter="url(#terrain-soft)"/>
-  <use href="#atlas-canopy-a" transform="translate(248 344) rotate(-13) scale(.92)"/>
-  <use href="#atlas-canopy-c" transform="translate(300 302) rotate(8) scale(.68)"/>
-  <use href="#atlas-canopy-b" transform="translate(358 330) rotate(-6) scale(1.08)"/>
-  <use href="#atlas-canopy-d" transform="translate(420 292) rotate(14) scale(.78)"/>
-  <use href="#atlas-canopy-a" transform="translate(486 330) rotate(-9) scale(1.12)"/>
-  <use href="#atlas-canopy-c" transform="translate(552 365) rotate(17) scale(.72)"/>
-  <use href="#atlas-canopy-b" transform="translate(225 408) rotate(12) scale(.76)"/>
-  <use href="#atlas-canopy-d" transform="translate(282 390) rotate(-18) scale(1.04)"/>
-  <use href="#atlas-canopy-a" transform="translate(350 390) rotate(7) scale(.82)"/>
-  <use href="#atlas-canopy-c" transform="translate(414 370) rotate(-11) scale(1.16)"/>
-  <use href="#atlas-canopy-b" transform="translate(485 405) rotate(19) scale(.86)"/>
-  <use href="#atlas-canopy-d" transform="translate(557 430) rotate(-7) scale(1.02)"/>
-  <use href="#atlas-canopy-c" transform="translate(246 478) rotate(15) scale(.9)"/>
-  <use href="#atlas-canopy-a" transform="translate(315 462) rotate(-5) scale(1.18)"/>
-  <use href="#atlas-canopy-b" transform="translate(382 450) rotate(12) scale(.74)"/>
-  <use href="#atlas-canopy-d" transform="translate(450 475) rotate(-15) scale(1.08)"/>
-  <use href="#atlas-canopy-c" transform="translate(520 490) rotate(6) scale(.9)"/>
-  <use href="#atlas-canopy-a" transform="translate(590 505) rotate(-12) scale(.68)"/>
-  <use href="#atlas-canopy-b" transform="translate(286 535) rotate(9) scale(.76)"/>
-  <use href="#atlas-canopy-d" transform="translate(358 530) rotate(-17) scale(1.02)"/>
-  <use href="#atlas-canopy-a" transform="translate(432 548) rotate(11) scale(.84)"/>
-  <use href="#atlas-canopy-c" transform="translate(500 560) rotate(-8) scale(.72)"/>
-  <use href="#atlas-canopy-b" transform="translate(555 575) rotate(13) scale(.86)"/>
-  <path d="M218 370q35-36 77-30m-43 94q53-33 102-12m-66 102q46-24 93-4m54-170q46-27 91-3m-76 117q54-29 101-4m-78 107q45-20 87 0" fill="none" stroke="#c1c59a" stroke-opacity=".24" stroke-width="2.2" stroke-linecap="round"/>
-  <path d="M270 600q68-32 128-10t119-2 93-5" fill="none" stroke="#0f302b" stroke-opacity=".4" stroke-width="8" stroke-linecap="round"/>
+ <g class="atlas-forest-canopy" opacity=".9">
+ <path d="M225 360Q280 292 365 304T510 342Q585 385 565 462Q585 510 530 545Q465 568 410 538Q345 572 286 522Q230 490 238 430Q205 398 225 360Z" fill="#17392f" opacity=".13" filter="url(#terrain-soft)"/>
+ <use href="#atlas-canopy-a" transform="translate(260 354) rotate(-13) scale(.66)"/>
+ <use href="#atlas-canopy-c" transform="translate(334 318) rotate(8) scale(.48)"/>
+ <use href="#atlas-canopy-b" transform="translate(414 344) rotate(-6) scale(.78)"/>
+ <use href="#atlas-canopy-d" transform="translate(505 368) rotate(14) scale(.54)"/>
+ <use href="#atlas-canopy-a" transform="translate(290 430) rotate(-9) scale(.76)"/>
+ <use href="#atlas-canopy-c" transform="translate(382 410) rotate(17) scale(.52)"/>
+ <use href="#atlas-canopy-b" transform="translate(485 448) rotate(12) scale(.72)"/>
+ <use href="#atlas-canopy-d" transform="translate(250 500) rotate(-18) scale(.5)"/>
+ <use href="#atlas-canopy-a" transform="translate(350 500) rotate(7) scale(.68)"/>
+ <use href="#atlas-canopy-c" transform="translate(450 520) rotate(-11) scale(.56)"/>
+ <use href="#atlas-canopy-b" transform="translate(548 505) rotate(19) scale(.48)"/>
+ <use href="#atlas-canopy-d" transform="translate(570 405) rotate(-7) scale(.42)"/>
+ <path d="M226 390q32-30 68-23m-36 112q42-28 78-11m-42 99q34-20 69-5m90-213q37-19 75-2m-64 108q39-22 78-4" fill="none" stroke="#c1c59a" stroke-opacity=".2" stroke-width="2" stroke-linecap="round"/>
+ <path d="M260 565q54-28 103-9t94-1" fill="none" stroke="#0f302b" stroke-opacity=".28" stroke-width="5" stroke-linecap="round"/>
  </g>
  <g class="atlas-mountain-relief" opacity=".98">
-  <use href="#atlas-peak-a" transform="translate(760 304) rotate(-4) scale(.78)"/>
-  <use href="#atlas-peak-c" transform="translate(838 267) rotate(5) scale(.86)"/>
-  <use href="#atlas-peak-b" transform="translate(916 245) rotate(-3) scale(.98)"/>
-  <use href="#atlas-peak-d" transform="translate(1002 270) rotate(7) scale(.82)"/>
-  <use href="#atlas-peak-a" transform="translate(1085 303) rotate(-8) scale(.7)"/>
-  <use href="#atlas-peak-c" transform="translate(1164 351) rotate(4) scale(.74)"/>
-  <use href="#atlas-peak-b" transform="translate(1112 590) rotate(-6) scale(.76)"/>
-  <use href="#atlas-peak-d" transform="translate(1198 626) rotate(8) scale(.92)"/>
-  <use href="#atlas-peak-a" transform="translate(1284 680) rotate(-5) scale(.84)"/>
-  <use href="#atlas-peak-c" transform="translate(1360 740) rotate(6) scale(.68)"/>
-  <path d="M704 390q64-48 132-34t117-10 125 23 135 20" fill="none" stroke="#273f48" stroke-opacity=".3" stroke-width="23" stroke-linecap="round"/>
-  <path d="M710 378q67-44 129-29t117-9 122 20 129 17" fill="none" stroke="#e9e9dd" stroke-opacity=".34" stroke-width="3.2" stroke-linecap="round"/>
-  <path d="M1060 805q78-55 148-27t136 48" fill="none" stroke="#2d464d" stroke-opacity=".36" stroke-width="18" stroke-linecap="round"/>
-  <path d="M1065 795q80-49 145-21t128 40" fill="none" stroke="#e8e9db" stroke-opacity=".38" stroke-width="3" stroke-linecap="round"/>
-  <path d="M728 424q36-24 70-8m138-38q43-18 79 2m118 277q42-20 78 2m84 36q36-16 67 5" fill="none" stroke="#f4efe0" stroke-opacity=".42" stroke-width="2.4" stroke-linecap="round"/>
+ <path d="M700 355Q750 305 800 314Q845 265 892 286Q945 228 1000 260Q1055 232 1100 286Q1165 302 1220 385" fill="none" stroke="#304b52" stroke-opacity=".48" stroke-width="31" stroke-linecap="round"/>
+ <path d="M700 340Q750 290 800 300Q845 250 892 272Q945 215 1000 245Q1055 216 1100 270Q1165 286 1220 370" fill="none" stroke="#718b89" stroke-opacity=".72" stroke-width="18" stroke-linecap="round"/>
+ <path d="M710 331Q755 286 802 294Q850 244 894 264Q947 207 1001 238Q1055 208 1102 263Q1165 278 1210 360" fill="none" stroke="#e5e9dd" stroke-opacity=".72" stroke-width="3.2" stroke-linecap="round"/>
+ <path d="M785 292l23 10 28-28 23 12 31-34 21 17 29-37 24 22 30-25 25 22 29-14 30 24" fill="none" stroke="#f6f3e8" stroke-opacity=".62" stroke-width="5" stroke-linejoin="round"/>
+ <path d="M830 320q35-25 66-12t67-10 67 8 72 4M855 344q42-20 82-5t74-8 92 13" fill="none" stroke="#344f56" stroke-opacity=".5" stroke-width="9" stroke-linecap="round"/>
+ <path d="M1040 610Q1090 550 1150 565Q1200 525 1260 590Q1325 650 1375 755" fill="none" stroke="#344f56" stroke-opacity=".46" stroke-width="32" stroke-linecap="round"/>
+ <path d="M1040 594Q1095 536 1154 550Q1205 510 1266 575Q1327 635 1370 740" fill="none" stroke="#819794" stroke-opacity=".82" stroke-width="17" stroke-linecap="round"/>
+ <path d="M1050 585Q1100 530 1158 544Q1208 503 1268 568Q1325 626 1360 730" fill="none" stroke="#edf0e6" stroke-opacity=".7" stroke-width="3" stroke-linecap="round"/>
+ <path d="M1120 558l18 16 22-28 21 14 27-27 24 23 25-14 24 29" fill="none" stroke="#f8f5e9" stroke-opacity=".58" stroke-width="4" stroke-linejoin="round"/>
+ <path d="M1070 670q45-32 88-12t82-5 90 35M1100 710q42-22 78-5t70-3 75 26M1140 758q38-17 71-1t63 15" fill="none" stroke="#425c5e" stroke-opacity=".5" stroke-width="7" stroke-linecap="round"/>
+ <path d="M745 400q72-35 135-12t122-11 130 14M1080 820q80-46 153-19t131 42" fill="none" stroke="#dce4d7" stroke-opacity=".38" stroke-width="2.2" stroke-linecap="round"/>
  </g>
  <g class="atlas-meadow-texture" opacity=".72">
   <use href="#atlas-grass" transform="translate(335 745) rotate(-12) scale(.8)"/>

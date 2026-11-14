@@ -149,15 +149,28 @@ test('Frieren atlas adds subtle northern snowfall and forest mist without changi
 });
 
 
-test('Frieren atlas terrain uses organic mountain ridgelines and fine terrain grain rather than repeated cartoon peaks', async () => {
+test('mountain systems read as continuous layered ridgelines, not repeated toy-like triangular peaks', async () => {
   const artwork = await readFile(new URL('../public-assets/frieren-world-map.svg', import.meta.url), 'utf8');
+  assert.match(artwork, /class="atlas-mountain-backdrop"/);
+  assert.match(artwork, /class="atlas-mountain-relief"/);
   assert.match(artwork, /id="terrain-grain"/);
-  assert.match(artwork, /M700 347 748 294 780 319 820 232/);
-  assert.match(artwork, /stroke-opacity=".72" stroke-width="4"/);
-  assert.match(artwork, /fill="url\(#terrain-grain\)" opacity=".42"/);
-  assert.doesNotMatch(artwork, /<use href="#ridge" x="710"/);
+  assert.match(artwork, /stroke-linecap="round"/);
+  assert.ok(artwork.includes('Q750 305 800 314') && artwork.includes('stroke-width="31"'), 'main mountain ridge must use layered continuous relief strokes');
+  const relief = artwork.slice(artwork.indexOf('<g class="atlas-mountain-relief"'), artwork.indexOf('<g class="atlas-meadow-texture"'));
+  assert.doesNotMatch(relief, /<use href="#atlas-peak-[a-d]"/, 'large repeated peak stamps must not dominate mountain ranges');
+  assert.ok(artwork.includes('fill="url(#terrain-grain)" opacity=".42"'));
   assert.match(artwork, /GRÖSSE ORMANI/);
   assert.match(artwork, /KUZEY PLATOSU/);
+});
+
+test('Great Forest uses irregular separated groves and varied canopy spacing instead of one dark blob', async () => {
+  const artwork = await readFile(new URL('../public-assets/frieren-world-map.svg', import.meta.url), 'utf8');
+  assert.match(artwork, /class="atlas-forest-groves"/);
+  assert.match(artwork, /class="atlas-forest-canopy" opacity=".9"/);
+  assert.match(artwork, /M235 525Q260 480 314 480/);
+  assert.ok(artwork.includes('translate(334 318) rotate(8) scale(.48)'));
+  assert.ok(artwork.includes('translate(548 505) rotate(19) scale(.48)'));
+  assert.match(artwork, /GRÖSSE ORMANI/);
 });
 
 
@@ -248,13 +261,13 @@ test('painterly terrain avoids tiled forest stamps and identical repeated mounta
   const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
   for (const variant of ['a', 'b', 'c', 'd']) {
     assert.match(artwork, new RegExp('id="atlas-canopy-' + variant + '"'), 'forest canopy needs distinct crown geometry: ' + variant);
-    assert.match(artwork, new RegExp('id="atlas-peak-' + variant + '"'), 'mountain relief needs distinct peak geometry: ' + variant);
     assert.match(artwork, new RegExp('href="#atlas-canopy-' + variant + '"'), 'forest should use canopy variant ' + variant);
-    assert.match(artwork, new RegExp('href="#atlas-peak-' + variant + '"'), 'mountains should use peak variant ' + variant);
   }
+  assert.doesNotMatch(artwork, /<use href="#atlas-peak-[a-d]"/, 'mountain system should use continuous relief geometry rather than oversized icon stamps');
   assert.doesNotMatch(artwork, /<use href="#atlas-canopy" transform="translate\(\d+ \d+\) scale\([^)]+\)"\/>/);
   assert.doesNotMatch(artwork, /<use href="#atlas-peak" transform="translate\(\d+ \d+\) scale\([^)]+\)"\/>/);
-  assert.match(artwork, /fill="url\(#forest-canopy\)" filter="url\(#biome-edge\)" opacity="\.22"/, 'the tiled forest underpainting must not overpower the individual canopy crowns');
+  assert.match(artwork, /class="atlas-forest-groves"/, 'forest underpainting should use separate organic grove masses');
+  assert.match(artwork, /fill="url\(#forest-canopy\)" opacity="\.2"/, 'forest canopy wash must remain restrained beneath individual tree crowns');
   const colorGrade = css.slice(css.lastIndexOf('Painterly atlas color grade'));
   assert.match(colorGrade, /\.atlas-map-viewport\{[^}]*aspect-ratio:3\/2/, '3:2 viewport ratio must remain authoritative');
   assert.match(colorGrade, /@media\(max-width:700px\)/, 'mobile map treatment must remain explicit');
@@ -352,4 +365,78 @@ test('atlas finish pass unifies frame, landmark focus, layer controls and mobile
   assert.match(finish, /@media\(max-width:700px\)/);
   assert.match(finish, /@media\(prefers-reduced-motion:reduce\)/);
   assert.match(finish, /\.atlas-route-planner\{/);
+});
+
+
+test('castles and villages use layered architectural facades, openings and roof details instead of childlike line icons', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  const start = atlas.indexOf('const settlementSilhouetteTemplates = Object.freeze({');
+  const end = atlas.indexOf('function buildAtlasSettlementSilhouettes', start);
+  assert.ok(start >= 0 && end > start, 'settlement architecture templates must be present');
+  const templates = atlas.slice(start, end);
+  const keys = ['strahl','royal-capital','waal','fabel-village','graf-granat','village-of-sword','weise','ende','demon-kings-castle'];
+  for (const key of keys) {
+    const keyToken = key + ':';
+    const quotedKeyToken = "'" + key + "':";
+    const keyStart = templates.indexOf(keyToken) >= 0 ? templates.indexOf(keyToken) : templates.indexOf(quotedKeyToken);
+    assert.ok(keyStart >= 0, key + ' needs a dedicated architecture template');
+    const next = templates.indexOf("\n  ", keyStart + keyToken.length);
+    const block = templates.slice(keyStart, next < 0 ? templates.length : next);
+    const paths = (block.match(/<path\b/g) || []).length;
+    assert.ok(paths >= 6, key + ' should have layered architectural detail, not a few crude strokes');
+    assert.match(block, /<rect\b/, key + ' should include distinct facade/window geometry');
+  }
+  assert.match(templates, /castle-wall/);
+  assert.match(templates, /battlement/);
+  assert.match(templates, /arched-gate/);
+  assert.match(templates, /timber-frame/);
+  assert.match(templates, /roof-tile/);
+});
+
+test('regional biomes form broad connected land-cover zones with gradual transitions', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  assert.match(atlas, /atlas-biome-regions/);
+  for (const biome of ['forest','central-plains','northern-tundra','highlands','eastern-mountains','ashen-north']) {
+    assert.match(atlas, new RegExp('atlas-biome-' + biome));
+  }
+  assert.match(atlas, /atlas-biome-transition/);
+  assert.match(atlas, /atlas-inline-land-clip/);
+});
+
+test('demon king castle sits inside a bleak deadwood and ashland environment', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  assert.match(atlas, /atlas-demon-wastes/);
+  assert.match(atlas, /atlas-dead-tree/);
+  assert.match(atlas, /atlas-ashen-ground/);
+  assert.match(atlas, /atlas-demon-fog/);
+  assert.match(atlas, /demon-kings-castle/);
+});
+
+test('boss markers prefer the dedicated map coordinate catalog over generic runtime location labels', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  assert.match(atlas, /function resolveAtlasBossLocation\(boss\)/);
+  assert.match(atlas, /FRIEREN_WORLD_BOSS_LOCATIONS\[boss\.key\]/);
+  assert.match(atlas, /Number\.isFinite\(Number\(location\.x\)\)/);
+  assert.match(atlas, /Number\.isFinite\(Number\(location\.y\)\)/);
+  assert.match(atlas, /resolveAtlasBossLocation\(boss\)/);
+});
+
+
+test('large groups of edge encounters are distributed to distinct free land positions', async () => {
+  const { declutterAtlasPins, isInsideAtlasLand } = await import('../atlas-pin-layout.js');
+  const source = Array.from({ length: 36 }, (_, index) => ({
+    id: 'edge-encounter-' + index, type: 'boss', x: 99.5, y: 36
+  }));
+  const arranged = declutterAtlasPins(source);
+  assert.equal(new Set(arranged.map(pin => pin.id)).size, source.length);
+  for (const pin of arranged) {
+    assert.ok(isInsideAtlasLand(pin.x, pin.y), 'every encounter must be placed on land');
+  }
+  for (let i = 0; i < arranged.length; i++) {
+    for (let j = i + 1; j < arranged.length; j++) {
+      const dx = arranged[i].x - arranged[j].x;
+      const dy = (arranged[i].y - arranged[j].y) * 1.5;
+      assert.ok(Math.hypot(dx, dy) >= 3.1, 'edge encounters must not collapse into one boundary pile');
+    }
+  }
 });

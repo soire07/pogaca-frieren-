@@ -61,12 +61,12 @@ export function isInsideAtlasLand(x, y, margin = 0.85) {
   return true;
 }
 
-function nearestLandPosition(origin) {
+function nearestLandPosition(origin, isAvailable = () => true) {
   let best = null;
   let bestDistance = Infinity;
   for (let y = 8; y <= 93; y += 0.75) {
     for (let x = 8; x <= 93; x += 0.75) {
-      if (!isInsideAtlasLand(x, y)) continue;
+      if (!isInsideAtlasLand(x, y) || !isAvailable({ x, y })) continue;
       const distance = (x - origin.x) ** 2 + ((y - origin.y) * 1.5) ** 2;
       if (distance < bestDistance) {
         best = { x, y };
@@ -110,9 +110,10 @@ export function declutterAtlasPins(pins, { minDistance = 3.2 } = {}) {
         }
       }
       if (!selected) {
-        const nearest = nearestLandPosition(origin);
-        if (nearest && !collides(nearest)) selected = nearest;
-        else if (nearest) selected = nearest;
+        // Several edge/out-of-land encounters can share one nearest coastline point.
+        // Search for the nearest *free* land cell so fallback placement cannot pile them up.
+        selected = nearestLandPosition(origin, candidate => !collides(candidate));
+        if (!selected) selected = nearestLandPosition(origin);
       }
     }
     const result = { ...pin, x: selected?.x ?? origin.x, y: selected?.y ?? origin.y };
