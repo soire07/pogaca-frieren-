@@ -877,6 +877,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             { name: 'Liderlik sıralaması', expected: 'test oyuncusu 4.321 altın ve seviye 7 ile listelenmeli', actual: state.rows.length + ' sıralama kaydı; ' + (state.rows[0] ? state.rows[0].coins + ' altın / seviye ' + state.rows[0].level : 'kayıt yok'), passed: state.rowCount === 1 && state.rows[0].user_id === userId && Number(state.rows[0].coins) === 4321 && Number(state.rows[0].level) === 7 && payloadText.includes('FrierenTest') && payloadText.includes('4.321') }
           );
         } else if (commandName === 'hedefler') {
+          await ensureUser(guildId, userId);
           await pool.query('UPDATE users SET level=10,boss_defeats=5,dungeon_wins=3,exploration_count=10 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
           interaction.user.id = userId;
@@ -1140,13 +1141,14 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             });
           }
         } else if (commandName === 'maceragecmisi') {
+          await ensureUser(guildId, userId);
           const before = await pool.query('SELECT coins,xp,level,exploration_count FROM users WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           await pool.query(
             "INSERT INTO adventure_history(guild_id,user_id,discovery_key,outcome_text,coins_awarded,xp_awarded,item_found,first_discovery,occurred_at) VALUES($1,$2,'forest-grimoire','Ordinary history entry',10,5,NULL,false,NOW()-INTERVAL '3 minutes'),($1,$2,'dragon-nest','Rare Dragon History',20,10,NULL,true,NOW()-INTERVAL '2 minutes'),($1,$2,'mimic-trail','Item Found History',30,15,'🧪 Test Potion',true,NOW()-INTERVAL '1 minute'),($1,$2,'forest-grimoire','Older History Entry 4',4,4,NULL,false,NOW()-INTERVAL '4 minutes'),($1,$2,'forest-grimoire','Older History Entry 5',5,5,NULL,false,NOW()-INTERVAL '5 minutes'),($1,$2,'forest-grimoire','Oldest History Excluded',6,6,NULL,false,NOW()-INTERVAL '6 minutes')",
             [guildId, userId]
           );
           await pool.query(
-            'INSERT INTO user_crafting_progress(guild_id,user_id,level,xp,successful_crafts,salvaged_items) VALUES($1,$2,5,1234,9,4)',
+            'INSERT INTO user_crafting_progress(guild_id,user_id,level,xp,successful_crafts,salvaged_items) VALUES($1,$2,5,1234,9,4) ON CONFLICT(guild_id,user_id) DO UPDATE SET level=EXCLUDED.level,xp=EXCLUDED.xp,successful_crafts=EXCLUDED.successful_crafts,salvaged_items=EXCLUDED.salvaged_items',
             [guildId, userId]
           );
           const summaryStart = effects.length;
