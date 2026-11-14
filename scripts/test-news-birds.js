@@ -120,3 +120,23 @@ test('calendar reminder recipient lookup honors explicit opt-outs while preservi
  assert.match(captured.sql,/COALESCE\(n\.enabled,TRUE\)=TRUE/);
  assert.deepEqual(captured.params,['123e4567-e89b-42d3-a456-426614174000','boss_raid_reminders']);
 });
+
+
+test('news digest keeps article links separate from clean summaries and uses compact image cards',()=>{
+ const link='https://www.animenewsnetwork.com/news/2026-11-14/frieren-update';
+ const embeds=buildAnimeNewsDigestEmbeds([{
+  title:'Frieren receives a new update',
+  link,
+  summary:'A new season was announced. Read more: https://example.com/extra and [source](https://example.com/source)',
+  sourceName:'Anime News Network',
+  imageUrl:'https://cdn.animenewsnetwork.com/frieren.jpg',
+  publishedAt:'2026-11-14T10:00:00.000Z'
+ }],new Date('2026-11-14T12:00:00.000Z'));
+ assert.equal(embeds.length,1);
+ assert.equal(embeds[0].url,undefined);
+ assert.equal(embeds[0].image,undefined);
+ assert.equal(embeds[0].thumbnail.url,'https://cdn.animenewsnetwork.com/frieren.jpg');
+ assert.doesNotMatch(embeds[0].description,/https?:\\/\\//);
+ assert.match(embeds[0].description,/\\[Haberi oku →\\]\\(https:\\/\\/www\\.animenewsnetwork\\.com\\/news\\/2026-11-14\\/frieren-update\\)/);
+ assert.equal((embeds[0].description.match(/https?:\\/\\//g)||[]).length,1);
+});
