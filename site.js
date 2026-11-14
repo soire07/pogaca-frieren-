@@ -22,7 +22,7 @@ export default {
       .setDescription(
         '**Bir yolculuk, bin yıllık bir hikâye.**\n' +
         'Poğaça Frieren’in dünyasını Discord’un ötesinde keşfet! Frieren evreni, maceracı gelişimi ve topluluk özellikleri tek bir portalda buluşuyor.\n\n' +
-        '🔗 **Portal:** ' + SITE_URL
+        'Frieren evreni, maceracı gelişimi ve topluluk özellikleri tek bir portalda buluşuyor.'
       )
       .addFields(
         {
