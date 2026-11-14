@@ -906,13 +906,13 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     return true;
   }
   if (req.method === 'GET' && url.pathname === '/robots.txt') {
-    const body = 'User-agent: *\nAllow: /tanitim\nAllow: /login\nAllow: /sitemap.xml\nAllow: /assets/site-banner.webp\nAllow: /assets/site-avatar.webp\nAllow: /assets/site-avatar.svg\nAllow: /assets/site.css\nDisallow: /\nSitemap: https://frierenbot.vercel.app/sitemap.xml\n';
+    const body = 'User-agent: *\nAllow: /\nAllow: /tanitim\nAllow: /login\nAllow: /sitemap.xml\nAllow: /assets/site-banner.webp\nAllow: /assets/site-avatar.webp\nAllow: /assets/site-avatar.svg\nAllow: /assets/site.css\nDisallow: /maceraci\nDisallow: /owner\nDisallow: /hesap-merkezi\nDisallow: /destek\nSitemap: https://frierenbot.vercel.app/sitemap.xml\n';
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public,max-age=3600', 'X-Content-Type-Options': 'nosniff' });
     res.end(body);
     return true;
   }
   if (req.method === 'GET' && url.pathname === '/sitemap.xml') {
-    const body = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://frierenbot.vercel.app/tanitim</loc></url></urlset>';
+    const body = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://frierenbot.vercel.app/</loc></url><url><loc>https://frierenbot.vercel.app/tanitim</loc></url></urlset>';
     res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public,max-age=3600', 'X-Content-Type-Options': 'nosniff' });
     res.end(body);
     return true;
