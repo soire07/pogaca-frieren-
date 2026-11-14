@@ -113,14 +113,17 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
     if not isinstance(report.get("blocking_reasons"), list) or report.get("blocking_reasons"):
         blocking_reasons.append("quality_report_blockers_present")
 
+    expected_case_ids = [f"TR-{index:03d}" for index in range(1, 25)]
+    automated_cases = automated.get("case_results") if isinstance(automated, dict) else None
     automated_valid = (
         isinstance(automated, dict)
         and automated.get("evaluator_version") == "tr-rule-gate-v1"
         and automated.get("prompt_set_version") == report.get("prompt_set_version")
         and automated.get("passed") is True
         and automated.get("cases_total") == 24
-        and isinstance(automated.get("case_results"), list)
-        and len(automated["case_results"]) == 24
+        and isinstance(automated_cases, list)
+        and [item.get("id") for item in automated_cases if isinstance(item, dict)] == expected_case_ids
+        and all(isinstance(item, dict) and item.get("passed") is True for item in automated_cases)
         and not automated.get("blocking_reasons")
     )
     if not automated_valid:
@@ -157,6 +160,14 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
     if not heldout_valid:
         blocking_reasons.append("heldout_evidence_missing_or_invalid")
 
+    baseline_reviewers = comparison.get("baseline_reviewer_identity_hashes") if isinstance(comparison, dict) else None
+    baseline_reviewers_valid = (
+        isinstance(baseline_reviewers, list)
+        and len(baseline_reviewers) == 2
+        and all(_valid_sha(value, 64) for value in baseline_reviewers)
+        and baseline_reviewers[0] != baseline_reviewers[1]
+    )
+
     baseline_valid = (
         isinstance(comparison, dict)
         and comparison.get("available") is True
@@ -171,7 +182,8 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
         and comparison["baseline_candidate_binding"].get("checkpoint_sha256") == comparison.get("baseline_checkpoint_sha256")
         and comparison["baseline_candidate_binding"].get("prompt_set_version") == report.get("prompt_set_version")
         and _valid_sha(comparison["baseline_candidate_binding"].get("outputs_sha256"), 64)
-        and not comparison.get("regressed_cases")
+        and baseline_reviewers_valid
+        and comparison.get("regressed_cases") == []
         and bool(comparison.get("improved_cases"))
     )
     if not baseline_valid:
@@ -185,6 +197,33 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
     )
     if not outputs_valid:
         blocking_reasons.append("benchmark_outputs_incomplete")
+
+    human_review = report.get("human_review")
+    reviewer_hashes = human_review.get("reviewer_identity_hashes") if isinstance(human_review, dict) else None
+    review_template = report.get("review_template")
+    expected_candidate_binding = None
+    if outputs_valid:
+        canonical_outputs = json.dumps(outputs, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        expected_candidate_binding = {
+            "checkpoint_sha256": report.get("checkpoint_sha256"),
+            "outputs_sha256": hashlib.sha256(canonical_outputs.encode("utf-8")).hexdigest(),
+            "prompt_set_version": report.get("prompt_set_version"),
+        }
+    human_review_valid = (
+        isinstance(human_review, dict)
+        and human_review.get("completed") is True
+        and human_review.get("reviewers_required") == 2
+        and isinstance(reviewer_hashes, list)
+        and len(reviewer_hashes) == 2
+        and all(_valid_sha(value, 64) for value in reviewer_hashes)
+        and reviewer_hashes[0] != reviewer_hashes[1]
+        and human_review.get("candidate_binding") == expected_candidate_binding
+        and isinstance(review_template, dict)
+        and review_template.get("reviewers") == reviewer_hashes
+        and review_template.get("candidate_binding") == expected_candidate_binding
+    )
+    if not human_review_valid:
+        blocking_reasons.append("two_distinct_human_reviewers_required")
 
     averages = metrics.get("dimension_averages") if isinstance(metrics, dict) else None
     if not isinstance(averages, dict) and automated_valid:
@@ -217,8 +256,8 @@ def build_evolution_plan(report: dict[str, Any], *, weak_threshold: float = 3.5)
         "priority_dimensions": [],
         "curriculum_actions": [],
         "guardrails": {
-            "independent_human_review_required": False,
-            "distinct_reviewer_identity_hashes_required": False,
+            "independent_human_review_required": True,
+            "distinct_reviewer_identity_hashes_required": True,
             "automated_quality_gate_required": True,
             "model_self_scoring_allowed": False,
             "unreviewed_synthetic_data_allowed": False,
