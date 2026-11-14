@@ -1854,6 +1854,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           behavioralChecks.push(
             {name:'Bahçe slash komutu hasat işlemi',expected:'/bahce hasat ürünü envantere eklemeli ve parseli kaldırmalı',actual:harvested+' ürün / parsel '+(remainingPlot.rowCount?'var':'yok')+' / '+harvestText.slice(0,180),passed:!remainingPlot.rowCount&&harvested===expectedYield&&harvestText.includes('Hasat tamamlandı')&&harvestText.includes(seed.name)}
           );
+          effects.push(...plantEffects, ...harvestEffects);
         } else if (commandName === 'balik') {
           await initFishingSchema(pool);
           await pool.query('UPDATE users SET level=30 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
@@ -1891,6 +1892,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             {name:'Karakter istek listesi yinelenen kayıt koruması',expected:'aynı karakter ikinci kez eklenmemeli ve kullanıcı bilgilendirilmeli',actual:duplicateText,passed:duplicateText.includes('zaten listende')&&wishlist.length===1},
             {name:'Karakter istek listesi görüntüleme',expected:'/karakteristek liste kayıtlı Frieren karakterini göstermeli',actual:listText.slice(0,220),passed:listText.includes('Frieren')}
           );
+          effects.push(...addEffects, ...duplicateEffects, ...listEffects);
         } else if (commandName === 'loncaoyun') {
           await ensureGuildGameTables(pool);
           const channelId='900000000000000004';
@@ -1926,6 +1928,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             {name:'Pazar slash komutu ilan oluşturur',expected:'/pazar sat envanterden bir eşyayı ayırıp aktif ilan açmalı',actual:(listing?.listing_id||'ilan yok')+' / envanter '+String(inventoryAfterSale.rows[0]?.quantity),passed:Boolean(listing)&&listingState.rows[0]?.status==='active'&&Number(inventoryAfterSale.rows[0]?.quantity)===1&&saleText.includes('İlanın oluşturuldu')},
             {name:'Pazar slash komutu ilanı iptal eder',expected:'/pazar iptal ilanı kapatıp eşyayı iade etmeli',actual:listingState.rows[0]?.status+' / envanter '+String(inventoryAfterCancel.rows[0]?.quantity)+' / '+cancelText,passed:listingState.rows[0]?.status==='cancelled'&&Number(inventoryAfterCancel.rows[0]?.quantity)===2&&cancelText.includes('İlan iptal edildi')}
           );
+          effects.push(...saleEffects, ...cancelEffects);
         } else if (commandName === 'sera') {
           await initFarmSchema(pool);
           await pool.query('UPDATE users SET level=30,coins=3000 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
@@ -1953,6 +1956,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           behavioralChecks.push(
             {name:'Sera slash komutu hasat işlemi',expected:'/sera hasat ürünü envantere ekleyip ekili parseli kaldırmalı',actual:harvested+' ürün / parsel '+(remainingPlot.rowCount?'var':'yok')+' / '+harvestText.slice(0,200),passed:!remainingPlot.rowCount&&harvested===expectedYield&&harvestText.includes('Hasat tamamlandı')&&harvestText.includes(seed.name)}
           );
+          effects.push(...plantEffects, ...harvestEffects);
         } else if (commandName === 'sosyal') {
           await ensureSocialPlatformTables(pool);
           const peerId='900000000000000002';
@@ -1985,6 +1989,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             {name:'Sosyal slash komutu altın hediyesi',expected:'/sosyal hediye 50 altını gönderen hesaptan alıcıya aktarmalı',actual:giftText+' / '+balances.rows.map(row=>row.coins).join(','),passed:giftText.includes('50 altın gönderdin')&&balances.rows.length===2&&Number(balances.rows.find(row=>row.user_id===userId)?.coins)===950&&Number(balances.rows.find(row=>row.user_id===peerId)?.coins)===1050},
             {name:'Sosyal slash komutu haftalık itibar',expected:'/sosyal itibar-ver alıcıya bir itibar puanı eklemeli',actual:reputationText+' / '+reputationPoints,passed:reputationText.includes('itibar verdin')&&reputationPoints===1}
           );
+          effects.push(...friendEffects, ...acceptEffects, ...giftEffects, ...reputationEffects);
         } else if (commandName === 'yaratik') {
           await initCreatureSchema(pool);
           const creature=CREATURE_CATALOG[0];
@@ -2002,6 +2007,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             {name:'Yaratık slash komutu takip kaydı',expected:'/yaratik istek-ekle seçilen yaratığı takip listesine kaydetmeli',actual:wishlist.map(item=>item.name).join(', '),passed:wishlist.some(item=>item.key===creature.key)&&addText.includes('Yaratık istek listene eklendi')},
             {name:'Yaratık slash komutu takip listesini gösterir',expected:'/yaratik istekler kayıtlı yaratığı göstermeli',actual:listText.slice(0,220),passed:listText.includes(creature.name)}
           );
+          effects.push(...addEffects, ...listEffects);
         } else if (commandName === 'yasam') {
           await ensurePlayerExperienceSchema(pool);
           const openEffects=[];
@@ -2019,6 +2025,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
             {name:'Yaşam slash komutu evi topluluğa açar',expected:'/yasam paylasim acik:true kalıcı görünürlük ayarını açmalı',actual:String(visible.rows[0]?.is_public)+' / '+openText,passed:visible.rows[0]?.is_public===true&&openText.includes('topluluğa açıldı')},
             {name:'Yaşam slash komutu evi gizler',expected:'/yasam paylasim acik:false kalıcı görünürlüğü kapatmalı',actual:String(hidden.rows[0]?.is_public)+' / '+closeText,passed:hidden.rows[0]?.is_public===false&&closeText.includes('Ev vitrinin gizlendi')}
           );
+          effects.push(...openEffects, ...closeEffects);
         } else if (commandName === 'yoldas') {
           await initCompanionSchema(pool);
           await pool.query('UPDATE users SET coins=5000 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
@@ -2035,9 +2042,10 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           const cared=await getCompanion(pool,guildId,userId);
           const adoptText=payloadTextFromEffects(adoptEffects),feedText=payloadTextFromEffects(feedEffects);
           behavioralChecks.push(
-            {name:'Yoldaş slash komutu sahiplenme',expected:'/yoldas sahiplen yoldaşı kalıcı kaydetmeli ve onay vermeli',actual:(adopted?.companion_key||'kayıt yok')+' / '+adoptText,passed:adopted?.companion_key===companion.key&&adoptText.includes(companion.name+' artık yoldaşın')},
+            {name:'Yoldaş slash komutu sahiplenme',expected:'/yoldas sahiplen yoldaşı kalıcı kaydetmeli ve onay vermeli',actual:(adopted?.companion_key||'kayıt yok')+' / '+adoptText,passed:adopted?.companion_key===companion.key&&adoptText.includes('artık yoldaşın')},
             {name:'Yoldaş slash komutu besleme',expected:'/yoldas besle açlığı azaltıp XP ilerlemesi vermeli',actual:'XP '+(cared?.xp||0)+' / açlık '+(cared?.hunger||0)+' / '+feedText,passed:Number(cared?.xp)===5&&Number(cared?.hunger)<100&&feedText.includes('Yoldaşınla ilgilendin')}
           );
+          effects.push(...adoptEffects, ...feedEffects);
         }
 
         const evidence = buildCommandEvidence({ responseCount: effects.length, behavioralChecks });
