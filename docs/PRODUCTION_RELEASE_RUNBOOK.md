@@ -17,7 +17,7 @@ This runbook is a release gate for Poğaça Frieren. It does not authorize a pro
 - Housing/editor delivery (#387) is merged. Vercel production deployment `dpl_EyKgDqSV4gChJxkddj7PymZSufA8` is READY and owns `frierenbot.vercel.app`; its code commit is `862ae867f017d23f3512b52f91eb7cd0b4daaa5a`.
 - Render Poğaça service is live on `97b4595f96f5a69757805b26f3ef29b6edeaae28`. Startup logs show 87 commands loaded, PostgreSQL connected, bot online, and no application error logs in the post-deploy window. This is not proof that every command has been exercised through live Discord.
 - Frieren Guard's external readiness sender (#388) is merged, but emits no events until the same dedicated `FRIEREN_GUARD_EVENT_SECRET` is configured in GitHub Actions secrets and the Poğaça Render service.
-- Feature inventory: 2,021 records, 346 evidence-linked implemented records, 1,675 planned records; 325 normalized roadmap capability groups, including 225 groups with repeated action variants. `auditComplete=false` remains intentional.
+- Feature inventory: 2,029 records, 354 evidence-linked implemented records, 1,675 planned records; 325 normalized roadmap capability groups, including 225 groups with repeated action variants. `auditComplete=false` remains intentional.
 - Frieren Neural's automated quality-gate PR #341 remains draft. Its CI passed 238 tests, but the active GGUF candidate remains NOT READY until two independent human reviews, valid training provenance, and held-out metrics are supplied.
 - Automated browser tests still do not complete a real Discord OAuth consent/session. Authenticated owner OAuth and live Discord command E2E remain separate verification gates.
 
