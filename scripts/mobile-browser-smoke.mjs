@@ -191,7 +191,7 @@ for (const scenario of scenarios) {
       const art = document.querySelector('.atlas-map-art').getBoundingClientRect();
       const anchor = key => {
         const node = document.querySelector('[data-settlement="'+key+'"]');
-        const match = /translate\\(([-0-9.]+)\\s+([-0-9.]+)\\)/.exec(node?.getAttribute('transform') || '');
+        const match = /translate\(([-0-9.]+)\s+([-0-9.]+)\)/.exec(node?.getAttribute('transform') || '');
         return match ? { x:art.left+Number(match[1])/1800*art.width, y:art.top+Number(match[2])/1200*art.height } : null;
       };
       const pinCenter = value => value ? { x:value.centerX,y:value.centerY } : null;
