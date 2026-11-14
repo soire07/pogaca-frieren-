@@ -142,12 +142,12 @@ function buildAtlasSettlementSilhouettes(settlements=FRIEREN_WORLD_SETTLEMENTS,m
 
 export function getAtlasBiomeCompletionPercent(item={}) {
   const bosses=Array.isArray(item.bosses)?item.bosses:[];
-  const dungeons=Array.isArray(item.dungeons)?item.dungeons:[];
   const rareItems=Array.isArray(item.rareItems)?item.rareItems:[];
-  const total=1+bosses.length+dungeons.length+rareItems.length;
+  // Dungeon wins are currently supplied as a character-wide total, not keyed by region.
+  // Exclude them until the data model exposes per-dungeon completion records.
+  const total=1+bosses.length+rareItems.length;
   const completed=(item.discovered||Number(item.visits)>0?1:0)+
     bosses.filter(boss=>boss.defeated).length+
-    Math.min(dungeons.length,Math.max(0,Number(item.dungeonWins)||0))+
     rareItems.filter(loot=>Number(loot.ownedQuantity)>0).length;
   return Math.max(0,Math.min(100,Math.round(completed/total*100)));
 }
