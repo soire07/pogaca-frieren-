@@ -4,12 +4,22 @@ This runbook is a release gate for Poğaça Frieren. It does not authorize a pro
 
 ## Current release boundaries
 
-- PR #217 must remain unmerged until the same final HEAD passes all required CI and isolated PostgreSQL checks.
+- PR #217 was merged into `main` on 2026-11-05; it is not an outstanding release gate. Evaluate every release against the exact current PR HEAD and its own CI evidence.
 - Production PostgreSQL and live player rows must not be used for rehearsal.
 - Discord command registration remains a separate, explicit operation. Both production registration workflows are manual-only; no schedule may write to Discord.
 - The registration script performs read-before-write and skips unchanged definitions to preserve Discord's daily command-create quota.
 - Vercel Preview readiness is not proof that the production domain serves the PR code.
 - Keep the feature inventory's `auditComplete=false`; do not promote runtime-unverified entries to complete.
+
+## Verified baseline — 2026-11-14
+
+- Current `main` release commit: `97b4595f96f5a69757805b26f3ef29b6edeaae28`.
+- Housing/editor delivery (#387) is merged. Vercel production deployment `dpl_EyKgDqSV4gChJxkddj7PymZSufA8` is READY and owns `frierenbot.vercel.app`; its code commit is `862ae867f017d23f3512b52f91eb7cd0b4daaa5a`.
+- Render Poğaça service is live on `97b4595f96f5a69757805b26f3ef29b6edeaae28`. Startup logs show 87 commands loaded, PostgreSQL connected, bot online, and no application error logs in the post-deploy window. This is not proof that every command has been exercised through live Discord.
+- Frieren Guard's external readiness sender (#388) is merged, but emits no events until the same dedicated `FRIEREN_GUARD_EVENT_SECRET` is configured in GitHub Actions secrets and the Poğaça Render service.
+- Feature inventory: 2,021 records, 346 evidence-linked implemented records, 1,675 planned records; 325 normalized roadmap capability groups, including 225 groups with repeated action variants. `auditComplete=false` remains intentional.
+- Frieren Neural's automated quality-gate PR #341 remains draft. Its CI passed 238 tests, but the active GGUF candidate remains NOT READY until two independent human reviews, valid training provenance, and held-out metrics are supplied.
+- Automated browser tests still do not complete a real Discord OAuth consent/session. Authenticated owner OAuth and live Discord command E2E remain separate verification gates.
 
 ## Database rehearsal
 
