@@ -126,6 +126,15 @@ test('calendar reminder recipient lookup honors explicit opt-outs while preservi
 });
 
 
+test('news digest caps each Discord delivery at five cards',()=>{
+ const items=Array.from({length:7},(_,index)=>({
+  title:'Distinct anime headline '+index,
+  link:'https://www.animenewsnetwork.com/news/2026-11-14/story-'+index,
+  summary:'A concise summary.'
+ }));
+ assert.equal(buildAnimeNewsDigestEmbeds(items).length,5);
+});
+
 test('news digest keeps article links separate from clean summaries and uses compact image cards',()=>{
  const link='https://www.animenewsnetwork.com/news/2026-11-14/frieren-update';
  const embeds=buildAnimeNewsDigestEmbeds([{
