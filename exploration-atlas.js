@@ -228,9 +228,9 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
  <linearGradient id="atlas-biome-tundra-wash" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#dce8e5" stop-opacity=".42"/><stop offset="1" stop-color="#9fb9b7" stop-opacity=".12"/></linearGradient>
  <linearGradient id="atlas-biome-highland-wash" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9d9b7c" stop-opacity=".22"/><stop offset="1" stop-color="#687f72" stop-opacity=".2"/></linearGradient>
  <linearGradient id="atlas-biome-mountain-wash" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#647d7e" stop-opacity=".3"/><stop offset="1" stop-color="#405c63" stop-opacity=".18"/></linearGradient>
- <radialGradient id="atlas-ashen-wash"><stop stop-color="#1c2029" stop-opacity=".88"/><stop offset=".58" stop-color="#30303a" stop-opacity=".62"/><stop offset="1" stop-color="#3d3940" stop-opacity="0"/></radialGradient>
+ <radialGradient id="atlas-ashen-wash"><stop stop-color="#30313a" stop-opacity=".5"/><stop offset=".58" stop-color="#44434b" stop-opacity=".32"/><stop offset="1" stop-color="#3d3940" stop-opacity="0"/></radialGradient>
  <filter id="atlas-biome-edge-soft"><feGaussianBlur stdDeviation="24"/></filter>
- <filter id="atlas-demon-haze"><feGaussianBlur stdDeviation="18"/></filter>
+ <filter id="atlas-demon-haze"><feGaussianBlur stdDeviation="14"/></filter>
  </defs><g clip-path="url(#atlas-inline-land-clip)" pointer-events="none">
  <g class="atlas-biome-regions" data-atlas-geography-layer="biomes">
   <path class="atlas-biome atlas-biome-forest" d="M115 245C245 155 440 165 585 230S810 335 815 485 735 725 555 785 285 745 175 615 90 385 115 245Z" fill="url(#atlas-biome-forest-wash)"/>
@@ -238,8 +238,8 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
   <path class="atlas-biome atlas-biome-northern-tundra" d="M515 78C770 45 975 100 1140 110S1475 65 1650 195 1740 405 1625 565 1370 615 1170 535 895 590 730 475 515 300 515 78Z" fill="url(#atlas-biome-tundra-wash)"/>
   <path class="atlas-biome atlas-biome-highlands" d="M410 390C590 285 810 335 965 405S1200 425 1345 560 1390 765 1235 880 935 860 765 810 530 830 410 675 325 485 410 390Z" fill="url(#atlas-biome-highland-wash)"/>
   <path class="atlas-biome atlas-biome-eastern-mountains" d="M890 440C1080 355 1300 395 1475 480S1715 635 1690 835 1515 1080 1315 1105 1060 1005 1020 840 810 570 890 440Z" fill="url(#atlas-biome-mountain-wash)"/>
-  <path class="atlas-biome atlas-biome-ashen-north" d="M1175 82C1370 45 1575 110 1700 235S1750 475 1620 575 1395 580 1275 480 1155 285 1175 82Z" fill="url(#atlas-ashen-wash)" opacity=".82"/>
-  <g class="atlas-biome-transition" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#atlas-biome-edge-soft)" opacity=".48">
+  <path class="atlas-biome atlas-biome-ashen-north" d="M1175 82C1370 45 1575 110 1700 235S1750 475 1620 575 1395 580 1275 480 1155 285 1175 82Z" fill="url(#atlas-ashen-wash)" opacity=".38"/>
+  <g class="atlas-biome-transition" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#atlas-biome-edge-soft)" opacity=".24">
    <path d="M500 230C660 345 710 505 600 690" stroke="#66805b" stroke-width="68"/>
    <path d="M555 660C760 600 930 690 1085 850" stroke="#c6b88c" stroke-width="76"/>
    <path d="M735 145C925 315 1035 425 1195 500" stroke="#b7c9c2" stroke-width="72"/>
@@ -248,9 +248,9 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
   </g>
  </g>
  <g class="atlas-demon-wastes" data-atlas-geography-layer="demon-wastes">
-  <path class="atlas-ashen-ground" d="M1190 155C1320 85 1535 110 1660 245 1720 335 1685 470 1585 535 1470 590 1300 520 1230 425 1165 340 1145 235 1190 155Z" fill="#10141e" opacity=".78"/>
+  <path class="atlas-ashen-ground" d="M1190 155C1320 85 1535 110 1660 245 1720 335 1685 470 1585 535 1470 590 1300 520 1230 425 1165 340 1145 235 1190 155Z" fill="#353640" opacity=".34"/>
   <path class="atlas-demon-fog" d="M1155 205C1320 85 1575 115 1700 275S1680 530 1510 585 1220 500 1165 365Z" fill="url(#atlas-ashen-wash)" filter="url(#atlas-demon-haze)"/>
-  <g class="atlas-dead-tree" stroke="#29252c" stroke-linecap="round" stroke-linejoin="round" fill="none">
+  <g class="atlas-dead-tree" stroke="#4b4650" stroke-linecap="round" stroke-linejoin="round" fill="none">
    <path d="M1350 420l8-56-18-23 20 10 8-37 4 36 22-16-18 29 7 58m-15-62-21-16m32 1 19-18" stroke-width="7"/>
    <path d="M1435 360l5-48-16-20 18 9 6-33 4 33 18-14-15 25 5 48m-15-48-18-14m29 3 16-17" stroke-width="6"/>
    <path d="M1510 455l7-60-20-25 22 11 7-40 5 39 21-17-17 30 8 62m-17-62-22-17m36 1 18-18" stroke-width="8"/>
