@@ -67,12 +67,18 @@ test('mention handler loads only this guild and user history, then stores both t
     message,
     botUserId: 'bot-1',
     db,
-    env: { GROQ_API_KEY: 'test-key' },
-    fetchImpl: async (_url, options) => {
+    env: { GEMINI_API_KEY: 'test-key' },
+    fetchImpl: async (url, options) => {
       const body = JSON.parse(options.body);
-      assert.equal(body.messages.at(-2).content, 'Önceki soru');
-      assert.equal(body.messages.at(-1).content, 'Nasılsın?');
-      return { ok: true, json: async () => ({ choices: [{ message: { content: 'İyiyim. Sen nasılsın?' } }] }) };
+      assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent');
+      assert.equal(options.headers['x-goog-api-key'], 'test-key');
+      assert.match(body.systemInstruction.parts[0].text, /Frieren/i);
+      assert.equal(body.generationConfig.maxOutputTokens, 700);
+      assert.equal(body.contents.length, 1);
+      assert.equal(body.contents[0].role, 'user');
+      assert.equal(body.contents[0].parts[0].text, 'Önceki soru');
+      assert.equal(body.contents[0].parts[1].text, 'Nasılsın?');
+      return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'İyiyim. Sen nasılsın?' }] } }] }) };
     }
   });
 
@@ -194,7 +200,7 @@ test('disabled Frieren chat setting stops the mention handler before reading mem
     throw new Error('disabled chat must not query memory or history');
   } };
   const handled = await (await import('../frieren-chat.js')).handleFrierenMentionMessage({
-    message, botUserId: 'bot-1', db, env: { GROQ_API_KEY: 'test-key' },
+    message, botUserId: 'bot-1', db, env: { GEMINI_API_KEY: 'test-key' },
     fetchImpl: async () => { modelCalled = true; throw new Error('model must not be called'); }
   });
   assert.equal(handled, true);
@@ -224,7 +230,7 @@ test('source-code requests are blocked before database access or AI inference', 
   const handled = await (await import('../frieren-chat.js')).handleFrierenMentionMessage({
     message, botUserId: 'bot-1',
     db: { query: async () => { queried = true; throw new Error('database must not be accessed'); } },
-    env: { GROQ_API_KEY: 'test-key' },
+    env: { GEMINI_API_KEY: 'test-key' },
     fetchImpl: async () => { fetched = true; throw new Error('AI must not be called'); }
   });
   assert.equal(handled, true);
