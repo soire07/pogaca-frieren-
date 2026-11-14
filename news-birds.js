@@ -85,9 +85,9 @@ function escapeMarkdown(value='') {
 
 function cleanNewsSummary(value='') {
   return String(value)
-    .replace(/\\[([^\\]]+)\\]\\(https?:\\/\\/[^)]+\\)/gi, '$1')
-    .replace(/https?:\\/\\/[^\\s<>()]+/gi, '')
-    .replace(/\\s+/g, ' ')
+    .replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/gi, '$1')
+    .replace(/https?:\/\/[^\s<>()]+/gi, '')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -149,8 +149,8 @@ export function buildAnimeNewsDigestEmbeds(items, now = new Date()) {
   const seen=new Set();
   const safeItems=(Array.isArray(items)?items:[]).filter(item=>{
     if (!item || !safeFeedUrl(item.link,articleHosts)) return false;
-    const titleKey=String(item.title||'').normalize('NFKD').toLocaleLowerCase('en-US').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,'');
-    const linkKey=String(item.link).split('#')[0].split('?')[0].replace(/\\/$/,'').toLowerCase();
+    const titleKey=String(item.title||'').normalize('NFKD').toLocaleLowerCase('en-US').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'');
+    const linkKey=String(item.link).split('#')[0].split('?')[0].replace(/\/$/,'').toLowerCase();
     const key=titleKey||linkKey;
     if (seen.has(key) || seen.has(linkKey)) return false;
     seen.add(key); seen.add(linkKey);
@@ -168,7 +168,7 @@ export function buildAnimeNewsDigestEmbeds(items, now = new Date()) {
       color:index===0?0x7654D6:0x46366F,
       ...(index===0?{author:{name:'🐦 FRIEREN HABERCİ KUŞU · GÜNLÜK BÜLTEN'}}:{}),
       title:escapeMarkdown(String(item.translatedTitle || item.title || 'Başlıksız haber')).slice(0,256),
-      description:escapeMarkdown(summary).slice(0,760)+'\\n\\n[Haberi oku →]('+item.link+')',
+      description:escapeMarkdown(summary).slice(0,760)+'\n\n[Haberi oku →]('+item.link+')',
       fields:[
         {name:'KATEGORİ',value:classifyAnimeNews(item.title),inline:true},
         {name:'KAYNAK',value:String(item.sourceName||'Anime News Network').slice(0,100),inline:true}
