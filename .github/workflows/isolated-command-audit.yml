@@ -46,6 +46,8 @@ jobs:
       - name: Verify public chat schema migration and deletion rules on disposable PostgreSQL
         run: node --test scripts/test-public-chat-postgres.integration.js
       - run: node scripts/run-isolated-command-audit.js
+      - name: Require behavioral evidence for previously inconclusive commands
+        run: node scripts/assert-command-audit-evidence.js
       - name: Run real PostgreSQL market concurrency and rollback tests
         run: node --test scripts/test-market-concurrency.integration.js
       - name: Run real PostgreSQL arena matchmaking concurrency and rollback tests
