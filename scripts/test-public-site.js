@@ -1963,3 +1963,33 @@ test('illustrated atlas preserves the source map aspect ratio so pins and discov
  const artwork=await readFile(new URL('../public-assets/frieren-world-map.svg',import.meta.url),'utf8');
  assert.match(artwork,/viewBox="0 0 1800 1200"/);
 });
+
+
+test('public player showcase renders equipped cosmetics as visible slot previews and applies seasonal theme',()=>{
+ const html=publicHomeShowcasePage(visitor,{
+  settings:{show_stats:false,show_achievements:true,show_collections:true,show_activity:false,show_cosmetics:true},
+  profile:{character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,boss_defeats:0,dungeon_wins:0},
+  rooms:[],trophies:[],loadout:[
+   {cosmetic_key:'moon_frame'},{cosmetic_key:'star_nameplate'},{cosmetic_key:'mana_title'},
+   {cosmetic_key:'arcane_trail'},{cosmetic_key:'silver_border'},{cosmetic_key:'winter_theme'},
+   {cosmetic_key:'relic_display'}
+  ],home:{layout:[]},companion:null,cardVariants:[],activity:[]
+ });
+ for(const key of ['moon_frame','star_nameplate','mana_title','arcane_trail','silver_border','winter_theme','relic_display']){
+  assert.ok(html.includes('data-cosmetic-key="'+key+'"'),key+' should be rendered in the equipped cosmetics showcase');
+ }
+ for(const slot of ['profile_frame','nameplate','title_effect','spell_trail','avatar_border','seasonal_theme','collection_display']){
+  assert.ok(html.includes('cosmetic-slot--'+slot),slot+' should have a visual treatment');
+ }
+ assert.match(html,/data-cosmetic-theme="winter"/);
+ assert.match(html,/Kuşanılan Kozmetikler/);
+});
+
+test('theme gallery asset updates the account profile preview without saving the profile',async()=>{
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/assets/theme-gallery.js'),response,{db:null}),true);
+ assert.equal(response.status,200);
+ const script=response.body.toString('utf8');
+ assert.match(script,/showcase\.dataset\.theme = select\.value/);
+ assert.match(script,/gallery\.dataset\.livePreview = 'true'/);
+});

@@ -238,7 +238,7 @@ function siteAccountProfilePage(user,data={}) {
  const friendCards=friendData.friends.map(x=>'<li><a href="/u/'+encodeURIComponent(x.account_id)+'">'+esc(x.username||'Gezgin')+'</a></li>').join('')||'<li>Henüz arkadaşın yok.</li>';
  const incoming=friendData.incoming.map(x=>'<li><a href="/u/'+encodeURIComponent(x.requester_account_id)+'">'+esc(x.requester_username||'Gezgin')+'</a> <form method="post" action="/api/account-profile/friends/respond"><input type="hidden" name="csrf" value="'+csrf+'"><input type="hidden" name="requestId" value="'+esc(x.request_id)+'"><button class="btn" type="submit" name="action" value="accept">Kabul et</button><button class="btn ghost" type="submit" name="action" value="decline">Reddet</button></form></li>').join('')||'<li>Bekleyen arkadaşlık isteği yok.</li>';
  const withFriends=content.replace('</main>','<section class="card account-profile-editor"><h2>Profil önizlemesi</h2><p>Herkese açık profilini ziyaretçi görünümünde kontrol et.</p><a class="btn ghost" href="/u/'+encodeURIComponent(p.profile_slug||user.id)+'" target="_blank" rel="noopener noreferrer">Profilimi önizle</a><p>Profil ziyaretleri: '+Number(data.visitors||0)+'</p><h2>Arkadaşların</h2><ul>'+friendCards+'</ul><h3>Gelen arkadaşlık istekleri</h3><ul>'+incoming+'</ul></section></main>');
- return page('Hesap Profilim',withFriends,user)+'<script src="/assets/profile-media.js?v=account-profile-268" defer></script><script src="/assets/user-center.js?v=account-profile-267" defer></script><script src="/assets/theme-gallery.js?v=theme-gallery-1" defer></script>';
+ return page('Hesap Profilim',withFriends,user)+'<script src="/assets/profile-media.js?v=account-profile-268" defer></script><script src="/assets/user-center.js?v=account-profile-267" defer></script><script src="/assets/theme-gallery.js?v=theme-gallery-2" defer></script>';
 }
 function personalCenterPage(user,profile,data,csrf,status){
  const field=(label,name,value,max=500)=>'<label>'+label+'<input name="'+name+'" maxlength="'+max+'" value="'+esc(value||'')+'"></label>';
@@ -531,15 +531,25 @@ function adventurerInventoryPage(user, data) {
   return page('Maceracı Envanteri', content, user);
 }
 
-export function publicHomeShowcasePage(user,data){
+export const COSMETIC_SLOT_LABELS=Object.freeze({profile_frame:'Profil çerçevesi',nameplate:'İsimlik',title_effect:'Unvan efekti',spell_trail:'Büyü izi',victory_pose:'Zafer duruşu',avatar_border:'Avatar kenarlığı',guild_banner:'Profil sancağı',seasonal_theme:'Mevsim teması',collection_display:'Koleksiyon vitrini'});
+const COSMETIC_SLOT_GLYPHS=Object.freeze({profile_frame:'◉',nameplate:'✧',title_effect:'✦',spell_trail:'➶',victory_pose:'⚔',avatar_border:'◌',guild_banner:'⚑',seasonal_theme:'❄',collection_display:'◇'});
+function cosmeticShowcaseCard(item,compact=false){
+ if(!item||!COSMETIC_SLOT_LABELS[item.slot])return '';
+ return '<article class="cosmetic-showcase-item cosmetic-slot--'+esc(item.slot)+'" data-cosmetic-key="'+esc(item.key)+'"><div class="cosmetic-preview" aria-hidden="true"><span class="cosmetic-preview-orbit"></span><strong>'+COSMETIC_SLOT_GLYPHS[item.slot]+'</strong></div><div class="cosmetic-showcase-copy"><strong>'+esc(item.name)+'</strong><span>'+COSMETIC_SLOT_LABELS[item.slot]+'</span></div></article>';
+}
+
+function publicHomeShowcasePage(user,data){
  const settings=data.settings||{show_stats:false,show_achievements:true,show_collections:true,show_activity:false,show_cosmetics:true};
  const rooms=data.rooms.map(x=>HOME_ROOMS.find(r=>r.key===x.room_key)?.name||x.room_key);
  const unlockedRooms=new Set(data.rooms.map(x=>x.room_key));
  const stationPanel=HOME_STATIONS.map(station=>'<article class="card"><h3>'+esc(station.name)+'</h3><p class="market-meta">'+(unlockedRooms.has(station.roomKey)?'Açık':'Kilitli')+'</p></article>').join('');
  const achievementById=new Map(RPG_ACHIEVEMENTS.map(item=>[item.id,item]));
  const trophies=settings.show_achievements?data.trophies.filter(x=>x.display_slot!==null).sort((a,b)=>a.display_slot-b.display_slot).map(x=>'<li>Vitrin '+Number(x.display_slot)+': '+esc(achievementById.get(x.achievement_key)?.title||x.achievement_key)+'</li>').join(''):'';
- const loadout=settings.show_cosmetics?data.loadout.map(x=>{const item=PLAYER_COSMETICS.find(c=>c.key===x.cosmetic_key);return item?'<li>'+esc(item.name)+' · '+esc(item.slot)+'</li>':'';}).join(''):'';
- const equippedBanner=settings.show_cosmetics?(data.loadout||[]).map(x=>PLAYER_COSMETICS.find(c=>c.key===x.cosmetic_key&&c.slot==='guild_banner')).find(Boolean)||null:null;
+ const equippedItems=settings.show_cosmetics?(data.loadout||[]).map(x=>PLAYER_COSMETICS.find(c=>c.key===x.cosmetic_key)).filter(Boolean):[];
+ const loadout=equippedItems.map(item=>cosmeticShowcaseCard(item,true)).join('');
+ const equippedBanner=equippedItems.find(item=>item.slot==='guild_banner')||null;
+ const seasonalTheme=equippedItems.find(item=>item.slot==='seasonal_theme')||null;
+ const cosmeticTheme=seasonalTheme?.key==='spring_theme'?'spring':seasonalTheme?.key==='winter_theme'?'winter':'default';
  const bannerKey=equippedBanner?.key==='frieren_banner'?'frieren':equippedBanner?.key==='north_banner'?'north':'default';
  const bannerName=equippedBanner?.name||'Yolculuk Sancağı';
  const banner='<section class="section"><article class="player-banner player-banner--'+bannerKey+'" aria-label="Maceracı profil sancağı"><div class="player-banner-content"><span class="eyebrow">✧ MACERACI SANCAGI</span><h2>'+esc(bannerName)+'</h2><p>'+esc(data.profile.character_name||'Maceracı')+' · '+esc(data.profile.class_name||'Gezgin')+' · Seviye '+Number(data.profile.level||1)+'</p></div></article></section>';
@@ -550,9 +560,9 @@ export function publicHomeShowcasePage(user,data){
  const collections=settings.show_collections?'<section class="section"><h2>Anime Kart Koleksiyonu</h2><div class="portal-grid">'+(cards||'<article class="card">Henüz sergilenen kart yok.</article>')+'</div><section class="section"><h2>Yoldaş Vitrini</h2><div class="portal-grid">'+companion+'</div></section>':'';
  const activity=settings.show_activity?'<section class="section"><h2>Son Macera Etkinlikleri</h2><article class="card">'+((data.activity||[]).map(x=>'<p>'+esc(x.activity_type)+' · '+esc(x.activity_label)+' · '+esc(new Date(x.activity_at).toLocaleDateString('tr-TR'))+'</p>').join('')||'Henüz herkese açık etkinlik yok.')+'</article></section>':'';
  const achievementSection=settings.show_achievements?'<section class="section"><h2>Rozet ve Başarım Vitrini</h2><article class="card">'+(trophies?'<ul>'+trophies+'</ul>':'Henüz sergilenen kupa yok.')+'</article></section>':'';
- const cosmeticsSection=settings.show_cosmetics?'<section class="section"><h2>Kuşanılan Kozmetikler</h2><article class="card">'+(loadout?'<ul>'+loadout+'</ul>':'Kozmetik kuşanılmamış.')+'</article></section>':'';
+ const cosmeticsSection=settings.show_cosmetics?'<section class="section"><h2>Kuşanılan Kozmetikler</h2><div class="cosmetic-showcase-grid cosmetic-showcase-grid--profile">'+(loadout||'<article class="card"><p>Kozmetik kuşanılmamış.</p></article>')+'</div></section>':'';
  const activeTitle=settings.active_title?'<p class="profile-active-title">'+esc(settings.active_title)+'</p>':'';
- const content='<main class="wrap" style="padding:54px 0 80px"><div class="eyebrow">✧ PAYLAŞILABİLİR MACERACI PROFİLİ</div><h1 class="hero-title">'+esc(data.profile.character_name||'Maceracı')+' <em>Profil Vitrini</em></h1><p class="lead">Bu profil, oyuncunun açık paylaşım izniyle görüntüleniyor.</p>'+banner+'<section class="section"><article class="card"><h2>Maceracı Kimliği</h2>'+activeTitle+'<p><b>'+esc(data.profile.class_name||'Gezgin')+'</b> · Seviye '+levelForXp(data.profile.xp)+' · '+Number(data.profile.xp||0).toLocaleString('tr-TR')+' XP</p></article></section>'+stats+collections+'<section class="section"><h2>Açık Odalar</h2><div class="portal-grid">'+rooms.map(x=>'<article class="card"><h3>'+esc(x)+'</h3></article>').join('')+'</div></section><section class="section"><h2>Ev Yerleşimi</h2><div class="portal-grid">'+(layout.map(x=>'<article class="card"><h3>'+esc(HOME_ROOMS.find(r=>r.key===x.roomKey)?.name||x.roomKey)+'</h3><p>'+esc(x.decorationKey)+'</p><p class="market-meta">Konum '+Number(x.position)+'</p></article>').join('')||'<article class="card"><p>Henüz sergilenen dekorasyon yok.</p></article>')+'</div></section><section class="section"><h2>Ev İstasyonları</h2><div class="portal-grid">'+stationPanel+'</div></section>'+achievementSection+cosmeticsSection+activity+'</main>';
+ const content='<main class="wrap player-showcase" data-cosmetic-theme="'+cosmeticTheme+'" style="padding:54px 0 80px"><div class="eyebrow">✧ PAYLAŞILABİLİR MACERACI PROFİLİ</div><h1 class="hero-title">'+esc(data.profile.character_name||'Maceracı')+' <em>Profil Vitrini</em></h1><p class="lead">Bu profil, oyuncunun açık paylaşım izniyle görüntüleniyor.</p>'+banner+'<section class="section"><article class="card"><h2>Maceracı Kimliği</h2>'+activeTitle+'<p><b>'+esc(data.profile.class_name||'Gezgin')+'</b> · Seviye '+levelForXp(data.profile.xp)+' · '+Number(data.profile.xp||0).toLocaleString('tr-TR')+' XP</p></article></section>'+stats+collections+'<section class="section"><h2>Açık Odalar</h2><div class="portal-grid">'+rooms.map(x=>'<article class="card"><h3>'+esc(x)+'</h3></article>').join('')+'</div></section><section class="section"><h2>Ev Yerleşimi</h2><div class="portal-grid">'+(layout.map(x=>'<article class="card"><h3>'+esc(HOME_ROOMS.find(r=>r.key===x.roomKey)?.name||x.roomKey)+'</h3><p>'+esc(x.decorationKey)+'</p><p class="market-meta">Konum '+Number(x.position)+'</p></article>').join('')||'<article class="card"><p>Henüz sergilenen dekorasyon yok.</p></article>')+'</div></section><section class="section"><h2>Ev İstasyonları</h2><div class="portal-grid">'+stationPanel+'</div></section>'+achievementSection+cosmeticsSection+activity+'</main>';
  return page('Topluluk Ev Vitrini',content,user);
 }
 
@@ -654,7 +664,7 @@ function playerExperiencePage(user,profile,home,ownedRows,loadoutRows,presetRows
  const cosmetics=PLAYER_COSMETICS.map(item=>{
   const action=owned.has(item.key)?'equip-cosmetic':'buy-cosmetic';
   const label=owned.has(item.key)?(equipped.get(item.slot)===item.key?'Kuşanıldı':'Kuşan'):'Satın al · '+item.cost+' altın';
-  const record=ownedByKey.get(item.key);const acquired=record?'<p class="market-meta">Kaynak: '+esc(record.acquisition_source==='event'?'Etkinlik':'Mağaza')+' · '+esc(new Date(record.acquired_at).toLocaleDateString('tr-TR',{timeZone:'Europe/Istanbul'}))+'</p>':'';return '<article class="card"><h3>'+esc(item.name)+'</h3><p>'+esc(item.slot)+' · Seviye '+item.level+' · '+item.cost+' altın</p>'+acquired+form(action,'<input type="hidden" name="cosmeticKey" value="'+esc(item.key)+'">',label)+'</article>';
+  const record=ownedByKey.get(item.key);const acquired=record?'<p class="market-meta">Kaynak: '+esc(record.acquisition_source==='event'?'Etkinlik':'Mağaza')+' · '+esc(new Date(record.acquired_at).toLocaleDateString('tr-TR',{timeZone:'Europe/Istanbul'}))+'</p>':'';return '<article class="card cosmetic-shop-card">'+cosmeticShowcaseCard(item)+'<p>'+esc(COSMETIC_SLOT_LABELS[item.slot]||item.slot)+' · Seviye '+item.level+' · '+item.cost+' altın</p>'+acquired+form(action,'<input type="hidden" name="cosmeticKey" value="'+esc(item.key)+'">',label)+'</article>';
  }).join('');
  const trophies=(trophyRows||[]).map(row=>'<li>'+esc(row.achievement_key)+(row.display_slot===null?'':' · Zafer Salonu vitrini '+Number(row.display_slot))+'</li>').join('');
  const trophyOptions=(trophyRows||[]).map(row=>'<option value="'+esc(row.achievement_key)+'">'+esc(row.achievement_key)+'</option>').join('');
