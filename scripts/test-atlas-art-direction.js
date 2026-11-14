@@ -345,7 +345,7 @@ test('atlas finish pass unifies frame, landmark focus, layer controls and mobile
   assert.match(finish, /\.atlas-map-shell::after\{[^}]*pointer-events:none/);
   assert.match(finish, /\.atlas-map-viewport\{[^}]*inset 0 0 44px/);
   assert.match(finish, /\.atlas-pin:hover \.atlas-pin-glyph/);
-  assert.match(finish, /\.atlas-pin:focus-visible\{z-index:12\}/);
+  assert.match(finish, /\.atlas-pin:hover,\.atlas-pin:focus-visible\{z-index:12\}/);
   assert.match(finish, /\.atlas-layer-controls button\[aria-pressed="true"\]/);
   assert.match(finish, /\.atlas-layer-controls button\[aria-pressed="false"\]/);
   assert.match(finish, /\.atlas-map-tools button:focus-visible/);
