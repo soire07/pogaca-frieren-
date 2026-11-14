@@ -366,3 +366,25 @@ test('atlas finish pass unifies frame, landmark focus, layer controls and mobile
   assert.match(finish, /@media\(prefers-reduced-motion:reduce\)/);
   assert.match(finish, /\.atlas-route-planner\{/);
 });
+
+
+test('castles and villages use layered architectural facades, openings and roof details instead of childlike line icons', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  const start = atlas.indexOf('const settlementSilhouetteTemplates = Object.freeze({');
+  const end = atlas.indexOf('function buildAtlasSettlementSilhouettes', start);
+  assert.ok(start >= 0 && end > start, 'settlement architecture templates must be present');
+  const templates = atlas.slice(start, end);
+  const keys = ['strahl','royal-capital','waal','fabel-village','graf-granat','village-of-sword','weise','ende','demon-kings-castle'];
+  for (const key of keys) {
+    const next = templates.indexOf("\\n  ", templates.indexOf(key + ':') + key.length + 1);
+    const block = templates.slice(templates.indexOf(key + ':'), next < 0 ? templates.length : next);
+    const paths = (block.match(/<path\\b/g) || []).length;
+    assert.ok(paths >= 6, key + ' should have layered architectural detail, not a few crude strokes');
+    assert.match(block, /<rect\\b/, key + ' should include distinct facade/window geometry');
+  }
+  assert.match(templates, /castle-wall/);
+  assert.match(templates, /battlement/);
+  assert.match(templates, /arched-gate/);
+  assert.match(templates, /timber-frame/);
+  assert.match(templates, /roof-tile/);
+});
