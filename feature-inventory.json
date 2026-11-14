@@ -1,5 +1,5 @@
 {
-  "targetFeatures": 2021,
+  "targetFeatures": 2028,
   "auditComplete": false,
   "countingRule": "A feature is a distinct player-visible capability or meaningful interaction, not a file, command alias, UI line, or cosmetic wording change.",
   "statuses": [
@@ -4509,6 +4509,101 @@
           "scripts/test-adventurer-platform.integration.js"
         ],
         "scope": "Authenticated dashboard and inventory routes are account/guild scoped; CSRF-protected event RSVP join/leave forms use the linked Discord character. Route tests and disposable PostgreSQL integration verify inventory/equipment and RSVP state. Live OAuth, browser and Discord delivery remain unverified."
+      }
+    },
+    {
+      "id": "ENT-043",
+      "name": "Anime card print editions and collectible variants",
+      "category": "Collection",
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_service_contract",
+        "tests": [
+          "scripts/test-card-variants.js"
+        ],
+        "scope": "Deterministic variant rarity weights, safe selection, guild/user/character/edition ownership and canonical series filtering are covered by service tests. Live Discord card-draw delivery and authenticated player showcase behavior are not claimed."
+      }
+    },
+    {
+      "id": "ENT-044",
+      "name": "Guild visual embed templates with bounded fields and validated colors",
+      "category": "Community",
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-guild-workshop.js"
+        ],
+        "scope": "Template title/description/color/field bounds and safe normalization are covered by unit tests. Live Discord embed rendering and guild-owner workflow are not verified."
+      }
+    },
+    {
+      "id": "ENT-045",
+      "name": "Guild custom commands and allowlisted spell automation with retry-safe delivery",
+      "category": "Community",
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_public_site_route",
+        "tests": [
+          "scripts/test-guild-workshop.js",
+          "scripts/test-public-site.js"
+        ],
+        "scope": "Declarative command schemas, allowlisted triggers, guild-scoped writes, channel/permission checks, leased claims and retry after failed sends are covered by unit/route tests. Live Discord send delivery is not claimed."
+      }
+    },
+    {
+      "id": "ENT-046",
+      "name": "Guild team leagues with round-robin fixtures and captain-confirmed results",
+      "category": "Community",
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_postgresql_integration",
+        "tests": [
+          "scripts/test-guild-team-leagues.js",
+          "scripts/test-adventurer-platform.integration.js"
+        ],
+        "scope": "Round-robin pairings, byes, team membership, bounded scores and dual-captain confirmation are unit-tested; isolated PostgreSQL integration verifies team/raid UUID relationships and one-time standings settlement. Live Discord league operation is unverified."
+      }
+    },
+    {
+      "id": "ENT-047",
+      "name": "Opt-in anime news digests with retry-safe guild channel delivery",
+      "category": "Community",
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_service_contract",
+        "tests": [
+          "scripts/test-news-birds.js",
+          "scripts/test-news-guild-delivery.js"
+        ],
+        "scope": "RSS parsing/safe links, Turkish translation caching, category opt-outs, bounded digest cards, concurrent claims and per-guild retry states are covered by tests. Real external feed polling and live Discord delivery are not claimed."
+      }
+    },
+    {
+      "id": "ENT-048",
+      "name": "Interactive Frieren world atlas with route planning and seasonal ecology",
+      "category": "Exploration",
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_frontend_contract",
+        "tests": [
+          "scripts/test-atlas-navigation.js",
+          "scripts/test-atlas-art-direction.js"
+        ],
+        "scope": "Connected route planning, honest calibrated distance, canon coordinates, seasonal ecology, landmark decluttering, responsive controls and reduced-motion behavior are covered by automated tests. Live player sessions are not verified."
+      }
+    },
+    {
+      "id": "ENT-049",
+      "name": "Player-market price alerts with bounded targets and retry-safe DM delivery",
+      "category": "Economy",
+      "status": "implemented_needs_runtime_test",
+      "testEvidence": {
+        "level": "unit_and_source_contract",
+        "tests": [
+          "scripts/test-player-market.js"
+        ],
+        "scope": "Price-alert input validation, account caps, persisted targets, concurrent-safe claims, threshold matching and success/failure finalization paths are covered by tests. Live Discord DM delivery and production player data are not verified."
       }
     },
     {
@@ -18204,8 +18299,8 @@
       }
     }
   ],
-  "count": 2021,
-  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Roadmap expansion (2026-11-03): added 1,675 distinct player-facing feature candidates across 25 Frieren RPG domains. All added entries are explicitly status=planned and are not implemented/test evidence. Roadmap count is a planning target, not a completion claim. All 325 original feature rows now have a linked test/source evidence record (2026-11-03); scope limitations are stated per row. The 1,675 new roadmap rows remain planned and intentionally have no test evidence. RPG-002 profile evidence was upgraded to a dedicated PostgreSQL integration test because the command is internal-only and is not part of the 67-command public audit. Crafting/salvage evidence upgrade (2026-11-03): added disposable frieren_audit PostgreSQL command integrations for all ten recipe ingredient/output mappings, multi-quantity scaling, persisted rarity-weighted XP/profession/daily progress, advanced recipe level gates, deterministic level-4/5/10 refund boundaries, all ten salvage mappings, multi-copy proportional returns, equipped-item protection, and player-visible lifetime salvage totals. These use synthetic Discord interactions and are not live Discord E2E. Salvage catalog completeness fix (2026-11-03): /ekipmanparcala exposed all equipment catalog entries but lacked yields for the purchasable demon_armor and copper_ring items. Added partial recovery mappings and expanded the real PostgreSQL salvage matrix to exercise all twelve equipment types and multiple copies. Evidence classification refinement (2026-11-03): upgraded only rows with directly relevant existing unit, isolated-command behavioral, or real PostgreSQL assertions. Composite levels preserve source-contract limitations; synthetic Discord command audits are never labeled live Discord E2E. Adventure/treasure evidence upgrade (2026-11-03): added disposable PostgreSQL integration for production /macera and /hazineac commands, covering route selection/repeat rewards, first-discovery and class bonuses, route mastery, daily streak persistence, rare-discovery pity, five-fragment map completion, multi-chest opening, ownership checks, rare loot persistence, per-opening history and transaction rollback. The test uses synthetic Discord interactions and is not live Discord E2E. Dungeon evidence refinement (2026-11-03): added direct unit evidence for dungeon difficulty scaling and route-outcome risk/reward, plus PostgreSQL proof that a completed two-player dungeon distributes chest, rare and crafting loot to every participant. Player marketplace integration (2026-11-04): added ENT-038 for escrow-backed player listings, one-time concurrent purchase settlement, cancellation/refund, equipped-gear protection, and transaction history. Unit and disposable PostgreSQL evidence is linked; live Discord and web marketplace flows remain unverified. Social platform integration evidence (2026-11-04): added four separately scoped original feature records for friend-request consent, friend/rival relationships, atomic coin gifts and weekly reputation. Each references scripts/test-social-platform.integration.js, which runs in the isolated PostgreSQL workflow; all four PostgreSQL scenarios passed. These tests use synthetic identities and do not constitute live Discord E2E. Web social portal evidence (2026-11-04): added SOCIAL-005 for /maceraci/sosyal. scripts/test-public-site.js verifies guild-linked account scoping, friend/rival/pending request/reputation rendering, successful friend-request route execution, CSRF enforcement and the guild social feature toggle. Route tests use mocked database boundaries; they are not live browser/OAuth/Discord E2E. Latest code verification at PR head 0b583ce7bea3d320bbab9103172b66d96f2896c9 (2026-11-04): 795/795 main bot/regression tests passed; isolated command audit covered 77 scenarios (67 PASS, 0 FAIL, 10 inconclusive); 103 disposable PostgreSQL integration test cases passed. These are synthetic Discord interactions and isolated database tests, not live Discord E2E, browser OAuth, production migration or deployment proof. Evidence reconciliation on 2026-11-14: added ENT-041 for the room-scoped housing catalog/editor, ENT-042 for cosmetic loadouts and public showcase effects, and EVENT-003 for linked-player event progress display. Evidence is limited to the named unit/public-route tests; no live Discord, production account, reminder delivery, or reward settlement claim is made. The 1,675 ROADMAP records remain planned because their action variants and distinct capability groups have not all been implemented and proven; auditComplete remains false.",
+  "count": 2028,
+  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Roadmap expansion (2026-11-03): added 1,675 distinct player-facing feature candidates across 25 Frieren RPG domains. All added entries are explicitly status=planned and are not implemented/test evidence. Roadmap count is a planning target, not a completion claim. All 325 original feature rows now have a linked test/source evidence record (2026-11-03); scope limitations are stated per row. The 1,675 new roadmap rows remain planned and intentionally have no test evidence. RPG-002 profile evidence was upgraded to a dedicated PostgreSQL integration test because the command is internal-only and is not part of the 67-command public audit. Crafting/salvage evidence upgrade (2026-11-03): added disposable frieren_audit PostgreSQL command integrations for all ten recipe ingredient/output mappings, multi-quantity scaling, persisted rarity-weighted XP/profession/daily progress, advanced recipe level gates, deterministic level-4/5/10 refund boundaries, all ten salvage mappings, multi-copy proportional returns, equipped-item protection, and player-visible lifetime salvage totals. These use synthetic Discord interactions and are not live Discord E2E. Salvage catalog completeness fix (2026-11-03): /ekipmanparcala exposed all equipment catalog entries but lacked yields for the purchasable demon_armor and copper_ring items. Added partial recovery mappings and expanded the real PostgreSQL salvage matrix to exercise all twelve equipment types and multiple copies. Evidence classification refinement (2026-11-03): upgraded only rows with directly relevant existing unit, isolated-command behavioral, or real PostgreSQL assertions. Composite levels preserve source-contract limitations; synthetic Discord command audits are never labeled live Discord E2E. Adventure/treasure evidence upgrade (2026-11-03): added disposable PostgreSQL integration for production /macera and /hazineac commands, covering route selection/repeat rewards, first-discovery and class bonuses, route mastery, daily streak persistence, rare-discovery pity, five-fragment map completion, multi-chest opening, ownership checks, rare loot persistence, per-opening history and transaction rollback. The test uses synthetic Discord interactions and is not live Discord E2E. Dungeon evidence refinement (2026-11-03): added direct unit evidence for dungeon difficulty scaling and route-outcome risk/reward, plus PostgreSQL proof that a completed two-player dungeon distributes chest, rare and crafting loot to every participant. Player marketplace integration (2026-11-04): added ENT-038 for escrow-backed player listings, one-time concurrent purchase settlement, cancellation/refund, equipped-gear protection, and transaction history. Unit and disposable PostgreSQL evidence is linked; live Discord and web marketplace flows remain unverified. Social platform integration evidence (2026-11-04): added four separately scoped original feature records for friend-request consent, friend/rival relationships, atomic coin gifts and weekly reputation. Each references scripts/test-social-platform.integration.js, which runs in the isolated PostgreSQL workflow; all four PostgreSQL scenarios passed. These tests use synthetic identities and do not constitute live Discord E2E. Web social portal evidence (2026-11-04): added SOCIAL-005 for /maceraci/sosyal. scripts/test-public-site.js verifies guild-linked account scoping, friend/rival/pending request/reputation rendering, successful friend-request route execution, CSRF enforcement and the guild social feature toggle. Route tests use mocked database boundaries; they are not live browser/OAuth/Discord E2E. Latest code verification at PR head 0b583ce7bea3d320bbab9103172b66d96f2896c9 (2026-11-04): 795/795 main bot/regression tests passed; isolated command audit covered 77 scenarios (67 PASS, 0 FAIL, 10 inconclusive); 103 disposable PostgreSQL integration test cases passed. These are synthetic Discord interactions and isolated database tests, not live Discord E2E, browser OAuth, production migration or deployment proof. Evidence reconciliation on 2026-11-14: added ENT-041 for the room-scoped housing catalog/editor, ENT-042 for cosmetic loadouts and public showcase effects, and EVENT-003 for linked-player event progress display. Evidence is limited to the named unit/public-route tests; no live Discord, production account, reminder delivery, or reward settlement claim is made. The 1,675 ROADMAP records remain planned because their action variants and distinct capability groups have not all been implemented and proven; auditComplete remains false. Inventory reconciliation on 2026-11-14: added ENT-043 through ENT-049 for card variants, guild embed templates, safe custom commands/spell automation, team leagues, opt-in anime news digests, the interactive world atlas and player-market price alerts. These entries are supported by named automated test files with explicit live-verification limits; no feature was promoted to production-verified.",
   "plannedFeatureCount": 1675,
-  "originalFeatureEvidenceLinkedCount": 346
+  "originalFeatureEvidenceLinkedCount": 353
 }
