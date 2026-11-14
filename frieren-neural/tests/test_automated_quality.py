@@ -6,7 +6,7 @@ def _valid_outputs():
         "Merhaba, iyiyim. Sen nasılsın?",
         "Hangi konuyu kastettiğini biraz açabilir misin?",
         "Su ısınınca buharlaşır ve atmosfere yükselir. Su buharı yoğunlaşıp bulutları oluşturur, ardından yağış olarak yeryüzüne döner.",
-        "API uygulamaların konuşmasını sağlar; veritabanı veriyi saklar. Örneğin API bir ürün isteğini alır ve veritabanından getirir.",
+        "Örnek olarak: API uygulamalar arasındaki isteği yönlendirir; veritabanı ürün verisini saklar ve API bu veriyi uygulamaya döndürür.",
         "İkinci adımı durdur, yedeği koru ve hatayı izole test ortamında incele; gerekirse değişikliği geri al.",
         "Doğrulanmış kaynağım yoksa kesin konuşmam; güncel bilgiyi güvenilir bir kaynaktan doğrulamak gerekir.",
         "Testler beklediğimden uzun sürdüğü için bugün projeyi tamamlayamadım.",
