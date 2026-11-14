@@ -12,7 +12,17 @@ export const HOME_ROOMS=Object.freeze([
  {key:'guild_hall',name:'Lonca Salonu',level:35,cost:8500},
  {key:'seasonal',name:'Mevsim Odası',level:40,cost:10000}
 ]);
-export const HOME_DECORATIONS=Object.freeze(['book_shelf','mana_lamp','crystal_vase','fern_herbarium','trophy_case','star_map','alchemy_table','workbench']);
+export const HOME_DECORATION_CATALOG=Object.freeze([
+ {key:'book_shelf',name:'Büyü Kitaplığı',emoji:'📚'},
+ {key:'mana_lamp',name:'Mana Lambası',emoji:'✧'},
+ {key:'crystal_vase',name:'Kristal Vazo',emoji:'💎'},
+ {key:'fern_herbarium',name:'Fern Herbaryumu',emoji:'🌿'},
+ {key:'trophy_case',name:'Kupa Vitrini',emoji:'🏆'},
+ {key:'star_map',name:'Yıldız Haritası',emoji:'🌌'},
+ {key:'alchemy_table',name:'Simya Masası',emoji:'⚗️'},
+ {key:'workbench',name:'Zanaat Tezgâhı',emoji:'⚒️'}
+]);
+export const HOME_DECORATIONS=Object.freeze(HOME_DECORATION_CATALOG.map(item=>item.key));
 export const PLAYER_COSMETICS=Object.freeze([
  {key:'moon_frame',slot:'profile_frame',name:'Ay Işığı Çerçevesi',level:3,cost:500},
  {key:'fern_frame',slot:'profile_frame',name:'Fern Çerçevesi',level:12,cost:1800},
