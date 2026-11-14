@@ -16,16 +16,16 @@ function branchFor(name) {
 }
 
 const contracts = [
-  { name: 'bahce', actions: ["__subcommand: 'tohum-ek'", "__subcommand: 'hasat'"], forbidden: ['plantSeed(', 'harvestFarm('] },
-  { name: 'balik', actions: ["__subcommand: 'avlan'", 'getFishCollection(pool'], forbidden: ['fishAtZone('] },
-  { name: 'karakteristek', actions: ["__subcommand: 'ekle'", 'character: \'Frieren\''], forbidden: ['setCharacterWishlist('] },
-  { name: 'loncaoyun', actions: ["__subcommand: 'baslat'", 'handleGuildGameInteraction('], forbidden: ['startGuildMiniGame(', 'answerGuildMiniGame('] },
-  { name: 'pazar', actions: ["__subcommand: 'sat'", "__subcommand: 'iptal'"], forbidden: ['createPlayerMarketListing(', 'cancelPlayerMarketListing('] },
-  { name: 'sera', actions: ["__subcommand: 'ekim'", "__subcommand: 'hasat'"], forbidden: ['plantSeed(', 'harvestFarm('] },
-  { name: 'sosyal', actions: ["__subcommand: 'arkadas-iste'", "__subcommand: 'arkadas-kabul'", "__subcommand: 'hediye'", "__subcommand: 'itibar-ver'"], forbidden: ['createFriendRequest(', 'respondFriendRequest(', 'sendCoinGift(', 'commendPlayer('] },
-  { name: 'yaratik', actions: ["__subcommand: 'istek-ekle'", "__subcommand: 'istekler'"], forbidden: ['maybeSpawnCreature(', 'claimCreature(', 'setCreatureWishlist('] },
-  { name: 'yasam', actions: ["__subcommand: 'paylasim'"], forbidden: ['setHomeVisibility('] },
-  { name: 'yoldas', actions: ["__subcommand: 'sahiplen'", "__subcommand: 'besle'"], forbidden: ['adoptCompanion(', 'careForCompanion('] }
+  { name: 'bahce', actions: ["__subcommand:'tohum-ek'", "__subcommand:'hasat'"], forbidden: ['plantSeed(', 'harvestFarm('] },
+  { name: 'balik', actions: ["__subcommand:'avlan'", 'getFishCollection(pool'], forbidden: ['fishAtZone('] },
+  { name: 'karakteristek', actions: ["__subcommand:'ekle'", "karakter:'Frieren'", "__subcommand:'liste'"], forbidden: ['setCharacterWishlist('] },
+  { name: 'loncaoyun', actions: ["__subcommand:'baslat'", 'guild_game_sessions'], forbidden: ['startGuildMiniGame(', 'answerGuildMiniGame('] },
+  { name: 'pazar', actions: ["__subcommand:'sat'", "__subcommand:'iptal'", 'listPlayerMarketListings(pool'], forbidden: ['createPlayerMarketListing(', 'cancelPlayerMarketListing('] },
+  { name: 'sera', actions: ["__subcommand:'ekim'", "__subcommand:'hasat'"], forbidden: ['plantSeed(', 'harvestFarm('] },
+  { name: 'sosyal', actions: ["__subcommand:'arkadas-iste'", "__subcommand:'arkadas-kabul'", "__subcommand:'hediye'", "__subcommand:'itibar-ver'"], forbidden: ['createFriendRequest(', 'respondFriendRequest(', 'sendCoinGift(', 'commendPlayer('] },
+  { name: 'yaratik', actions: ["__subcommand:'istek-ekle'", "__subcommand:'istekler'"], forbidden: ['maybeSpawnCreature(', 'claimCreature(', 'setCreatureWishlist('] },
+  { name: 'yasam', actions: ["__subcommand:'paylasim'", 'acik:true', 'acik:false'], forbidden: ['setHomeVisibility('] },
+  { name: 'yoldas', actions: ["__subcommand:'sahiplen'", "__subcommand:'besle'"], forbidden: ['adoptCompanion(', 'careForCompanion('] }
 ];
 
 test('command audit executes domain actions through the actual slash handlers', () => {
