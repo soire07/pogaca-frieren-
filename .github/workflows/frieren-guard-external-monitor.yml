@@ -1,0 +1,45 @@
+name: Frieren Guard external readiness monitor
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frieren-guard-external-readiness
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Test the signed sender
+        run: node --test guardian/external-health-sender.test.js
+      - name: Check whether the dedicated sender secret is configured
+        id: sender-secret
+        env:
+          FRIEREN_GUARD_EVENT_SECRET: ${{ secrets.FRIEREN_GUARD_EVENT_SECRET }}
+        run: |
+          if [ -z "$FRIEREN_GUARD_EVENT_SECRET" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::External Guard sender is not activated: configure FRIEREN_GUARD_EVENT_SECRET in GitHub Actions and Poğaça Render."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Probe Poğaça readiness and report only observed failures
+        if: steps.sender-secret.outputs.enabled == 'true'
+        env:
+          GUARDIAN_PROBE_URL: https://pogaca-frieren.onrender.com/ready
+          GUARDIAN_EVENT_ENDPOINT: https://pogaca-frieren.onrender.com/internal/guardian/security-event
+          FRIEREN_GUARD_EVENT_SECRET: ${{ secrets.FRIEREN_GUARD_EVENT_SECRET }}
+        run: node guardian/external-health-sender.js
