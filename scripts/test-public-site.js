@@ -201,11 +201,23 @@ test('public SEO landing page includes the exact Google site-verification meta t
   assert.match(response.body, /Frieren AI yetenekleri Poğaça Frieren deneyiminin parçası/);
 });
 
-test('anonymous visitors must authenticate before viewing the homepage', async () => {
-  const response = res();
-  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/', headers: {} }, response), true);
-  assert.equal(response.status, 302);
-  assert.equal(response.headers.Location, '/login');
+test('public homepage introduces Poğaça Frieren, offers the bot invite and shows command discovery without login', async () => {
+  const previous = process.env.CLIENT_ID;
+  process.env.CLIENT_ID = '123456789012345678';
+  try {
+    const response = res();
+    assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/', headers: {} }, response), true);
+    assert.equal(response.status, 200);
+    assert.match(response.body, /Poğaça/);
+    assert.match(response.body, /Discord sunucuna ekle/);
+    assert.match(response.body, /discord.com\/oauth2\/authorize/);
+    assert.match(response.body, /Komutları incele/);
+    assert.match(response.body, /\/karakter/);
+    assert.match(response.body, /\/zindan/);
+  } finally {
+    if (previous === undefined) delete process.env.CLIENT_ID;
+    else process.env.CLIENT_ID = previous;
+  }
 });
 
 test('authenticated homepage includes the member identity, profile and GIF gallery', async () => {
@@ -234,7 +246,7 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.ok(response.body.includes('href="/maceraci/profil#leaderboards"'));
   assert.ok(response.body.includes('href="/maceraci/profil#privacy"'));
   assert.match(response.body, /data-nav-group="dunya"/);
-  assert.ok(response.body.includes('data-nav-path="/" href="/"'));
+  assert.ok(response.body.includes('data-nav-path="/maceraci" href="/maceraci"'));
   assert.ok(response.body.includes('<strong>Kullanıcı Paneli</strong>'));
   assert.ok(response.body.includes('data-nav-path="/maceraci" href="/maceraci"'));
   assert.match(response.body, /site-navigation.js/);
@@ -253,7 +265,7 @@ test('authenticated homepage includes the member identity, profile and GIF galle
 });
 
 
-test('authenticated homepage is the account-scoped player dashboard', async () => {
+test('authenticated adventurer panel remains account-scoped at /maceraci', async () => {
   const profile = { guild_id:'1539562273197260860', user_id:'123456789012345678', character_name:'Fern', class_name:'Büyücü', level:12, xp:1440, coins:900, hp:80, max_hp:100, mana:65, max_mana:100, season_name:'Sezon 2026', rating:1180, wins:4, losses:2, matches:6 };
   const event = { event_id:'event-home', guild_id:profile.guild_id, title:'Zindan Gecesi', description:'Topluluk etkinliği', event_type:'community', starts_at:new Date(Date.now()+3600000).toISOString(), ends_at:new Date(Date.now()+7200000).toISOString(), max_participants:12, participants:5 };
   const accountId = 'site_123e4567-e89b-12d3-a456-426614174000';
@@ -271,7 +283,7 @@ test('authenticated homepage is the account-scoped player dashboard', async () =
   const response = res();
   let handled;
   try {
-    handled = await handlePublicSiteRequest(request('/', { id:accountId, username:'Gezgin' }), response, { db });
+    handled = await handlePublicSiteRequest(request('/maceraci', { id:accountId, username:'Gezgin' }), response, { db });
   } finally {
     if (previousVipAccounts === undefined) delete process.env.FRIEREN_VIP_ACCOUNT_IDS;
     else process.env.FRIEREN_VIP_ACCOUNT_IDS = previousVipAccounts;
@@ -319,10 +331,10 @@ test('player collection page rejects guilds not linked to the signed-in site acc
   assert.equal(await handlePublicSiteRequest(request('/maceraci/koleksiyon?guildId=1539562273197260860',{id:accountId,username:'Gezgin'}),response,{db}),true);
   assert.equal(response.status,403);
 });
-test('player homepage fails closed when its database is unavailable for a valid site account', async () => {
+test('adventurer panel fails closed when its database is unavailable for a valid site account', async () => {
   const response = res();
   const siteAccount = { id: 'site_123e4567-e89b-12d3-a456-426614174000', username: 'Gezgin' };
-  assert.equal(await handlePublicSiteRequest(request('/', siteAccount), response, {}), true);
+  assert.equal(await handlePublicSiteRequest(request('/maceraci', siteAccount), response, {}), true);
   assert.equal(response.status, 503);
   assert.match(response.body, /veritabanına/);
 });
@@ -920,7 +932,7 @@ test('private home showcase remains unavailable without explicit opt-in',async()
 
 
 test('Discord-only sessions are redirected to the site account login before player dashboard queries', async () => {
-  for (const path of ['/', '/maceraci']) {
+  for (const path of ['/maceraci']) {
     let queryCount = 0;
     const db = { async query() { queryCount += 1; throw new Error('Dashboard query must not run for a Discord-only session'); } };
     const response = res();
