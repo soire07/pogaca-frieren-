@@ -337,8 +337,8 @@ test('atlas settlement silhouettes give all ten catalogued towns distinct, layou
   ];
   assert.match(atlas, /const settlementSilhouetteTemplates = Object\.freeze\(\{/);
   assert.match(atlas, /function buildAtlasSettlementSilhouettes\(settlements=FRIEREN_WORLD_SETTLEMENTS,markerPositions=\[\]\)/);
-  assert.match(atlas, /const positions=new Map\(markerPositions\.map\(marker=>\[marker\.key,marker\]\)\)/);
-  assert.match(atlas, /const position=positions\.get\(place\.key\)\|\|place/);
+  assert.match(atlas, /function getAtlasSettlementVisualPosition\(place,markerPositions=\[\]\)/);
+  assert.match(atlas, /getAtlasSettlementVisualPosition\(place,markerPositions\)/);
   assert.match(atlas, /Math\.round\(Number\(position\.x\)\*18\)/);
   assert.match(atlas, /Math\.round\(Number\(position\.y\)\*12\)/);
   assert.match(atlas, /class="atlas-settlement-silhouette atlas-settlement-\$\{place\.key\}" data-settlement="\$\{place\.key\}" transform="translate\(\$\{x\} \$\{y\}\) scale\(\$\{scale\}\)"/);
@@ -458,9 +458,9 @@ test('map overlays show each biome name and its live completion percentage at st
 test('Ende and Demon King castle use inward display anchors and zoom never shrinks below map bounds', async () => {
   const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
   const client = await readFile(new URL('../public-assets/exploration-atlas.js', import.meta.url), 'utf8');
-  assert.ok(atlas.includes("place.key==='ende'?85:place.key==='demon-kings-castle'?89"));
-  assert.ok(atlas.includes("place.key==='ende'?27:place.key==='demon-kings-castle'?38"));
-  assert.ok(atlas.includes("place.key==='ende' ? 0.78 : place.key==='demon-kings-castle' ? 0.82 : 1"));
+  assert.ok(atlas.includes("place.key==='ende'?86:place.key==='demon-kings-castle'?82"));
+  assert.ok(atlas.includes("place.key==='ende'?17:place.key==='demon-kings-castle'?30"));
+  assert.ok(atlas.includes("place.key==='ende' ? 0.84 : place.key==='demon-kings-castle' ? 0.9 : 1"));
   assert.ok(client.includes('clamp(scale*delta,1,3.2)'));
   assert.ok(client.includes('clamp(scale*(distance/pinchDistance),1,3.2)'));
   assert.ok(atlas.includes('data-atlas-geography-layer="waterways" class="atlas-waterways">'));
@@ -492,4 +492,35 @@ test('biome completion uses only region-scoped objectives and never spreads glob
   assert.equal(getAtlasBiomeCompletionPercent({
     discovered:true, bosses:[], dungeons:[{}], dungeonWins:9, rareItems:[{ ownedQuantity:2 }]
   }), 100);
+});
+
+
+test('Demon King fortress footprint stays inside the atlas landmass and its visual marker shares the inset anchor', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  const locations = await readFile(new URL('../exploration-world-locations.js', import.meta.url), 'utf8');
+  const { getAtlasSettlementVisualPosition } = await import('../exploration-atlas.js');
+  const { isInsideAtlasLand } = await import('../atlas-pin-layout.js');
+  assert.ok(atlas.includes('export function getAtlasSettlementVisualPosition(place,markerPositions=[])'));
+  assert.ok(atlas.includes("'demon-kings-castle':{x:82,y:30}"));
+  assert.match(atlas, /atlas-settlement-architecture atlas-settlement-silhouettes/);
+  assert.ok(atlas.includes("place.key==='ende'?86:place.key==='demon-kings-castle'?82"));
+  assert.ok(locations.includes("key:'demon-kings-castle', name:'İblis Kralı’nın Şatosu', subtitle:'Ende', regionKey:'aus', x:94, y:24"));
+  const fortress = getAtlasSettlementVisualPosition({ key:'demon-kings-castle', x:94, y:24 });
+  assert.deepEqual({ x:fortress.x, y:fortress.y }, { x:82, y:30 });
+  for (const [dx,dy] of [[-3.65,-6.15],[0,-6.15],[3.65,-6.15],[3.65,0],[3.65,6.15],[0,6.15],[-3.65,6.15],[-3.65,0]]) {
+    assert.ok(isInsideAtlasLand(fortress.x+dx,fortress.y+dy,0.25), 'fortress footprint must stay on land');
+  }
+});
+
+test('biome overlays use broad connected shapes and the Demon King wasteland stays inside the northern land boundary', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  assert.match(atlas, /atlas-biome-forest[^>]+d=/);
+  assert.match(atlas, /atlas-biome-central-plains[^>]+d=/);
+  assert.match(atlas, /atlas-biome-northern-tundra[^>]+d=/);
+  assert.match(atlas, /atlas-biome-highlands[^>]+d=/);
+  assert.match(atlas, /atlas-biome-eastern-mountains[^>]+d=/);
+  assert.match(atlas, /atlas-biome-transition[^]*stroke-width="(?:6[8-9]|7[0-8])"/);
+  assert.match(atlas, /atlas-ashen-ground/);
+  assert.match(atlas, /atlas-demon-wastes/);
+  assert.match(atlas, /atlas-demon-fortress-safe-inset/);
 });

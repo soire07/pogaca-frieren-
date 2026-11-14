@@ -125,19 +125,28 @@ const settlementSilhouetteTemplates = Object.freeze({
   'village-of-sword': `<g class="village-architecture"><path class="village-road" d="M-57 42Q-20 28 8 34T58 23" fill="none" stroke="#b6a07e" stroke-width="8" stroke-linecap="round"/><path d="M-51 27-41 8-21 8-10 24v17h-41Z" fill="#766b58" stroke="#e6d7bd" stroke-width="2"/><path d="M-46 9-31-9-16 9Z" fill="#7d5d49" stroke="#d7c09b" stroke-width="2"/><path d="M-8 29 4 5 29 5 42 25v16H-8Z" fill="#87745d" stroke="#eadcc2" stroke-width="2"/><path d="M-2 6 17-17 36 6Z" fill="#795845" stroke="#e1c8a4" stroke-width="2"/><path d="M38 32 47 16 64 16 72 32v9H38Z" fill="#756b59" stroke="#e8d9bf" stroke-width="2"/><path d="M42 17 55 1 68 17Z" fill="#8a624a" stroke="#ddc49e" stroke-width="2"/><rect x="-36" y="23" width="8" height="12" fill="#293e43"/><rect x="9" y="23" width="9" height="14" fill="#293e43"/><rect x="50" y="26" width="7" height="10" fill="#293e43"/><path class="timber-frame" d="M-48 40V14m9 26V14m-9 13h9M-3 40V12m12 28V12m-12 15H9M43 41V22m9 19V22" fill="none" stroke="#d5c29f" stroke-width="1.6"/><path d="M-57 43h132" stroke="#5d594b" stroke-width="2"/></g>`,
   weise: `<g class="castle-architecture"><path class="castle-wall" d="M-61 35V-7h122v42H49V5H-49v30Z" fill="#7b8580" stroke="#e7e8dd" stroke-width="3"/><path class="battlement" d="M-61-7v-12h10v7h9v-7h10v12m54 0v-12h10v7h9v-7h10v12" fill="#c2c9bc" stroke="#f4f2e8" stroke-width="2"/><path d="M-52-8v-37h20v37m64 0v-37h20v37M-18 35V-27h36v62Z" fill="#adb7ac" stroke="#f0f1e8" stroke-width="3"/><path d="M-57-45-42-66-27-45m54 0 15-21 15 21M-23-27 0-54 23-27Z" fill="#d6ddd1" stroke="#fff" stroke-width="2.5"/><rect x="-45" y="-34" width="7" height="14" fill="#526a6b"/><rect x="38" y="-34" width="7" height="14" fill="#526a6b"/><rect x="-7" y="-16" width="14" height="15" fill="#50676a"/><path class="arched-gate" d="M-12 35V12Q0-5 12 12V35" fill="#40575c" stroke="#f4f0e4" stroke-width="2.5"/><path d="M-57 39h114" stroke="#dce2d6" stroke-width="2"/><path class="castle-masonry-detail" d="M-54 8h37M17 8h37M-54 18h39M15 18h39M-45 28h28M17 28h28M-40 10v6M-24 19v7M24 10v6M40 19v7" fill="none" stroke="#eadcc3" stroke-opacity=".22" stroke-width="1.5" stroke-linecap="round"/></g>`,
   ende: `<g class="castle-architecture"><path class="castle-wall" d="M-68 36V-6h136v42H55V6H-55v30Z" fill="#a9b8b0" stroke="#f2f2e7" stroke-width="3.2"/><path class="battlement" d="M-68-6v-12h11v7h9v-7h11v12m70 0v-12h11v7h9v-7h11v12" fill="#d6dfd4" stroke="#fff" stroke-width="2"/><path d="M-59-7v-42h21v42m76 0v-42h21v42M-22 36V-32h44v68Z" fill="#c2d0c9" stroke="#f7f7ee" stroke-width="3"/><path d="M-65-49-48-70-31-49m62 0 17-21 17 21M-28-32 0-59 28-32Z" fill="#e6ece4" stroke="#fff" stroke-width="2.5"/><rect x="-51" y="-37" width="7" height="16" fill="#61797a"/><rect x="44" y="-37" width="7" height="16" fill="#61797a"/><rect x="-8" y="-19" width="16" height="16" fill="#61797a"/><path class="arched-gate" d="M-13 36V12Q0-7 13 12V36" fill="#435d62" stroke="#f6f4e9" stroke-width="2.5"/><path d="M-63 40h126" stroke="#e7eee5" stroke-width="2"/><path class="castle-masonry-detail" d="M-54 8h37M17 8h37M-54 18h39M15 18h39M-45 28h28M17 28h28M-40 10v6M-24 19v7M24 10v6M40 19v7" fill="none" stroke="#eadcc3" stroke-opacity=".22" stroke-width="1.5" stroke-linecap="round"/></g>`,
-  'demon-kings-castle': `<g class="castle-architecture demon-fortress"><path class="castle-wall" d="M-73 38V-9h146v47H59V3H-59v35Z" fill="#493d48" stroke="#c58d8c" stroke-width="3.5"/><path class="battlement" d="M-73-9v-15h12v8h10v-8h12v15m78 0v-15h12v8h10v-8h12v15" fill="#72535d" stroke="#dca5a0" stroke-width="2.5"/><path d="M-64-10v-46h24v46m80 0v-46h24v46M-25 38V-31h50v69Z" fill="#71515c" stroke="#d9a3a0" stroke-width="3"/><path d="M-70-56-52-82-34-56m68 0 18-26 18 26M-32-31 0-66 32-31Z" fill="#9b5960" stroke="#e5b2a5" stroke-width="2.8"/><rect x="-56" y="-42" width="9" height="18" fill="#202d3a"/><rect x="47" y="-42" width="9" height="18" fill="#202d3a"/><rect x="-9" y="-19" width="18" height="18" fill="#202d3a"/><path class="arched-gate" d="M-15 38V10Q0-13 15 10V38" fill="#202d3a" stroke="#e2b7a8" stroke-width="3"/><path d="M-7 9V-14m-8 8h30M-69 42h138" stroke="#f0c7a2" stroke-width="2.5"/><path d="M-43-6v-18m86 18v-18" stroke="#d28a87" stroke-width="2"/><path class="castle-masonry-detail" d="M-54 8h37M17 8h37M-54 18h39M15 18h39M-45 28h28M17 28h28M-40 10v6M-24 19v7M24 10v6M40 19v7" fill="none" stroke="#eadcc3" stroke-opacity=".22" stroke-width="1.5" stroke-linecap="round"/><g class="castle-ember-lights" fill="#e7a16e" opacity=".78"><rect x="-54" y="-40" width="5" height="13" rx="1"/><rect x="49" y="-40" width="5" height="13" rx="1"/><rect x="-4" y="-17" width="8" height="13" rx="1"/></g></g>`
+  'demon-kings-castle': `<g class="castle-architecture demon-fortress"><path class="castle-wall" d="M-73 38V-9h146v47H59V3H-59v35Z" fill="#493d48" stroke="#c58d8c" stroke-width="3.5"/><path class="battlement" d="M-73-9v-15h12v8h10v-8h12v15m78 0v-15h12v8h10v-8h12v15" fill="#72535d" stroke="#dca5a0" stroke-width="2.5"/><path d="M-64-10v-46h24v46m80 0v-46h24v46M-25 38V-31h50v69Z" fill="#71515c" stroke="#d9a3a0" stroke-width="3"/><path d="M-70-56-52-82-34-56m68 0 18-26 18 26M-32-31 0-66 32-31Z" fill="#9b5960" stroke="#e5b2a5" stroke-width="2.8"/><rect x="-56" y="-42" width="9" height="18" fill="#202d3a"/><rect x="47" y="-42" width="9" height="18" fill="#202d3a"/><rect x="-9" y="-19" width="18" height="18" fill="#202d3a"/><path class="arched-gate" d="M-15 38V10Q0-13 15 10V38" fill="#202d3a" stroke="#e2b7a8" stroke-width="3"/><path d="M-7 9V-14m-8 8h30M-69 42h138" stroke="#f0c7a2" stroke-width="2.5"/><path d="M-43-6v-18m86 18v-18" stroke="#d28a87" stroke-width="2"/><path class="castle-masonry-detail" d="M-54 8h37M17 8h37M-54 18h39M15 18h39M-45 28h28M17 28h28M-40 10v6M-24 19v7M24 10v6M40 19v7" fill="none" stroke="#eadcc3" stroke-opacity=".22" stroke-width="1.5" stroke-linecap="round"/><path d="M-62 3V-35h9v38m106 0v-38h9V3M-24-27h8v14h-8Zm40 0h8v14h-8Z" fill="#392f3b" stroke="#d6a19a" stroke-width="2"/><path d="M-73-10h146M-73-3h146M-60 37h120" fill="none" stroke="#d7a39a" stroke-opacity=".65" stroke-width="2.2"/><path d="M-40-46v-12m80 12v-12M-5-61h10" stroke="#e7b5a7" stroke-width="2.4" stroke-linecap="round"/><g class="castle-ember-lights" fill="#e7a16e" opacity=".78"><rect x="-54" y="-40" width="5" height="13" rx="1"/><rect x="49" y="-40" width="5" height="13" rx="1"/><rect x="-4" y="-17" width="8" height="13" rx="1"/></g></g>`
 });
 
+const ATLAS_SETTLEMENT_VISUAL_ANCHORS = Object.freeze({
+  // These inset anchors keep the large fortress silhouette clear of the clipped eastern coastline.
+  'demon-kings-castle':{x:82,y:30},
+  ende:{x:86,y:17}
+});
+export function getAtlasSettlementVisualPosition(place,markerPositions=[]) {
+  const safeAnchor=ATLAS_SETTLEMENT_VISUAL_ANCHORS[place.key];
+  if(safeAnchor)return {...place,...safeAnchor};
+  return markerPositions.find(marker=>marker.key===place.key)||place;
+}
 function buildAtlasSettlementSilhouettes(settlements=FRIEREN_WORLD_SETTLEMENTS,markerPositions=[]) {
-  const positions=new Map(markerPositions.map(marker=>[marker.key,marker]));
   const groups=settlements.filter(place=>settlementSilhouetteTemplates[place.key]).map(place=>{
-    const position=positions.get(place.key)||place;
+    const position=getAtlasSettlementVisualPosition(place,markerPositions);
     const x=Math.round(Number(position.x)*18);
     const y=Math.round(Number(position.y)*12);
-    const scale=place.key==='ende' ? 0.78 : place.key==='demon-kings-castle' ? 0.82 : 1;
+    const scale=place.key==='ende' ? 0.84 : place.key==='demon-kings-castle' ? 0.9 : 1;
     return `<g class="atlas-settlement-silhouette atlas-settlement-${place.key}" data-settlement="${place.key}" transform="translate(${x} ${y}) scale(${scale})">${settlementSilhouetteTemplates[place.key]}</g>`;
   }).join('');
-  return `<g class="atlas-settlement-architecture atlas-settlement-silhouettes" aria-hidden="true" pointer-events="none">${groups}</g>`;
+  return `<g class="atlas-settlement-architecture atlas-settlement-silhouettes atlas-demon-fortress-safe-inset" aria-hidden="true" pointer-events="none">${groups}</g>`;
 }
 
 export function getAtlasBiomeCompletionPercent(item={}) {
@@ -179,7 +188,7 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
     })),
     ...FRIEREN_WORLD_SETTLEMENTS.map(place=>({
       id:'city:'+place.key,key:place.key,targetKey:place.key,label:place.name,type:'city',icon:'⌂',
-      x:place.key==='ende'?85:place.key==='demon-kings-castle'?89:place.x,y:place.key==='ende'?27:place.key==='demon-kings-castle'?38:place.y,focus:'city',subtitle:place.subtitle
+      x:place.key==='ende'?86:place.key==='demon-kings-castle'?82:place.x,y:place.key==='ende'?17:place.key==='demon-kings-castle'?30:place.y,focus:'city',subtitle:place.subtitle
     })),
     ...points.flatMap(({item})=>item.bosses.map(boss=>{
       const location=resolveAtlasBossLocation(boss);
@@ -230,16 +239,17 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
   <path class="atlas-biome atlas-biome-highlands" d="M410 390C590 285 810 335 965 405S1200 425 1345 560 1390 765 1235 880 935 860 765 810 530 830 410 675 325 485 410 390Z" fill="url(#atlas-biome-highland-wash)"/>
   <path class="atlas-biome atlas-biome-eastern-mountains" d="M890 440C1080 355 1300 395 1475 480S1715 635 1690 835 1515 1080 1315 1105 1060 1005 1020 840 810 570 890 440Z" fill="url(#atlas-biome-mountain-wash)"/>
   <path class="atlas-biome atlas-biome-ashen-north" d="M1175 82C1370 45 1575 110 1700 235S1750 475 1620 575 1395 580 1275 480 1155 285 1175 82Z" fill="url(#atlas-ashen-wash)" opacity=".82"/>
-  <g class="atlas-biome-transition" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#atlas-biome-edge-soft)" opacity=".34">
-   <path d="M540 250C675 350 695 485 610 650" stroke="#66805b" stroke-width="46"/>
-   <path d="M590 680C760 625 900 675 1040 820" stroke="#c6b88c" stroke-width="52"/>
-   <path d="M780 180C925 330 1010 410 1160 485" stroke="#b7c9c2" stroke-width="48"/>
-   <path d="M1120 470C1250 560 1330 710 1300 900" stroke="#74877c" stroke-width="54"/>
+  <g class="atlas-biome-transition" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#atlas-biome-edge-soft)" opacity=".48">
+   <path d="M500 230C660 345 710 505 600 690" stroke="#66805b" stroke-width="68"/>
+   <path d="M555 660C760 600 930 690 1085 850" stroke="#c6b88c" stroke-width="76"/>
+   <path d="M735 145C925 315 1035 425 1195 500" stroke="#b7c9c2" stroke-width="72"/>
+   <path d="M1080 445C1250 555 1365 720 1320 930" stroke="#74877c" stroke-width="78"/>
+   <path d="M310 560C480 500 650 560 780 650" stroke="#7f9870" stroke-width="58"/>
   </g>
  </g>
  <g class="atlas-demon-wastes" data-atlas-geography-layer="demon-wastes">
-  <path class="atlas-ashen-ground" d="M1280 150C1400 130 1545 170 1645 270 1695 345 1640 455 1550 500 1455 545 1320 480 1275 385 1235 300 1230 210 1280 150Z" fill="#171b24" opacity=".54"/>
-  <path class="atlas-demon-fog" d="M1230 205C1360 115 1570 155 1675 285S1665 495 1515 540 1260 470 1215 350Z" fill="url(#atlas-ashen-wash)" filter="url(#atlas-demon-haze)"/>
+  <path class="atlas-ashen-ground" d="M1190 155C1320 85 1535 110 1660 245 1720 335 1685 470 1585 535 1470 590 1300 520 1230 425 1165 340 1145 235 1190 155Z" fill="#10141e" opacity=".78"/>
+  <path class="atlas-demon-fog" d="M1155 205C1320 85 1575 115 1700 275S1680 530 1510 585 1220 500 1165 365Z" fill="url(#atlas-ashen-wash)" filter="url(#atlas-demon-haze)"/>
   <g class="atlas-dead-tree" stroke="#29252c" stroke-linecap="round" stroke-linejoin="round" fill="none">
    <path d="M1350 420l8-56-18-23 20 10 8-37 4 36 22-16-18 29 7 58m-15-62-21-16m32 1 19-18" stroke-width="7"/>
    <path d="M1435 360l5-48-16-20 18 9 6-33 4 33 18-14-15 25 5 48m-15-48-18-14m29 3 16-17" stroke-width="6"/>

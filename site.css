@@ -1940,3 +1940,54 @@ body.atlas-modal-open{overflow:hidden}
 .atlas-settlement-silhouette .castle-masonry-detail{filter:drop-shadow(0 1px 1px #1118)}
 .atlas-settlement-demon-kings-castle .castle-ember-lights{filter:drop-shadow(0 0 5px #e58b5b)}
 .atlas-settlement-ende .castle-architecture{filter:drop-shadow(0 7px 5px #1a2a35cc)}
+
+
+/* Demon frontier containment and richer fortress silhouette. */
+.atlas-settlement-silhouette.atlas-settlement-demon-kings-castle{
+  isolation:isolate;
+}
+.atlas-settlement-demon-kings-castle .demon-fortress{
+  filter:drop-shadow(0 10px 9px #070910f2) drop-shadow(0 0 13px #7d353a88);
+}
+.atlas-settlement-demon-kings-castle .castle-wall{
+  stroke:#d49a92;
+  stroke-width:4.5;
+}
+.atlas-settlement-demon-kings-castle .battlement{
+  stroke:#e1aaa0;
+  stroke-width:3.2;
+}
+.atlas-settlement-demon-kings-castle .castle-masonry-detail{
+  stroke:#f0c9b7;
+  stroke-opacity:.34;
+}
+.atlas-settlement-demon-kings-castle .castle-ember-lights{
+  opacity:.9;
+  filter:drop-shadow(0 0 6px #f08a5d);
+}
+.atlas-demon-fortress-safe-inset .atlas-settlement-demon-kings-castle{
+  transform-box:fill-box;
+}
+.atlas-map-art [data-atlas-geography-layer="demon-wastes"] .atlas-ashen-ground{
+  fill:#10131d;
+  opacity:.86;
+}
+.atlas-map-art [data-atlas-geography-layer="demon-wastes"] .atlas-demon-fog{
+  opacity:.94;
+}
+.atlas-map-art [data-atlas-geography-layer="demon-wastes"] .atlas-dead-tree{
+  opacity:.88;
+}
+.atlas-map-art [data-atlas-geography-layer="biomes"] .atlas-biome-transition{
+  opacity:.48;
+}
+.atlas-biome-label[data-atlas-biome-label="aus"]{
+  border-color:#b17b83;
+  background:linear-gradient(145deg,#17151feF,#0d111bf5);
+  box-shadow:0 5px 18px #05060cbb,0 0 14px #5d252b44;
+}
+@media(max-width:700px){
+  .atlas-settlement-demon-kings-castle .demon-fortress{
+    filter:drop-shadow(0 7px 6px #070910e8) drop-shadow(0 0 9px #7d353a66);
+  }
+}
