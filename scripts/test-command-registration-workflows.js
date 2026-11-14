@@ -53,6 +53,7 @@ test('Discord command sync skips unchanged definitions and unnecessary global wr
   const source = await readFile(new URL('../deploy-commands.js', import.meta.url), 'utf8');
   assert.ok(source.includes('skipped command write to preserve daily quota'));
   assert.ok(source.includes('Global news command allowlist unchanged; skipped write to preserve daily quota.'));
+  assert.ok(source.includes("process.env.SKIP_GLOBAL_COMMAND_SYNC === 'true'"), 'additional-guild registration must be able to skip global command writes');
 });
 
 
