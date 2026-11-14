@@ -125,3 +125,13 @@ test('Vercel production smoke runs externally, checks DNS and browser routes, an
   assert.ok(!smoke.includes('DATABASE_URL'));
   assert.ok(!smoke.includes('fetch(') || !smoke.includes('method: \'POST\''), 'the probe must remain read-only');
 });
+
+
+test('browser smoke workflows pin Playwright to a supported Ubuntu LTS runner', async () => {
+  const mobile = await workflow('mobile-browser-smoke.yml');
+  const production = await workflow('vercel-production-smoke.yml');
+  assert.ok(mobile.includes('runs-on: ubuntu-24.04'));
+  assert.ok(!mobile.includes('runs-on: ubuntu-latest'), 'mobile WebKit/Chromium installation must not drift to an unsupported image');
+  assert.ok(production.includes('runs-on: ubuntu-24.04'));
+  assert.ok(!production.includes('runs-on: ubuntu-latest'), 'production WebKit/Chromium installation must use the same supported LTS image');
+});
