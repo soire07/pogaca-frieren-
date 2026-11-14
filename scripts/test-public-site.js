@@ -1245,6 +1245,10 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.match(response.body,/data-profile-frame="moon_frame"/);
  assert.match(response.body,/data-cosmetic-theme="default"/);
  assert.match(response.body,/data-title-effect="none"/);
+ const cosmeticStyles=await readFile(new URL('../site.css',import.meta.url),'utf8');
+ assert.match(cosmeticStyles,/\.player-cosmetic-avatar img/);
+ assert.match(cosmeticStyles,/\.profile-cosmetic-identity\[data-cosmetic-theme="spring"\]/);
+ assert.match(cosmeticStyles,/\.profile-cosmetic-identity\[data-cosmetic-theme="winter"\]/);
  assert.match(response.body,/Keşif ve Büyü Günlüğü/);
  assert.match(response.body,/Büyü arşivi/);
  assert.match(response.body,/1\/7 kayıt/);
@@ -1653,7 +1657,7 @@ test('dedicated user center pages expose the new account, social and life naviga
  assert.match(source,/inventory-center-page/);
  assert.match(source,/notification-center-page/);
  assert.match(source,/public-assets\/user-center\.js', 'public-assets\/public-chat\.js'].includes/);
- assert.match(source,/site\.css\?v=cosmetics-386-1/);
+ assert.match(source,/site\.css\?v=cosmetics-401-1/);
  assert.match(source,/public-chat\.js\?v=chat-282-1/);
  const chatClient=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');
  assert.ok(!chatClient.includes('for(const emoji of ["❤️","✨","😂","😍","🥰","😭","👀","🎉","🙌","💜","🍪","🌸"])'));
