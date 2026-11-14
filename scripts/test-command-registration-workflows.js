@@ -145,7 +145,7 @@ test('additional guild onboarding is manual, explicitly confirmed, and guild-onl
   assert.ok(!/schedule:|push:|pull_request:/.test(triggerBlock), 'additional guild registration must never run automatically');
   assert.ok(source.includes('guild_id:'), 'the target guild ID must be an explicit workflow input');
   assert.ok(source.includes('confirm_guild_id:'), 'the target guild ID must be confirmed a second time');
-  assert.ok(source.includes('test "$GUILD_ID" = "$CONFIRM_GUILD_ID"'), 'the confirmation must match exactly');
+  assert.ok(source.includes('[[ "$GUILD_ID" != "$CONFIRM_GUILD_ID" ]]'), 'the confirmation must match exactly');
   assert.ok(source.includes('^[0-9]{17,20}$'), 'only Discord snowflake IDs may be accepted');
   assert.ok(source.includes('1539562273197260860') && source.includes('1564945192803639356'), 'main and test guilds must be protected from this onboarding path');
   assert.ok(source.indexOf('npm run check') < source.indexOf('npm run deploy-commands'), 'all checks must pass before any Discord write');
