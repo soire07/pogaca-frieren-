@@ -179,3 +179,16 @@ test('rendered atlas exposes user-calibrated scale, seasonal ecology and local d
   assert.match(html, /kilometre ölçeği belirtilmemiştir/i);
   assert.match(html, /Bölüm 06/);
 });
+
+
+test('mobile atlas layout keeps map controls, filters and route planner inside narrow screens', async () => {
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const mobileFit = css.slice(css.lastIndexOf('Mobile atlas fit'));
+  assert.match(mobileFit, /\.atlas-section\{[^}]*min-width:0/);
+  assert.match(mobileFit, /\.atlas-map-viewport\{[^}]*width:100%[^}]*overflow:hidden/);
+  assert.match(mobileFit, /\.atlas-map-tools\{[^}]*max-width:calc\(100% - 16px\)/);
+  assert.match(mobileFit, /\.atlas-layer-controls\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(mobileFit, /\.atlas-route-planner\{[^}]*grid-template-columns:minmax\(0,1fr\)/);
+  assert.match(mobileFit, /\.atlas-route-planner>\*\{min-width:0/);
+  assert.match(mobileFit, /overflow-wrap:anywhere/);
+});

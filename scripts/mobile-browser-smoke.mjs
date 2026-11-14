@@ -167,6 +167,24 @@ for (const scenario of scenarios) {
     await page.locator('[data-atlas-route-clear]').click();
     const routeControlHeights = await page.locator('.atlas-route-planner select, .atlas-route-planner button').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
     if (routeControlHeights.some(height => height < 44)) throw new Error(scenario.name + ' atlas route controls are below the 44px touch target: ' + JSON.stringify(routeControlHeights));
+    if (scenario.isMobile) {
+      const atlasLayout = await page.evaluate(() => {
+        const rect = selector => { const node = document.querySelector(selector); const box = node?.getBoundingClientRect(); return box ? { left: box.left, right: box.right, width: box.width } : null; };
+        const viewport = rect('.atlas-map-viewport');
+        const tools = rect('.atlas-map-tools');
+        const filters = rect('.atlas-layer-controls');
+        const planner = rect('.atlas-route-planner');
+        const width = document.documentElement.clientWidth;
+        const overflowingChildren = [...document.querySelectorAll('.atlas-layer-controls > *, .atlas-route-planner > *')]
+          .filter(node => { const box = node.getBoundingClientRect(); return box.width > 0 && (box.left < -1 || box.right > width + 1); })
+          .map(node => ({ className: node.className?.baseVal || node.className, left: node.getBoundingClientRect().left, right: node.getBoundingClientRect().right }));
+        return { width, documentWidth: document.documentElement.scrollWidth, viewport, tools, filters, planner, overflowingChildren };
+      });
+      for (const [name, box] of Object.entries({ viewport: atlasLayout.viewport, tools: atlasLayout.tools, filters: atlasLayout.filters, planner: atlasLayout.planner })) {
+        if (!box || box.left < -1 || box.right > atlasLayout.width + 1 || box.width > atlasLayout.width + 1) throw new Error(scenario.name + ' atlas ' + name + ' escapes the mobile viewport: ' + JSON.stringify(atlasLayout));
+      }
+      if (atlasLayout.documentWidth > atlasLayout.width + 1 || atlasLayout.overflowingChildren.length) throw new Error(scenario.name + ' atlas controls cause mobile horizontal overflow: ' + JSON.stringify(atlasLayout));
+    }
     await page.locator('[data-atlas-zoom="1"]').click();
     await page.locator('[data-atlas-zoom="1"]').click();
     if (await page.locator('.atlas-map-art').getAttribute('data-atlas-zoom-detail') !== 'regional') throw new Error(scenario.name + ' atlas regional detail level did not activate on zoom');
