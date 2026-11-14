@@ -477,16 +477,18 @@ test('castle architecture has masonry courses and the Demon King fortress has li
   assert.match(templates, /demon-fortress/);
 });
 
-test('biome completion percentage reflects discovery, defeated bosses, dungeon wins and collected rare items', async () => {
+test('biome completion uses only region-scoped objectives and never spreads global dungeon wins across every biome', async () => {
   const { getAtlasBiomeCompletionPercent } = await import('../exploration-atlas.js');
   assert.equal(getAtlasBiomeCompletionPercent({ discovered:false, visits:0, bosses:[], dungeons:[], rareItems:[] }), 0);
-  assert.equal(getAtlasBiomeCompletionPercent({
+  const regionProgress = {
     discovered:true,
     bosses:[{ defeated:true },{ defeated:false }],
     dungeons:[{},{}],
     dungeonWins:1,
     rareItems:[{ ownedQuantity:1 },{ ownedQuantity:0 }]
-  }), 57);
+  };
+  assert.equal(getAtlasBiomeCompletionPercent(regionProgress), 60);
+  assert.equal(getAtlasBiomeCompletionPercent({ ...regionProgress, dungeonWins:999 }), 60);
   assert.equal(getAtlasBiomeCompletionPercent({
     discovered:true, bosses:[], dungeons:[{}], dungeonWins:9, rareItems:[{ ownedQuantity:2 }]
   }), 100);
