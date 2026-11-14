@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "documents": [
+    {
+      "path": "texts/replace-with-permitted-text.txt",
+      "source": "REPLACE WITH THE ORIGINAL SOURCE AND SOURCE URL",
+      "license": "REPLACE WITH THE EXACT LICENSE OR WRITTEN PERMISSION",
+      "usage": "REPLACE WITH THE SPECIFIC TRAINING PERMISSION AND RESTRICTIONS"
+    }
+  ]
+}
