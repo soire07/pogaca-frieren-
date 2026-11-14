@@ -131,7 +131,7 @@ const settlementSilhouetteTemplates = Object.freeze({
 const ATLAS_SETTLEMENT_VISUAL_ANCHORS = Object.freeze({
   // These inset anchors keep the large fortress silhouette clear of the clipped eastern coastline.
   'demon-kings-castle':{x:82,y:30},
-  ende:{x:86,y:17}
+  ende:{x:85,y:27}
 });
 export function getAtlasSettlementVisualPosition(place,markerPositions=[]) {
   const safeAnchor=ATLAS_SETTLEMENT_VISUAL_ANCHORS[place.key];
@@ -163,8 +163,8 @@ export function getAtlasBiomeCompletionPercent(item={}) {
 
 function buildAtlasBiomeLabels(points) {
   const anchors = Object.freeze({
-    orman:{x:23,y:39}, merkez:{x:31,y:76}, harabeler:{x:49,y:55},
-    kuzey:{x:59,y:24}, yayla:{x:77,y:72}, aus:{x:82,y:34}
+    orman:{x:27.5,y:37.25}, merkez:{x:31.25,y:76.25}, harabeler:{x:49.25,y:55.25},
+    kuzey:{x:59,y:23.75}, yayla:{x:77,y:71.75}, aus:{x:82,y:34}
   });
   return '<div class="atlas-biome-label-layer" aria-label="Biyom adları ve tamamlanma yüzdeleri">'+points.map(({item,geo})=>{
     const anchor=anchors[item.region.key];
@@ -188,7 +188,7 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
     })),
     ...FRIEREN_WORLD_SETTLEMENTS.map(place=>({
       id:'city:'+place.key,key:place.key,targetKey:place.key,label:place.name,type:'city',icon:'⌂',
-      x:place.key==='ende'?86:place.key==='demon-kings-castle'?82:place.x,y:place.key==='ende'?17:place.key==='demon-kings-castle'?30:place.y,focus:'city',subtitle:place.subtitle
+      x:place.key==='ende'?85:place.key==='demon-kings-castle'?82:place.x,y:place.key==='ende'?27:place.key==='demon-kings-castle'?30:place.y,focus:'city',subtitle:place.subtitle
     })),
     ...points.flatMap(({item})=>item.bosses.map(boss=>{
       const location=resolveAtlasBossLocation(boss);
