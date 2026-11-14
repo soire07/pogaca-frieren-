@@ -111,7 +111,7 @@
         {
           "path": "rpg-reward-transactions.js",
           "markers": [
-            "last_boss_battle_id IS DISTINCT FROM $7",
+            "last_boss_battle_id=$7",
             "await db.query('COMMIT')",
             "await db.query('ROLLBACK')"
           ]
@@ -1134,7 +1134,7 @@
         "markers": [
           "ikinci evreye geçti",
           "son evreye geçti",
-          "calculateBossIncomingDamage(rawDamage, Math.round(target.defense*0.56), bossPhase)"
+          "calculateBossIncomingDamage(katunJudgment ? Math.round(rawDamage * 1.5) : rawDamage, Math.round(target.defense*0.56), bossPhase)"
         ]
       },
       "limitation": "The test checks raid phase wiring, transition announcements and damage helper use in source. It does not run a full multiplayer Discord raid."
@@ -1194,8 +1194,10 @@
           "path": "katlizindan.js",
           "markers": [
             "const finalBoss = floor === FLOORS",
-            "bossPhaseSpecialBonus(enemyPhase)",
-            "İblis Lordu son evreye geçti"
+            "getBossPhase(enemyHp, maxEnemyHp)",
+            "calculateFinalDungeonBossRawDamage(enemyDamage,",
+            "isFinalDungeonBossEnraged(floor, FLOORS, enemyHp, maxEnemyHp)",
+            "shouldFinalDungeonBossSpecialAttack(floor, FLOORS, turn)"
           ]
         }
       ],
@@ -1203,7 +1205,9 @@
         "path": "scripts/test-utils.js",
         "name": "final dungeon boss has three phases and stronger phase-scaled special attacks",
         "markers": [
-          "bossPhaseSpecialBonus",
+          "calculateFinalDungeonBossRawDamage(",
+          "isFinalDungeonBossEnraged(",
+          "shouldFinalDungeonBossSpecialAttack(",
           "İblis Lordu son evreye geçti"
         ]
       },
