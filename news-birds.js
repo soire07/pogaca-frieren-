@@ -83,6 +83,18 @@ function escapeMarkdown(value='') {
   return String(value).replace(/([_*~|])/g, '\\$1').replace(/@/g, '@\u200b');
 }
 
+function cleanNewsSummary(value='') {
+  return String(value)
+    .replace(/\[[^\]]+\]\(https?:\/\/[^)]+\)/gi, ' ')
+    .replace(/https?:\/\/[^\s<>()]+/gi, ' ')
+    .replace(/\b(?:read more|read the full story|source|link|haberin devamı|devamını oku|daha fazla|kaynak)\s*:?\s*(?:and)?\s*$/i, '')
+    .replace(/\s+(?:and|&)\s*$/i, '')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/([,;:])(?:\s*[,;:])+/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export async function translateAnimeNewsItems(db, items, fetcher=globalThis.fetch) {
   if (!Array.isArray(items) || !items.length) return [];
   if (typeof fetcher !== 'function') return items;
@@ -154,17 +166,18 @@ export function buildAnimeNewsDigestEmbeds(items, now = new Date()) {
     const publishedAt=new Date(item.publishedAt || now);
     const timestamp=Number.isFinite(publishedAt.getTime())?publishedAt.toISOString():new Date(now).toISOString();
     const imageUrl=item.imageUrl && safeFeedUrl(item.imageUrl,imageHosts);
+    const summary=cleanNewsSummary(item.translatedSummary || item.summary)
+      || 'Bu haber için kaynakta kısa bir açıklama bulunmuyor.';
     return {
       color:index===0?0x7654D6:0x46366F,
       ...(index===0?{author:{name:'🐦 FRIEREN HABERCİ KUŞU · GÜNLÜK BÜLTEN'}}:{}),
       title:escapeMarkdown(String(item.translatedTitle || item.title || 'Başlıksız haber')).slice(0,256),
-      url:item.link,
-      description:escapeMarkdown(String(item.translatedSummary || item.summary || 'Bu haber için kaynakta kısa bir açıklama bulunmuyor.')).slice(0,900),
+      description:escapeMarkdown(summary).slice(0,760)+'\n\n[Haberi oku →]('+item.link+')',
       fields:[
         {name:'KATEGORİ',value:classifyAnimeNews(item.title),inline:true},
         {name:'KAYNAK',value:String(item.sourceName||'Anime News Network').slice(0,100),inline:true}
       ],
-      ...(imageUrl?{image:{url:imageUrl}}:{}),
+      ...(imageUrl?{thumbnail:{url:imageUrl}}:{}),
       footer:{text:index===0?'Günlük Anime & Manga Bülteni · '+date:'Haber '+String(index+1)+' / '+String(safeItems.length)},
       timestamp
     };
