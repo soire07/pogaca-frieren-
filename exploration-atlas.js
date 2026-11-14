@@ -104,6 +104,26 @@ function mapDungeonWins(item) {
   return Math.max(0,Number(item.dungeonWins)||0);
 }
 
+const settlementSilhouetteTemplates = Object.freeze({
+  strahl: `<path d="M-39 8-24-5-9 8v21h-30Z M-4 12 11-1 27 12v19H-4Z M30 8 42-2 55 8v23H30Z" fill="#8b7658" stroke="#ead9b6" stroke-width="2.6"/><path d="m-24-5 15 13m-15-13-15 13M11-1l16 13M42-2l13 10" fill="none" stroke="#f2e5c8" stroke-width="2.5"/><path d="M-1 31V17h9v14m-40 0V18h8v13m56 0V18h8v13" fill="#5c5145" stroke="#d6c5a3" stroke-width="1.6"/>`,
+  'royal-capital': `<path d="M-58 24v-34h116v34h-13V-2H-45v26Z" fill="#82735e" stroke="#e8d8b8" stroke-width="3"/><path d="M-62-10v-22h16v22m92 0v-22h16v22M-10 24V-9h20v33Z" fill="#a58b69" stroke="#f0dfbd" stroke-width="2.6"/><path d="m-62-32 8-14 8 14m76 0 8-14 8 14M-15-9 0-25 15-9" fill="#b89b70" stroke="#f3e4c5" stroke-width="2.5"/><path d="M-40 24V7h12v17m56 0V7h12v17M-4 24V7h8v17" fill="#354b4b" stroke="#d8c7a5" stroke-width="1.8"/>`,
+  waal: `<path d="M-43 19v-30h86v30h-10V-2h-66v21Z" fill="#7f7664" stroke="#e4d5b9" stroke-width="2.8"/><path d="M-49-11v-24h17v24m64 0v-24h17v24M-12 19V-4h24v23Z" fill="#a08a6b" stroke="#f0e0c1" stroke-width="2.4"/><path d="m-49-35 8-12 9 12m47 0 8-12 9 12" fill="#b7a07a" stroke="#f1e2c4" stroke-width="2"/><path d="M-34 19V4h8v15m52 0V4h8v15M-4 19V8h8v11" fill="#34474a"/>`,
+  'fabel-village': `<path d="M-31 8-17-4-3 8v17h-28Z M4 13 16 2 29 13v13H4Z M-2-14 7-22 16-14v11H-2Z" fill="#947957" stroke="#ead9b7" stroke-width="2.3"/><path d="m-17-4 14 12M16 2l13 11M7-22l9 8" fill="none" stroke="#f0e3c7" stroke-width="2"/><path d="M-21 25V14h7v11m25 1V18h7v8" fill="#40514a"/>`,
+  'graf-granat': `<path d="M-48 21v-28h96v28h-11V1h-74v20Z" fill="#77766a" stroke="#e4d9bf" stroke-width="2.8"/><path d="M-53-7v-25h18v25m70 0v-25h18v25M-13 21V-13h26v34Z" fill="#9c8a70" stroke="#eee1c6" stroke-width="2.4"/><path d="m-53-32 9-13 9 13m52 0 9-13 9 13M-16-13 0-29 16-13" fill="#c1aa82" stroke="#f2e6ce" stroke-width="2"/><path d="M-5 21V4h10v17M-39 21V6h8v15m62 0V6h8v15" fill="#354a4a"/>`,
+  aeusserst: `<circle cx="0" cy="0" r="38" fill="none" stroke="#b6a6ca" stroke-opacity=".62" stroke-width="2.5" stroke-dasharray="3 7"/><path d="M-35 20-27-21-17 20Z M-13 20-5-39 4 20Z M13 20 23-29 33 20Z" fill="#786b91" stroke="#e3d6ee" stroke-width="2.4"/><path d="m-27-21 0 15m22-33 0 17m28-7 0 17" stroke="#f5e9ff" stroke-width="3"/><path d="M-43 22h86M-18 22V9h36v13" fill="none" stroke="#d4c2df" stroke-width="2.4"/><circle cx="0" cy="-8" r="5" fill="#e8d6a9" stroke="#fff0d0" stroke-width="1.5"/>`,
+  'village-of-sword': `<path d="M-34 10-20-3-6 10v18h-28Z M2 13 15 1 28 13v15H2Z M-3-12 7-21 17-12v10H-3Z" fill="#88735b" stroke="#e9d8b7" stroke-width="2.4"/><path d="m-20-3 14 13M15 1l13 12M7-21l10 9" fill="none" stroke="#f2e3c5" stroke-width="2.2"/><path d="M-25 28V15h7v13m25 0V17h7v11" fill="#40514c"/><path d="M-44 31h88" stroke="#d8c6a4" stroke-width="2" stroke-dasharray="3 5"/>`,
+  weise: `<path d="M-48 22v-30h96v30h-10V0h-76v22Z" fill="#777e7c" stroke="#e5e4d6" stroke-width="2.8"/><path d="M-54-8v-28h18v28m72 0v-28h18v28M-15 22V-18h30v40Z" fill="#a3aaa0" stroke="#f0eee1" stroke-width="2.4"/><path d="m-54-36 9-14 9 14m54 0 9-14 9 14M-18-18 0-39 18-18" fill="#d1d8cb" stroke="#f8f5e9" stroke-width="2"/><path d="M-5 22V1h10v21M-39 22V5h8v17m62 0V5h8v17" fill="#34484b"/>`
+});
+
+function buildAtlasSettlementSilhouettes(settlements=FRIEREN_WORLD_SETTLEMENTS) {
+  const groups=settlements.filter(place=>settlementSilhouetteTemplates[place.key]).map(place=>{
+    const x=Math.round(Number(place.x)*18);
+    const y=Math.round(Number(place.y)*12);
+    return `<g class="atlas-settlement-silhouette atlas-settlement-${place.key}" data-settlement="${place.key}" transform="translate(${x} ${y})">${settlementSilhouetteTemplates[place.key]}</g>`;
+  }).join('');
+  return `<g class="atlas-settlement-architecture atlas-settlement-silhouettes" aria-hidden="true" pointer-events="none">${groups}</g>`;
+}
+
 export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) {
   const rows=Array.isArray(mapContent?.regions)?mapContent.regions:[];
   const total=Math.max(1,Number(mapContent?.summary?.totalRegions)||rows.length||1);
@@ -148,6 +168,7 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
   const fog='<svg class="atlas-fog-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><filter id="atlas-fog-soft"><feGaussianBlur stdDeviation="1.2"/></filter></defs><g filter="url(#atlas-fog-soft)">'+fogPaths+'</g></svg>';
   const panels=points.map(point=>panel(point.item,point.index,FRIEREN_WORLD_SETTLEMENTS,ATLAS_HISTORICAL_EVENTS,esc)).join('');
   const localDetailOverlay = buildAtlasLocalDetailLayer(FRIEREN_WORLD_SETTLEMENTS);
+  const settlementSilhouettes = buildAtlasSettlementSilhouettes(FRIEREN_WORLD_SETTLEMENTS);
   const geographyOverlay = `<svg class="atlas-geography-overlay" viewBox="0 0 1800 1200" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="atlas-inline-land-clip"><path d="M206 292C259 221 371 179 492 198 585 133 718 129 832 163 940 100 1075 119 1170 157 1304 107 1442 167 1524 248 1632 309 1665 412 1618 516 1677 625 1634 741 1582 826 1631 929 1521 1033 1390 1038 1284 1104 1160 1073 1073 1043 948 1118 825 1086 739 1032 624 1092 505 1057 414 1000 300 989 220 901 233 793 159 708 160 590 192 501 139 412 151 339 206 292Z"/></clipPath></defs><g clip-path="url(#atlas-inline-land-clip)" pointer-events="none"><g data-atlas-geography-layer="waterways" class="atlas-waterways">
   <path d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="#385d67" stroke-opacity=".48" stroke-width="18" stroke-linecap="round"/>
   <path class="atlas-river-main" d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="url(#river)" stroke-width="8" stroke-linecap="round"/>
@@ -181,6 +202,7 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
    <path d="M300 890q31-17 59-4l-8 31q-32 8-57-7Z"/>
   </g>
   <g fill="none" stroke="#e5d7ae" stroke-opacity=".46" stroke-width="1.5"><path d="M352 831l-5 29m20-35-5 34m25-37-4 35m35-28-5 30m-15 25-5 29m23-34-5 34m35-38-5 34"/></g>
+  ${settlementSilhouettes}
  </g>
  <g data-atlas-geography-layer="terrain-details" class="atlas-terrain-details">
   <!-- Fan-made relief details; no new canonical locations or encounter coordinates. -->
@@ -199,13 +221,7 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
     <path d="M520 390q-10-18 5-28 3-16 19-11 13-10 22 4 16 1 13 18 9 14-7 22-8 15-23 8-15 7-20-7-14 1-9-6Z"/>
    </g>
    <g fill="none" stroke="#c3c69a" stroke-opacity=".46" stroke-width="2"><path d="M387 408q12-18 27-19m47 79q11-14 25-16m40-64q9-11 19-11"/></g>
-  </g>
-  <g class="atlas-settlement-architecture" fill="#8b7658" stroke="#e4d4b1" stroke-opacity=".72" stroke-width="2">
-   <path d="M678 925l18-16 18 16v22h-36Z"/><path d="M721 943l15-13 16 13v19h-31Z"/>
-   <path d="M663 958l13-11 14 11v16h-27Z"/><path d="M747 918l12-10 13 10v17h-25Z"/>
-   <path d="M678 925l18-16 18 16M721 943l15-13 16 13M663 958l13-11 14 11M747 918l12-10 13 10" fill="none" stroke="#ead8b3" stroke-width="3"/>
-  </g>
-  <g class="atlas-ruin-remnants" fill="none" stroke="#a9a18a" stroke-opacity=".58" stroke-width="5">
+  </g><g class="atlas-ruin-remnants" fill="none" stroke="#a9a18a" stroke-opacity=".58" stroke-width="5">
    <path d="M965 520q28-34 60-4m-60 4 5 28m55-32-4 30M982 548l35-2"/>
    <path d="M1050 570q25-27 48-2m-47 2 4 22m43-24-2 21"/>
    <path d="M970 512l-7-10m65 10 8-12m-37 44 1 10"/>
