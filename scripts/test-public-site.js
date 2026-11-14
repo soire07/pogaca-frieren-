@@ -651,7 +651,7 @@ test('adventurer account linking rejects invalid CSRF before opening a database 
 });
 
 test('public home showcase is visible only after explicit opt-in',async()=>{
- const profile={user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,xp:2400,active_room:'starter',layout:[],is_public:true};
+ const profile={user_id:'123456789012345678',character_name:'Fern',class_name:'Büyücü',level:20,xp:2400,active_room:'starter',layout:[{roomKey:'starter',decorationKey:'book_shelf',position:0}],is_public:true};
  const db={async query(sql){
   if(sql.includes('CREATE TABLE IF NOT EXISTS player_profile_settings')||sql.startsWith('ALTER TABLE'))return {rows:[],rowCount:0};
   if(sql.includes('FROM player_profile_settings'))return {rows:[{show_stats:false,show_achievements:true,show_collections:true,show_activity:false,show_cosmetics:true,active_title:null}],rowCount:1};
@@ -674,6 +674,7 @@ test('public home showcase is visible only after explicit opt-in',async()=>{
  assert.match(response.body,/Fern/);
  assert.match(response.body,/first_boss/);
  assert.match(response.body,/Ay Işığı Çerçevesi/);
+ assert.match(response.body,/Büyü Kitaplığı/);
 });
 
 test('player experience web mutations reject invalid CSRF before database access',async()=>{
