@@ -536,6 +536,7 @@ test('six biome art direction keeps every regional signature distinct and the de
   const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
   const artwork = await readFile(new URL('../public-assets/frieren-world-map.svg', import.meta.url), 'utf8');
   const artDirection = css.slice(css.lastIndexOf('Six-biome art-direction pass'));
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
   for (const [biome,opacity] of [['central-meadow','.9'],['great-forest','.84'],['ancient-ruins','.82'],['northern-ice','.86'],['schwer-highlands','.82'],['ausserst-arcana','.78']]) {
     assert.ok(artwork.includes('class="biome-'+biome+'" opacity="'+opacity+'"'), 'missing rendered SVG visual treatment for ' + biome);
   }
