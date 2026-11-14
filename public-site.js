@@ -1277,7 +1277,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
         try{
           const decorations=form.getAll('layoutDecoration');
           const layout=decorations.length
-            ? decorations.map((decorationKey,index)=>({roomKey:String(form.getAll('layoutRoom')[index]||''),decorationKey:String(decorationKey||''),position:Number(form.getAll('layoutPosition')[index])})).filter(item=>item.decorationKey)
+            ? decorations.map((decorationKey,index)=>({roomKey:String(form.getAll('layoutRoom')[index]||''),decorationKey:String(decorationKey||''),position:String(form.getAll('layoutPosition')[index]??'')===''?Number.NaN:Number(form.getAll('layoutPosition')[index])})).filter(item=>item.decorationKey)
             : JSON.parse(String(form.get('layout')||''));
           status=(await saveHomeLayout(db,{guildId,userId:profile.user_id,layout,activeRoom:String(form.get('activeRoom')||'starter')})).status;
         }catch(error){status=error?.message==='HOME_LAYOUT_INVALID'?'invalid_layout':'invalid';}
