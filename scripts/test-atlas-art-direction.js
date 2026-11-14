@@ -447,6 +447,7 @@ test('map overlays show each biome name and its live completion percentage at st
   const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
   assert.ok(atlas.includes('function buildAtlasBiomeLabels(points)'));
   assert.ok(atlas.includes('data-atlas-biome-label='));
+  assert.match(atlas, /orman:\{x:38,y:39\}, merkez:\{x:25\.5,y:74\}/, 'forest and central labels must stay inset from their coastlines');
   assert.ok(atlas.includes("Tamamlanma '+progress+'%"));
   for (const key of ['orman','merkez','harabeler','kuzey','yayla','aus']) {
     assert.ok(atlas.includes(key+':{x:'), 'missing biome label anchor: '+key);
