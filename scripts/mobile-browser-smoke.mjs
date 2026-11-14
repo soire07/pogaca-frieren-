@@ -175,6 +175,34 @@ for (const scenario of scenarios) {
         settlementArt.some(item => !(item.transform || '').startsWith('translate(') || !(item.transform || '').includes(') scale(') || item.pointerEvents !== 'none' || !item.insideViewport)) {
       throw new Error(scenario.name + ' settlement silhouettes are missing, misplaced or intercept map input: ' + JSON.stringify(settlementArt));
     }
+    const northernLandmarkLayout = await page.evaluate(() => {
+      const box = selector => {
+        const node = document.querySelector(selector);
+        if (!node) return null;
+        const rect = node.getBoundingClientRect();
+        return { left:rect.left, right:rect.right, top:rect.top, bottom:rect.bottom,
+          centerX:(rect.left+rect.right)/2, centerY:(rect.top+rect.bottom)/2 };
+      };
+      const ende = box('[data-settlement="ende"]');
+      const fortress = box('[data-settlement="demon-kings-castle"]');
+      const endePin = box('.atlas-pin-city[data-atlas-open="ende"]');
+      const fortressPin = box('.atlas-pin-city[data-atlas-open="demon-kings-castle"]');
+      const biome = box('.atlas-biome-label[data-atlas-biome-label="aus"]');
+      const overlaps = (a,b) => Boolean(a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
+      return {
+        ende, fortress, endePin, fortressPin, biome,
+        skylinesOverlap:overlaps(ende,fortress),
+        biomeOverlapsEnde:overlaps(biome,ende),
+        biomeOverlapsFortress:overlaps(biome,fortress),
+        endePinDrift:ende && endePin ? Math.hypot(ende.centerX-endePin.centerX,ende.centerY-endePin.centerY) : Infinity,
+        fortressPinDrift:fortress && fortressPin ? Math.hypot(fortress.centerX-fortressPin.centerX,fortress.centerY-fortressPin.centerY) : Infinity
+      };
+    });
+    if (northernLandmarkLayout.skylinesOverlap || northernLandmarkLayout.biomeOverlapsEnde ||
+        northernLandmarkLayout.biomeOverlapsFortress || northernLandmarkLayout.endePinDrift > 2 ||
+        northernLandmarkLayout.fortressPinDrift > 2) {
+      throw new Error(scenario.name + ' Ende landmark silhouettes, biome label or city pins overlap: ' + JSON.stringify(northernLandmarkLayout));
+    }
     const artworkResponse = await page.request.get(baseUrl + '/assets/frieren-world-map.svg?v=atlas-379-1');
     if (!artworkResponse.ok()) throw new Error(scenario.name + ' atlas SVG asset HTTP ' + artworkResponse.status());
     const artwork = await artworkResponse.text();

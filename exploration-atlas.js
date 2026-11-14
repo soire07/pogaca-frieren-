@@ -134,9 +134,11 @@ const ATLAS_SETTLEMENT_VISUAL_ANCHORS = Object.freeze({
   ende:{x:85,y:48}
 });
 export function getAtlasSettlementVisualPosition(place,markerPositions=[]) {
+  const arrangedMarker=markerPositions.find(marker=>marker.key===place.key);
+  if(arrangedMarker)return {...place,x:arrangedMarker.x,y:arrangedMarker.y};
   const safeAnchor=ATLAS_SETTLEMENT_VISUAL_ANCHORS[place.key];
   if(safeAnchor)return {...place,...safeAnchor};
-  return markerPositions.find(marker=>marker.key===place.key)||place;
+  return place;
 }
 function buildAtlasSettlementSilhouettes(settlements=FRIEREN_WORLD_SETTLEMENTS,markerPositions=[]) {
   const groups=settlements.filter(place=>settlementSilhouetteTemplates[place.key]).map(place=>{
