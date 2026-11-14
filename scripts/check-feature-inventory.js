@@ -107,7 +107,7 @@ if (errors.length) {
     status,
     inventory.features.filter(feature => feature.status === status).length
   ]));
-  console.log(`Özellik envanteri geçerli: ${originalFeatures.length} özgün özellik kanıt bağlantılı; ${roadmapFeatures.length} yeni özellik planned; toplam ${inventory.features.length}/${inventory.targetFeatures}. Durumlar: ${JSON.stringify(byStatus)}.`);
+  console.log(`Özellik envanteri geçerli: ${originalFeatures.length} mevcut özellik kaydı; ${roadmapFeatures.length} planlanan yol haritası kaydı; toplam ${inventory.features.length}/${inventory.targetFeatures}. Durumlar: ${JSON.stringify(byStatus)}.`);
   if (!inventory.auditComplete) {
     console.log('Not: Özgün özelliklerin kanıt bağlantıları mevcut; yol haritasındaki planned özellikler henüz uygulanmadığı için tam denetim tamamlanmadı.');
   }
