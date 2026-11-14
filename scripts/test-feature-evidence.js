@@ -14,7 +14,7 @@ const namedTestBody = (content, name) => {
   const declaration = "test('" + name + "'";
   const start = content.indexOf(declaration);
   if (start < 0) return null;
-  const next = content.indexOf("\\ntest(", start + declaration.length);
+  const next = content.indexOf("\ntest(", start + declaration.length);
   return content.slice(start, next < 0 ? content.length : next);
 };
 
@@ -87,6 +87,6 @@ test('feature evidence map references current source and named test assertions w
     }
   }
 
-  assert.deepEqual(errors, [], 'Feature evidence map mismatches:\\n' + errors.join('\\n'));
+  assert.deepEqual(errors, [], 'Feature evidence map mismatches:\n' + errors.join('\n'));
   console.log('Feature evidence traceability: ' + evidence.entries.length + ' manually mapped records; inventory statuses unchanged.');
 });
