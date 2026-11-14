@@ -175,6 +175,42 @@ for (const scenario of scenarios) {
         settlementArt.some(item => !(item.transform || '').startsWith('translate(') || !(item.transform || '').includes(') scale(') || item.pointerEvents !== 'none' || !item.insideViewport)) {
       throw new Error(scenario.name + ' settlement silhouettes are missing, misplaced or intercept map input: ' + JSON.stringify(settlementArt));
     }
+    const northernLandmarkLayout = await page.evaluate(() => {
+      const box = selector => {
+        const node = document.querySelector(selector);
+        if (!node) return null;
+        const rect = node.getBoundingClientRect();
+        return { left:rect.left, right:rect.right, top:rect.top, bottom:rect.bottom,
+          centerX:(rect.left+rect.right)/2, centerY:(rect.top+rect.bottom)/2 };
+      };
+      const ende = box('[data-settlement="ende"]');
+      const fortress = box('[data-settlement="demon-kings-castle"]');
+      const endePin = box('.atlas-pin-city[data-atlas-open="ende"]');
+      const fortressPin = box('.atlas-pin-city[data-atlas-open="demon-kings-castle"]');
+      const biome = box('.atlas-biome-label[data-atlas-biome-label="aus"]');
+      const art = document.querySelector('.atlas-map-art').getBoundingClientRect();
+      const anchor = key => {
+        const node = document.querySelector('[data-settlement="'+key+'"]');
+        const match = /translate\(([-0-9.]+)\s+([-0-9.]+)\)/.exec(node?.getAttribute('transform') || '');
+        return match ? { x:art.left+Number(match[1])/1800*art.width, y:art.top+Number(match[2])/1200*art.height } : null;
+      };
+      const pinCenter = value => value ? { x:value.centerX,y:value.centerY } : null;
+      const distance = (a,b) => a && b ? Math.hypot(a.x-b.x,a.y-b.y) : Infinity;
+      const overlaps = (a,b) => Boolean(a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
+      return {
+        ende, fortress, endePin, fortressPin, biome,
+        skylinesOverlap:overlaps(ende,fortress),
+        biomeOverlapsEnde:overlaps(biome,ende),
+        biomeOverlapsFortress:overlaps(biome,fortress),
+        endePinDrift:distance(pinCenter(endePin),anchor('ende')),
+        fortressPinDrift:distance(pinCenter(fortressPin),anchor('demon-kings-castle'))
+      };
+    });
+    if (northernLandmarkLayout.skylinesOverlap || northernLandmarkLayout.biomeOverlapsEnde ||
+        northernLandmarkLayout.biomeOverlapsFortress || northernLandmarkLayout.endePinDrift > 2 ||
+        northernLandmarkLayout.fortressPinDrift > 2) {
+      throw new Error(scenario.name + ' Ende landmark silhouettes, biome label or city pins overlap: ' + JSON.stringify(northernLandmarkLayout));
+    }
     const artworkResponse = await page.request.get(baseUrl + '/assets/frieren-world-map.svg?v=atlas-379-1');
     if (!artworkResponse.ok()) throw new Error(scenario.name + ' atlas SVG asset HTTP ' + artworkResponse.status());
     const artwork = await artworkResponse.text();
