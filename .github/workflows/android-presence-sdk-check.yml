@@ -1,0 +1,58 @@
+name: Android Rich Presence SDK access check
+
+on:
+  push:
+    branches:
+      - feat/android-rich-presence-helper
+    paths:
+      - .github/workflows/android-presence-sdk-check.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-sdk-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download to ephemeral runner and inspect AAR layout
+        shell: bash
+        run: |
+          python - <<'PY'
+          import io
+          import requests
+          import zipfile
+
+          file_id = "1IdhZ_yHOtsU5OHKk-1IGdQRc-oq7sR2e"
+          url = f"https://drive.google.com/uc?export=download&id={file_id}"
+          response = requests.get(url, timeout=60)
+          response.raise_for_status()
+          data = response.content
+          print(f"DOWNLOAD_BYTES={len(data)}")
+          if not data.startswith(b"PK"):
+              raise SystemExit("Downloaded content is not a ZIP/AAR archive.")
+
+          with zipfile.ZipFile(io.BytesIO(data)) as archive:
+              names = archive.namelist()
+              print(f"ARCHIVE_ENTRIES={len(names)}")
+              selected = [n for n in names if (
+                  n == "AndroidManifest.xml" or n == "classes.jar" or
+                  n.startswith("jni/") or n.startswith("prefab/") or
+                  n.startswith("META-INF/") or "discordpp.h" in n or
+                  "discord_partner_sdk" in n
+              )]
+              for name in selected[:100]:
+                  info = archive.getinfo(name)
+                  print(f"ENTRY {name} SIZE={info.file_size}")
+              required = ["AndroidManifest.xml", "classes.jar"]
+              missing = [name for name in required if name not in names]
+              if missing:
+                  print("AAR_ANDROID_LAYOUT=INCOMPLETE")
+                  print("MISSING=" + ",".join(missing))
+              else:
+                  print("AAR_ANDROID_LAYOUT=VALID")
+              has_prefab = any(n.startswith("prefab/") for n in names)
+              print(f"ANDROID_PREFAB={'YES' if has_prefab else 'NO'}")
+              print("SDK_ARCHIVE_NOT_STORED_OR_PUBLISHED")
+          PY
