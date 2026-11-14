@@ -140,12 +140,12 @@ test('Frieren atlas adds subtle northern snowfall and forest mist without changi
   const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
   const site = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
   assert.match(atlas, /<div class="atlas-atmosphere-layer" aria-hidden="true"><\/div>/);
-  assert.match(atlas, /frieren-world-map\.svg\?v=atlas-376-1/);
+  assert.match(atlas, /frieren-world-map\.svg\?v=atlas-377-1/);
   assert.match(css, /\.atlas-atmosphere-layer::before/);
   assert.match(css, /atlas-northfall/);
   assert.match(css, /atlas-forest-mist/);
   assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-atmosphere-layer::before/);
-  assert.match(site, /site\.css\?v=atlas-376-1/);
+  assert.match(site, /site\.css\?v=atlas-377-1/);
 });
 
 
@@ -186,7 +186,7 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   }
   assert.match(atlas, /const geographyOverlay = `</);
   assert.match(atlas, /atlas-geography-overlay/);
-  assert.ok(atlas.includes("geographyOverlay+localDetailOverlay+routeOverlay+'<div class="), 'inline geography and route overlays must be inserted into map markup');
+  assert.ok(atlas.includes("geographyOverlay+localDetailOverlay+routeOverlay+biomeLabels+'<div class="), 'inline geography and route overlays must be inserted into map markup');
   assert.match(atlas, /atlas-inline-land-clip/);
   assert.match(atlas, /atlas-river-main/);
   assert.match(atlas, /atlas-lake/);
@@ -220,8 +220,8 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   assert.match(client, /data-atlas-geography/);
   assert.ok(client.includes("querySelectorAll('[data-atlas-geography-layer="), 'client must locate the SVG layer rendered by the server module');
   assert.match(client, /toggleAttribute\('hidden',!enabled\)/, 'SVG layer visibility must use a real hidden attribute');
-  assert.match(atlas, /atlas-376-1/);
-  assert.match(site, /exploration-atlas\.js\?v=atlas-376-1/);
+  assert.match(atlas, /atlas-377-1/);
+  assert.match(site, /exploration-atlas\.js\?v=atlas-377-1/);
   assert.match(locations, /x:39, y:79/);
   assert.match(locations, /level_1: Object\.freeze\(\{ regionKey:'merkez', x:43, y:72/);
 });
@@ -439,4 +439,55 @@ test('large groups of edge encounters are distributed to distinct free land posi
       assert.ok(Math.hypot(dx, dy) >= 3.1, 'edge encounters must not collapse into one boundary pile');
     }
   }
+});
+
+
+test('map overlays show each biome name and its live completion percentage at stable geographic anchors', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  assert.ok(atlas.includes('function buildAtlasBiomeLabels(points)'));
+  assert.ok(atlas.includes('data-atlas-biome-label='));
+  assert.ok(atlas.includes("Tamamlanma '+progress+'%"));
+  for (const key of ['orman','merkez','harabeler','kuzey','yayla','aus']) {
+    assert.ok(atlas.includes(key+':{x:'), 'missing biome label anchor: '+key);
+  }
+  assert.ok(atlas.includes('geographyOverlay+localDetailOverlay+routeOverlay+biomeLabels'));
+  assert.ok(css.includes('.atlas-biome-label-layer'));
+});
+
+test('Ende and Demon King castle use inward display anchors and zoom never shrinks below map bounds', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  const client = await readFile(new URL('../public-assets/exploration-atlas.js', import.meta.url), 'utf8');
+  assert.ok(atlas.includes("place.key==='ende'?85:place.key==='demon-kings-castle'?89"));
+  assert.ok(atlas.includes("place.key==='ende'?27:place.key==='demon-kings-castle'?38"));
+  assert.ok(atlas.includes("place.key==='ende' ? 0.78 : place.key==='demon-kings-castle' ? 0.82 : 1"));
+  assert.ok(client.includes('clamp(scale*delta,1,3.2)'));
+  assert.ok(client.includes('clamp(scale*(distance/pinchDistance),1,3.2)'));
+  assert.ok(atlas.includes('data-atlas-geography-layer="waterways" class="atlas-waterways">'));
+  assert.ok(!atlas.includes('class="atlas-waterways"> class="atlas-waterways">'));
+});
+
+test('castle architecture has masonry courses and the Demon King fortress has lit defensive towers', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  const templatesStart = atlas.indexOf('const settlementSilhouetteTemplates = Object.freeze({');
+  const templatesEnd = atlas.indexOf('function buildAtlasSettlementSilhouettes', templatesStart);
+  const templates = atlas.slice(templatesStart, templatesEnd);
+  assert.match(templates, /castle-masonry-detail/);
+  assert.match(templates, /castle-ember-lights/);
+  assert.match(templates, /demon-fortress/);
+});
+
+test('biome completion percentage reflects discovery, defeated bosses, dungeon wins and collected rare items', async () => {
+  const { getAtlasBiomeCompletionPercent } = await import('../exploration-atlas.js');
+  assert.equal(getAtlasBiomeCompletionPercent({ discovered:false, visits:0, bosses:[], dungeons:[], rareItems:[] }), 0);
+  assert.equal(getAtlasBiomeCompletionPercent({
+    discovered:true,
+    bosses:[{ defeated:true },{ defeated:false }],
+    dungeons:[{},{}],
+    dungeonWins:1,
+    rareItems:[{ ownedQuantity:1 },{ ownedQuantity:0 }]
+  }), 57);
+  assert.equal(getAtlasBiomeCompletionPercent({
+    discovered:true, bosses:[], dungeons:[{}], dungeonWins:9, rareItems:[{ ownedQuantity:2 }]
+  }), 100);
 });
