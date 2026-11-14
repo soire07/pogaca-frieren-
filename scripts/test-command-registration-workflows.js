@@ -95,7 +95,7 @@ test('Poğaça external HTTP health probe checks liveness and dependency readine
   assert.ok(source.includes("payload.checks?.database === 'ok'"));
   assert.ok(source.includes('for attempt in 1 2 3'), 'each endpoint has bounded retries');
   assert.ok(source.includes('--connect-timeout 8 --max-time 15'), 'requests must have bounded network timeouts');
-  assert.ok(source.includes('timeout-minutes: 3'));
+  assert.ok(source.includes('timeout-minutes: 5'));
   assert.ok(!source.includes('FRIEREN_AI_HEALTH_URL'));
   assert.ok(!source.includes('DATABASE_URL'));
 });
@@ -152,4 +152,25 @@ test('additional guild onboarding is manual, explicitly confirmed, and guild-onl
   assert.ok(source.includes('GUILD_IDS: ${{ inputs.guild_id }}'), 'only the explicitly confirmed target guild may receive guild commands');
   assert.ok(source.includes('SKIP_GLOBAL_COMMAND_SYNC: "true"'), 'adding a guild must not rewrite global commands');
   assert.ok(source.includes('group: discord-command-registration'), 'guild registrations must be serialized with other command syncs');
+});
+
+test('Vercel public site and Discord OAuth probes verify redirects without completing OAuth or writing data', async () => {
+  const source = await workflow('pogaca-external-health.yml');
+
+  assert.ok(source.includes('SITE_URL: https://frierenbot.vercel.app'));
+  assert.ok(source.includes('Verify the public Vercel login page'));
+  assert.ok(source.includes('Verify Discord OAuth start redirect without following it'));
+  assert.ok(source.includes('Verify an unbound OAuth callback is rejected without completing login'));
+  assert.ok(source.includes("target.origin === 'https://discord.com'"));
+  assert.ok(source.includes("target.pathname === '/oauth2/authorize'"));
+  assert.ok(source.includes("target.searchParams.get('scope') === 'identify'"));
+  assert.ok(source.includes("target.searchParams.get('redirect_uri') === expectedRedirect"));
+  assert.ok(source.includes("target.searchParams.get('status') === 'discord_error'"));
+  assert.ok(source.includes('frieren_site_oauth_state=;'));
+  assert.ok(source.includes('HttpOnly'));
+  assert.ok(source.includes('SameSite=Lax'));
+  assert.ok(source.includes('Max-Age=600'));
+  assert.ok(!source.includes('--location'), 'the probe must not follow the Discord authorize redirect');
+  assert.ok(!source.includes('DISCORD_CLIENT_SECRET'), 'the probe must never receive or print OAuth secrets');
+  assert.ok(!source.includes('DATABASE_URL'), 'the probe must not connect to or mutate the production database');
 });
