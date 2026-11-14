@@ -40,7 +40,7 @@ test('active pet switching and naming affect only owned pets',async()=>{
  assert.equal(pets.filter(p=>p.is_active).length,1);
  assert.equal(pets.find(p=>p.is_active).nickname,'Kar Tanesi');
  assert.equal((await setActivePet(pool,{guildId:guild,userId:user,petKey:'dragon_hatchling'})).status,'not_owned');
- assert.equal((await renamePet(pool,{guildId:guild,userId:user,petKey:'dragon_hatchling',name:'X'})).status,'not_owned');
+ assert.equal((await renamePet(pool,{guildId:guild,userId:user,petKey:'dragon_hatchling',name:'Kayıp Dost'})).status,'not_owned');
 });
 test('pet care is cooldown-protected, charges atomically and advances care streak',async()=>{
  const result=await careForPet(pool,{guildId:guild,userId:user,petKey:'snow_hare',action:'feed'});
