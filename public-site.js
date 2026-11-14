@@ -194,7 +194,7 @@ function page(title, content, user, seo = {}) {
           navLink('/maceraci/atolye', '✦', 'Lonca Büyü Atölyesi', 'Sunucu yönetimine özel araçlar')
         ]) +
         navGroup('oyuncu', 'BAŞLANGIÇ', [
-          navLink('/maceraci', '⌂', 'Maceracı Panelim', 'Karakterin, etkinliklerin ve oyuncu ilerlemen'),
+          navLink('/', '✧', 'Bot Tanıtımı', 'Poğaça Frieren botunu tanı ve sunucuna ekle'),
           navLink('/kesfet', '✧', 'Keşfet', 'Frieren dünyasını tanı')
         ]) +
         navGroup('dunya', 'FRIEREN DÜNYASI', [
