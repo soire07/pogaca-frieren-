@@ -504,7 +504,7 @@ test('Demon King fortress footprint stays inside the atlas landmass and its visu
   const { getAtlasSettlementVisualPosition } = await import('../exploration-atlas.js');
   const { isInsideAtlasLand } = await import('../atlas-pin-layout.js');
   assert.ok(atlas.includes('export function getAtlasSettlementVisualPosition(place,markerPositions=[])'));
-  assert.ok(atlas.includes("'demon-kings-castle':{x:82,y:30}"));
+  assert.ok(atlas.includes("'demon-kings-castle':{x:74,y:30}"));
   assert.match(atlas, /atlas-settlement-architecture atlas-settlement-silhouettes/);
   assert.ok(atlas.includes("place.key==='ende'?85:place.key==='demon-kings-castle'?82"));
   assert.ok(locations.includes("key:'demon-kings-castle', name:'İblis Kralı’nın Şatosu', subtitle:'Ende', regionKey:'aus', x:94, y:24"));

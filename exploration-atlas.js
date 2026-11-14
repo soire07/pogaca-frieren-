@@ -166,7 +166,7 @@ export function getAtlasBiomeCompletionPercent(item={}) {
 function buildAtlasBiomeLabels(points) {
   const anchors = Object.freeze({
     orman:{x:29.5,y:39}, merkez:{x:31.5,y:74}, harabeler:{x:49.25,y:55.25},
-    kuzey:{x:59,y:23.75}, yayla:{x:74,y:69}, aus:{x:74,y:17}
+    kuzey:{x:59,y:23.75}, yayla:{x:74,y:69}, aus:{x:62,y:40}
   });
   return '<div class="atlas-biome-label-layer" aria-label="Biyom adları ve tamamlanma yüzdeleri">'+points.map(({item,geo})=>{
     const anchor=anchors[item.region.key];
