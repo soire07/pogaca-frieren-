@@ -1814,6 +1814,8 @@ test('mobile homepage locks the document to the viewport and keeps the accessibi
  const css=String(stylesheet.body);
  assert.ok(css.includes('html{scroll-behavior:smooth;width:100%;max-width:100%;overflow-x:clip}'));
  assert.ok(css.includes('.accessibility-panel>summary{list-style:none;display:flex;align-items:center;justify-content:center;width:max-content;max-width:100%;min-height:34px;'));
+ assert.ok(css.includes('footer nav{flex-wrap:wrap;min-width:0;max-width:100%}'));
+ assert.ok(css.includes('footer nav a{min-width:0;max-width:100%;overflow-wrap:anywhere}'));
 });
 test('public pages expose persistent and keyboard-accessible reading controls', async () => {
  const response=res();
