@@ -1917,15 +1917,19 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           const listings=await listPlayerMarketListings(pool,guildId,15);
           const listing=listings.find(item=>item.seller_id===userId&&item.item_key==='audit_market_relic');
           const inventoryAfterSale=await pool.query("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='audit_market_relic'",[guildId,userId]);
+          const listingStateBeforeCancel=listing?await pool.query('SELECT status FROM player_market_listings WHERE listing_id=$1',[listing.listing_id]):{rows:[]};
+          const saleText=payloadTextFromEffects(saleEffects);
+          behavioralChecks.push(
+            {name:'Pazar slash komutu ilan oluşturur',expected:'/pazar sat envanterden bir eşyayı ayırıp aktif ilan açmalı',actual:(listing?.listing_id||'ilan yok')+' / durum '+String(listingStateBeforeCancel.rows[0]?.status)+' / envanter '+String(inventoryAfterSale.rows[0]?.quantity)+' / '+saleText,passed:Boolean(listing)&&listingStateBeforeCancel.rows[0]?.status==='active'&&Number(inventoryAfterSale.rows[0]?.quantity)===1&&saleText.includes('İlanın oluşturuldu')},
+          );
           const cancelEffects=[];
           const cancelInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'iptal',ilan:listing?.listing_id}),guildId,cancelEffects);
           cancelInteraction.user.id=userId;cancelInteraction.member=makeMember(userId);
           await command.execute(cancelInteraction);
           const inventoryAfterCancel=await pool.query("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='audit_market_relic'",[guildId,userId]);
           const listingState=listing?await pool.query('SELECT status FROM player_market_listings WHERE listing_id=$1',[listing.listing_id]):{rows:[]};
-          const saleText=payloadTextFromEffects(saleEffects),cancelText=payloadTextFromEffects(cancelEffects);
+          const cancelText=payloadTextFromEffects(cancelEffects);
           behavioralChecks.push(
-            {name:'Pazar slash komutu ilan oluşturur',expected:'/pazar sat envanterden bir eşyayı ayırıp aktif ilan açmalı',actual:(listing?.listing_id||'ilan yok')+' / envanter '+String(inventoryAfterSale.rows[0]?.quantity),passed:Boolean(listing)&&listingState.rows[0]?.status==='active'&&Number(inventoryAfterSale.rows[0]?.quantity)===1&&saleText.includes('İlanın oluşturuldu')},
             {name:'Pazar slash komutu ilanı iptal eder',expected:'/pazar iptal ilanı kapatıp eşyayı iade etmeli',actual:listingState.rows[0]?.status+' / envanter '+String(inventoryAfterCancel.rows[0]?.quantity)+' / '+cancelText,passed:listingState.rows[0]?.status==='cancelled'&&Number(inventoryAfterCancel.rows[0]?.quantity)===2&&cancelText.includes('İlan iptal edildi')}
           );
           effects.push(...saleEffects, ...cancelEffects);
