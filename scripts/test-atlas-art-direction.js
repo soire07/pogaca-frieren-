@@ -420,3 +420,23 @@ test('boss markers prefer the dedicated map coordinate catalog over generic runt
   assert.match(atlas, /Number\.isFinite\(Number\(location\.y\)\)/);
   assert.match(atlas, /resolveAtlasBossLocation\(boss\)/);
 });
+
+
+test('large groups of edge encounters are distributed to distinct free land positions', async () => {
+  const { declutterAtlasPins, isInsideAtlasLand } = await import('../atlas-pin-layout.js');
+  const source = Array.from({ length: 36 }, (_, index) => ({
+    id: 'edge-encounter-' + index, type: 'boss', x: 99.5, y: 36
+  }));
+  const arranged = declutterAtlasPins(source);
+  assert.equal(new Set(arranged.map(pin => pin.id)).size, source.length);
+  for (const pin of arranged) {
+    assert.ok(isInsideAtlasLand(pin.x, pin.y), 'every encounter must be placed on land');
+  }
+  for (let i = 0; i < arranged.length; i++) {
+    for (let j = i + 1; j < arranged.length; j++) {
+      const dx = arranged[i].x - arranged[j].x;
+      const dy = (arranged[i].y - arranged[j].y) * 1.5;
+      assert.ok(Math.hypot(dx, dy) >= 3.1, 'edge encounters must not collapse into one boundary pile');
+    }
+  }
+});
