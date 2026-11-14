@@ -445,12 +445,14 @@ test('large groups of edge encounters are distributed to distinct free land posi
 test('map overlays show each biome name and its live completion percentage at stable geographic anchors', async () => {
   const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
   const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
-  assert.match(atlas, /function buildAtlasBiomeLabels\\(points\\)/);
-  assert.match(atlas, /data-atlas-biome-label=/);
-  assert.match(atlas, /Tamamlanma '\\+progress\\+'%'/);
-  for (const key of ['orman','merkez','harabeler','kuzey','yayla','aus']) assert.match(atlas, new RegExp(key+':\\\\{x:'));
+  assert.ok(atlas.includes('function buildAtlasBiomeLabels(points)'));
+  assert.ok(atlas.includes('data-atlas-biome-label='));
+  assert.ok(atlas.includes("Tamamlanma '+progress+'%"));
+  for (const key of ['orman','merkez','harabeler','kuzey','yayla','aus']) {
+    assert.ok(atlas.includes(key+':{x:'), 'missing biome label anchor: '+key);
+  }
   assert.ok(atlas.includes('geographyOverlay+localDetailOverlay+routeOverlay+biomeLabels'));
-  assert.match(css, /\\.atlas-biome-label-layer/);
+  assert.ok(css.includes('.atlas-biome-label-layer'));
 });
 
 test('Ende and Demon King castle use inward display anchors and zoom never shrinks below map bounds', async () => {
@@ -458,8 +460,9 @@ test('Ende and Demon King castle use inward display anchors and zoom never shrin
   const client = await readFile(new URL('../public-assets/exploration-atlas.js', import.meta.url), 'utf8');
   assert.ok(atlas.includes("place.key==='ende'?85:place.key==='demon-kings-castle'?89"));
   assert.ok(atlas.includes("place.key==='ende'?27:place.key==='demon-kings-castle'?38"));
-  assert.match(client, /clamp\\(scale\\*delta,1,3\\.2\\)/);
-  assert.match(client, /clamp\\(scale\\*\\(distance\\/pinchDistance\\),1,3\\.2\\)/);
-  assert.match(atlas, /data-atlas-geography-layer="waterways" class="atlas-waterways">/);
-  assert.doesNotMatch(atlas, /class="atlas-waterways"> class="atlas-waterways">/);
+  assert.ok(atlas.includes("place.key==='ende' ? 0.78 : place.key==='demon-kings-castle' ? 0.82 : 1"));
+  assert.ok(client.includes('clamp(scale*delta,1,3.2)'));
+  assert.ok(client.includes('clamp(scale*(distance/pinchDistance),1,3.2)'));
+  assert.ok(atlas.includes('data-atlas-geography-layer="waterways" class="atlas-waterways">'));
+  assert.ok(!atlas.includes('class="atlas-waterways"> class="atlas-waterways">'));
 });
