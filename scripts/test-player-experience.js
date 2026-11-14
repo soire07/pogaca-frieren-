@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {HOME_ROOMS,HOME_DECORATIONS,HOME_STATIONS,ALCHEMY_RECIPES,PLAYER_COSMETICS,EVENT_MILESTONES,validateHomeLayout} from '../player-experience.js';
+import {HOME_ROOMS,HOME_DECORATIONS,HOME_DECORATION_CATALOG,HOME_STATIONS,ALCHEMY_RECIPES,PLAYER_COSMETICS,EVENT_MILESTONES,validateHomeLayout} from '../player-experience.js';
 import * as playerExperience from '../player-experience.js';
 
 test('personal home rooms have unique keys and nonnegative progression costs',()=>{
@@ -8,6 +8,12 @@ test('personal home rooms have unique keys and nonnegative progression costs',()
  assert.equal(HOME_ROOMS[0].key,'starter');
  assert.ok(HOME_ROOMS.every(x=>Number.isInteger(x.level)&&x.level>=1&&Number.isInteger(x.cost)&&x.cost>=0));
 });
+test('home decoration catalog gives every placeable key a unique player-facing name and icon',()=>{
+ assert.deepEqual(HOME_DECORATIONS,HOME_DECORATION_CATALOG.map(item=>item.key));
+ assert.equal(new Set(HOME_DECORATION_CATALOG.map(item=>item.key)).size,HOME_DECORATION_CATALOG.length);
+ assert.ok(HOME_DECORATION_CATALOG.every(item=>item.name.trim()&&item.emoji.trim()));
+});
+
 test('general cosmetics cover distinct player-facing slots without duplicate keys',()=>{
  assert.equal(new Set(PLAYER_COSMETICS.map(x=>x.key)).size,PLAYER_COSMETICS.length);
  for(const slot of ['profile_frame','nameplate','title_effect','spell_trail','victory_pose','avatar_border','guild_banner','seasonal_theme','collection_display']){
