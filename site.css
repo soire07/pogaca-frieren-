@@ -1851,3 +1851,23 @@ body.atlas-modal-open{overflow:hidden}
  .atlas-pin-glyph,.atlas-layer-controls button,.atlas-map-tools button{transition:none}
  .atlas-layer-controls button:hover,.atlas-map-tools button:hover{transform:none}
 }
+
+
+/* Local atlas plans: legible, varied schematic town fabric at close zoom. */
+.atlas-local-detail-overlay{overflow:visible;filter:drop-shadow(0 2px 3px #101b1a66)}
+.atlas-local-settlement-plan{opacity:.96}
+.atlas-local-settlement-plan--walled .atlas-local-wall{stroke:#d8c49a;stroke-opacity:.88}
+.atlas-local-settlement-plan--market .atlas-local-market{opacity:.9}
+.atlas-local-settlement-plan--hamlet .atlas-local-field-edge{stroke:#a0a879;stroke-opacity:.88}
+.atlas-local-street path:first-child{stroke:#655944;stroke-opacity:.9}
+.atlas-local-street path:last-child{stroke:#eadbb9;stroke-opacity:.82}
+.atlas-local-building{filter:drop-shadow(0 1px 1px #18252288)}
+.atlas-local-building rect{stroke-linejoin:round}
+.atlas-local-garden{opacity:.88}
+.atlas-local-plaza{filter:drop-shadow(0 1px 1px #18252288)}
+.atlas-map-art[data-atlas-zoom-detail="local"] .atlas-local-detail-overlay{opacity:.86}
+@media(max-width:700px){
+ .atlas-map-art[data-atlas-zoom-detail="local"] .atlas-local-detail-overlay{opacity:.72}
+ .atlas-local-settlement-plan{opacity:.9}
+}
+@media(prefers-reduced-motion:reduce){.atlas-local-detail-overlay{transition:none}}
