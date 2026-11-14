@@ -714,6 +714,10 @@ test('player experience web page is scoped to the linked character and shows hom
  assert.match(response.body,/Etkinlik İlerlemesi/);
  assert.match(response.body,/Zindan Gecesi/);
  assert.match(response.body,/book_shelf/);
+ assert.match(response.body,/name="layoutRoom"/);
+ assert.match(response.body,/name="layoutDecoration"/);
+ assert.match(response.body,/name="layoutPosition"/);
+ assert.doesNotMatch(response.body,/Yerleşim JSON/);
 });
 
 test('adventurer inventory page is account- and guild-scoped and displays equipped items', async () => {
@@ -1111,7 +1115,7 @@ test('player home visibility and layout controls persist only for the linked acc
     if (sql.includes('FROM site_discord_links l JOIN users u')) return { rows: [profile], rowCount: 1 };
     if (sql.startsWith('INSERT INTO users') || sql.startsWith('INSERT INTO user_talents') || sql.startsWith('INSERT INTO learned_spells')) return { rows: [], rowCount: 1 };
     if (sql.includes('INSERT INTO player_home_rooms')) return { rows: [], rowCount: 1 };
-    if (sql.includes('SELECT room_key FROM player_home_rooms')) return { rows: [{ room_key: 'starter' }], rowCount: 1 };
+    if (sql.includes('SELECT room_key FROM player_home_rooms')) return { rows: [{ room_key: 'starter' }, { room_key: 'library' }], rowCount: 2 };
     if (sql.includes('INSERT INTO player_homes')) { writes.push({ sql, params }); return { rows: [], rowCount: 1 }; }
     throw new Error('Unexpected player home mutation query: ' + sql);
   } };
@@ -1132,6 +1136,27 @@ test('player home visibility and layout controls persist only for the linked acc
   assert.equal(layout.status, 303);
   assert.match(layout.headers.Location, /status=saved/);
   assert.deepEqual(JSON.parse(writes[1].params[3]), [{ roomKey: 'starter', decorationKey: 'book_shelf', position: 0 }]);
+
+  const body = new URLSearchParams();
+  for (const [key, value] of [
+    ['csrf', createSiteCsrfToken(secret)], ['guildId', profile.guild_id], ['action', 'save-layout'], ['activeRoom', 'starter'],
+    ['layoutRoom', 'starter'], ['layoutDecoration', 'book_shelf'], ['layoutPosition', '0'],
+    ['layoutRoom', 'library'], ['layoutDecoration', 'star_map'], ['layoutPosition', '0']
+  ]) body.append(key, value);
+  const token = createPublicSiteSession(secret, account, Math.floor(Date.now() / 1000) + 3600);
+  const structuredRequest = {
+    method: 'POST', url: '/maceraci/yasam',
+    headers: { cookie: buildPublicSiteSessionCookie(token, 3600).split(';')[0], 'content-type': 'application/x-www-form-urlencoded' },
+    async *[Symbol.asyncIterator]() { yield Buffer.from(body.toString()); }
+  };
+  const structured = res();
+  assert.equal(await handlePublicSiteRequest(structuredRequest, structured, { db }), true);
+  assert.equal(structured.status, 303);
+  assert.match(structured.headers.Location, /status=saved/);
+  assert.deepEqual(JSON.parse(writes[2].params[3]), [
+    { roomKey: 'starter', decorationKey: 'book_shelf', position: 0 },
+    { roomKey: 'library', decorationKey: 'star_map', position: 0 }
+  ]);
 });
 
 
