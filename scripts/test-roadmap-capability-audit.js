@@ -39,10 +39,11 @@ test('Turkish diacritics normalize without merging distinct category scopes', ()
   assert.deepEqual(report.errors, ['count ile toplam özellik kayıt sayısı eşleşmiyor.']);
 });
 
-test('full inventory normalizes compound action phrases into 325 capability groups', async () => {
+test('full inventory distinguishes 354 existing records, 1675 planned records, and 325 planned capability groups', async () => {
   const { readFile } = await import('node:fs/promises');
   const inventory = JSON.parse(await readFile(new URL('../feature-inventory.json', import.meta.url), 'utf8'));
   const report = auditRoadmapCapabilities(inventory);
+  assert.equal(inventory.features.filter(feature => !feature.id.startsWith('ROADMAP-')).length, 354);
   assert.equal(report.roadmapCount, 1675);
   assert.equal(report.capabilityCount, 325);
   assert.equal(report.repeatedCapabilityGroups, 225);

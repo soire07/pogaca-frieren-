@@ -103,10 +103,12 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  console.log('Roadmap capability audit: ' + report.roadmapCount + ' planned records represent '
-    + report.capabilityCount + ' normalized category/capability groups; '
-    + report.repeatedCapabilityGroups + ' groups contain repeated action variants ('
-    + report.repeatedVariantCount + ' extra records).');
+  const existingCount = inventory.features.filter(feature => !String(feature.id || '').startsWith('ROADMAP-')).length;
+  console.log('Feature inventory: ' + existingCount + ' existing feature records; '
+    + report.roadmapCount + ' planned roadmap records; '
+    + report.capabilityCount + ' normalized planned capability groups.');
+  console.log(report.repeatedCapabilityGroups + ' planned groups contain multiple action variants ('
+    + report.repeatedVariantCount + ' additional records); these are not automatically independent capabilities.');
   console.log('Action distribution: ' + JSON.stringify(report.actionCounts));
   console.log('Capability groups by category: ' + JSON.stringify(report.categoryCapabilityCounts));
   console.log('Repeated variants are audit findings, not automatically deletable duplicates.');
