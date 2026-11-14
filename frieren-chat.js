@@ -65,41 +65,55 @@ export function buildFrierenMessages({ history = [], userMessage, memories = [],
 }
 
 export async function generateFrierenReply({ history = [], userMessage, memories = [], chatSettings = DEFAULT_FRIEREN_CHAT_SETTINGS, env = process.env, fetchImpl = fetch }) {
-  const apiKey = String(env.GROQ_API_KEY || '').trim();
-  if (!apiKey) throw new Error('GROQ_API_KEY_MISSING');
+  const apiKey = String(env.GEMINI_API_KEY || '').trim();
+  if (!apiKey) throw new Error('GEMINI_API_KEY_MISSING');
 
-  const model = String(env.FRIEREN_CHAT_MODEL || 'openai/gpt-oss-20b').trim();
+  const model = String(env.GEMINI_CHAT_MODEL || 'gemini-3.5-flash-lite').trim();
   const timeoutMs = Math.max(5000, Math.min(Number(env.FRIEREN_CHAT_TIMEOUT_MS) || 45000, 90000));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetchImpl('https://api.groq.com/openai/v1/chat/completions', {
+    const messages = buildFrierenMessages({ history, userMessage, memories, chatSettings });
+    const systemMessage = messages.find(item => item.role === 'system');
+    const contents = messages
+      .filter(item => item.role !== 'system')
+      .map(item => ({
+        role: item.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: item.content }]
+      }));
+    const response = await fetchImpl('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
       method: 'POST',
       headers: {
-        authorization: 'Bearer ' + apiKey,
+        'x-goog-api-key': apiKey,
         'content-type': 'application/json'
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model,
-        messages: buildFrierenMessages({ history, userMessage, memories, chatSettings }),
-        temperature: 0.7,
-        max_tokens: 700
+        ...(systemMessage ? { systemInstruction: { parts: [{ text: systemMessage.content }] } } : {}),
+        contents,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 700
+        }
       })
     });
 
     if (!response.ok) {
       const detail = (await response.text().catch(() => '')).slice(0, 240);
-      throw new Error('GROQ_HTTP_' + response.status + (detail ? ': ' + detail : ''));
+      throw new Error('GEMINI_HTTP_' + response.status + (detail ? ': ' + detail : ''));
     }
 
     const payload = await response.json();
-    const answer = payload?.choices?.[0]?.message?.content;
-    if (typeof answer !== 'string' || !answer.trim()) throw new Error('GROQ_EMPTY_RESPONSE');
-    return answer.trim().slice(0, MAX_REPLY_LENGTH);
+    const answer = (payload?.candidates?.[0]?.content?.parts || [])
+      .map(part => typeof part?.text === 'string' ? part.text : '')
+      .filter(Boolean)
+      .join('')
+      .trim();
+    if (!answer) throw new Error('GEMINI_EMPTY_RESPONSE');
+    return answer.slice(0, MAX_REPLY_LENGTH);
   } catch (error) {
-    if (error?.name === 'AbortError') throw new Error('GROQ_TIMEOUT');
+    if (error?.name === 'AbortError') throw new Error('GEMINI_TIMEOUT');
     throw error;
   } finally {
     clearTimeout(timer);
@@ -127,7 +141,7 @@ export async function handleFrierenMentionMessage({ message, botUserId, db, env 
     return true;
   }
 
-  if (!String(env.GROQ_API_KEY || '').trim()) {
+  if (!String(env.GEMINI_API_KEY || '').trim()) {
     await message.reply({
       content: 'Sohbet yeteneğim henüz yapılandırılmadı. Biraz sonra tekrar dene.',
       allowedMentions: { parse: [] }
