@@ -21,6 +21,17 @@ const REGION_ANCHORS = Object.freeze({
   kuzey:{x:68,y:38},yayla:{x:76,y:65},aus:{x:88,y:19}
 });
 const CREATURES = new Map(CREATURE_CATALOG.map(item => [item.key,item]));
+function resolveAtlasBossLocation(boss) {
+  const catalogLocation = FRIEREN_WORLD_BOSS_LOCATIONS[boss.key];
+  const runtimeLocation = boss.location;
+  const valid = location => location && Number.isFinite(Number(location.x)) &&
+    Number.isFinite(Number(location.y)) && Number(location.x) >= 0 && Number(location.x) <= 100 &&
+    Number(location.y) >= 0 && Number(location.y) <= 100;
+  if (valid(catalogLocation)) {
+    return { ...catalogLocation, place: runtimeLocation?.place || catalogLocation.place };
+  }
+  return valid(runtimeLocation) ? runtimeLocation : null;
+}
 const FOG_PATHS = Object.freeze({
   merkez:'M17 69 Q25 63 35 67 Q44 71 47 82 L40 91 Q28 90 20 83 Z',
   orman:'M19 38 Q25 31 35 36 Q43 42 39 55 L30 61 Q20 55 17 47 Z',
@@ -145,7 +156,7 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
       x:place.x,y:place.y,focus:'city',subtitle:place.subtitle
     })),
     ...points.flatMap(({item})=>item.bosses.map(boss=>{
-      const location=boss.location||FRIEREN_WORLD_BOSS_LOCATIONS[boss.key];
+      const location=resolveAtlasBossLocation(boss);
       const anchor=REGION_ANCHORS[item.region.key]||REGION_ANCHORS.merkez;
       const point=location||{x:anchor.x,y:anchor.y,place:'Bölge boss alanı'};
       const archetypes = {
@@ -175,7 +186,50 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
   const panels=points.map(point=>panel(point.item,point.index,FRIEREN_WORLD_SETTLEMENTS,ATLAS_HISTORICAL_EVENTS,esc)).join('');
   const localDetailOverlay = buildAtlasLocalDetailLayer(FRIEREN_WORLD_SETTLEMENTS);
   const settlementSilhouettes = buildAtlasSettlementSilhouettes(FRIEREN_WORLD_SETTLEMENTS,arrangedMarkers.filter(marker=>marker.type==='city'));
-  const geographyOverlay = `<svg class="atlas-geography-overlay" viewBox="0 0 1800 1200" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="atlas-inline-land-clip"><path d="M206 292C259 221 371 179 492 198 585 133 718 129 832 163 940 100 1075 119 1170 157 1304 107 1442 167 1524 248 1632 309 1665 412 1618 516 1677 625 1634 741 1582 826 1631 929 1521 1033 1390 1038 1284 1104 1160 1073 1073 1043 948 1118 825 1086 739 1032 624 1092 505 1057 414 1000 300 989 220 901 233 793 159 708 160 590 192 501 139 412 151 339 206 292Z"/></clipPath></defs><g clip-path="url(#atlas-inline-land-clip)" pointer-events="none"><g data-atlas-geography-layer="waterways" class="atlas-waterways">
+  const geographyOverlay = `<svg class="atlas-geography-overlay" viewBox="0 0 1800 1200" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="atlas-inline-land-clip"><path d="M206 292C259 221 371 179 492 198 585 133 718 129 832 163 940 100 1075 119 1170 157 1304 107 1442 167 1524 248 1632 309 1665 412 1618 516 1677 625 1634 741 1582 826 1631 929 1521 1033 1390 1038 1284 1104 1160 1073 1073 1043 948 1118 825 1086 739 1032 624 1092 505 1057 414 1000 300 989 220 901 233 793 159 708 160 590 192 501 139 412 151 339 206 292Z"/></clipPath>
+ <linearGradient id="atlas-biome-forest-wash" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#315c43" stop-opacity=".42"/><stop offset="1" stop-color="#4e7551" stop-opacity=".1"/></linearGradient>
+ <linearGradient id="atlas-biome-plains-wash" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d4c58b" stop-opacity=".24"/><stop offset="1" stop-color="#8da77a" stop-opacity=".22"/></linearGradient>
+ <linearGradient id="atlas-biome-tundra-wash" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#dce8e5" stop-opacity=".42"/><stop offset="1" stop-color="#9fb9b7" stop-opacity=".12"/></linearGradient>
+ <linearGradient id="atlas-biome-highland-wash" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9d9b7c" stop-opacity=".22"/><stop offset="1" stop-color="#687f72" stop-opacity=".2"/></linearGradient>
+ <linearGradient id="atlas-biome-mountain-wash" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#647d7e" stop-opacity=".3"/><stop offset="1" stop-color="#405c63" stop-opacity=".18"/></linearGradient>
+ <radialGradient id="atlas-ashen-wash"><stop stop-color="#1c2029" stop-opacity=".88"/><stop offset=".58" stop-color="#30303a" stop-opacity=".62"/><stop offset="1" stop-color="#3d3940" stop-opacity="0"/></radialGradient>
+ <filter id="atlas-biome-edge-soft"><feGaussianBlur stdDeviation="24"/></filter>
+ <filter id="atlas-demon-haze"><feGaussianBlur stdDeviation="18"/></filter>
+ </defs><g clip-path="url(#atlas-inline-land-clip)" pointer-events="none">
+ <g class="atlas-biome-regions" data-atlas-geography-layer="biomes">
+  <path class="atlas-biome atlas-biome-forest" d="M170 275C260 205 405 205 535 258S730 340 740 465 665 665 535 716 320 695 230 590 145 395 170 275Z" fill="url(#atlas-biome-forest-wash)"/>
+  <path class="atlas-biome atlas-biome-central-plains" d="M170 635C300 585 435 625 560 665S790 650 910 720 1105 900 1055 1045 800 1120 625 1080 350 1050 225 935 125 760 170 635Z" fill="url(#atlas-biome-plains-wash)"/>
+  <path class="atlas-biome atlas-biome-northern-tundra" d="M590 120C780 90 930 135 1080 145S1415 110 1580 220 1690 390 1580 520 1350 565 1180 505 930 550 785 465 600 310 590 120Z" fill="url(#atlas-biome-tundra-wash)"/>
+  <path class="atlas-biome atlas-biome-highlands" d="M500 420C640 340 785 385 910 430S1110 435 1225 545 1290 710 1165 800 920 790 795 755 590 770 500 645 420 500 500 420Z" fill="url(#atlas-biome-highland-wash)"/>
+  <path class="atlas-biome atlas-biome-eastern-mountains" d="M1020 470C1155 405 1315 455 1450 505S1660 625 1630 795 1490 1000 1320 1045 1110 965 1080 825 935 585 1020 470Z" fill="url(#atlas-biome-mountain-wash)"/>
+  <path class="atlas-biome atlas-biome-ashen-north" d="M1250 115C1390 105 1550 145 1665 250S1700 430 1600 520 1415 525 1320 455 1235 300 1250 115Z" fill="url(#atlas-ashen-wash)" opacity=".82"/>
+  <g class="atlas-biome-transition" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#atlas-biome-edge-soft)" opacity=".34">
+   <path d="M540 250C675 350 695 485 610 650" stroke="#66805b" stroke-width="46"/>
+   <path d="M590 680C760 625 900 675 1040 820" stroke="#c6b88c" stroke-width="52"/>
+   <path d="M780 180C925 330 1010 410 1160 485" stroke="#b7c9c2" stroke-width="48"/>
+   <path d="M1120 470C1250 560 1330 710 1300 900" stroke="#74877c" stroke-width="54"/>
+  </g>
+ </g>
+ <g class="atlas-demon-wastes" data-atlas-geography-layer="demon-wastes">
+  <path class="atlas-ashen-ground" d="M1280 150C1400 130 1545 170 1645 270 1695 345 1640 455 1550 500 1455 545 1320 480 1275 385 1235 300 1230 210 1280 150Z" fill="#171b24" opacity=".54"/>
+  <path class="atlas-demon-fog" d="M1230 205C1360 115 1570 155 1675 285S1665 495 1515 540 1260 470 1215 350Z" fill="url(#atlas-ashen-wash)" filter="url(#atlas-demon-haze)"/>
+  <g class="atlas-dead-tree" stroke="#29252c" stroke-linecap="round" stroke-linejoin="round" fill="none">
+   <path d="M1350 420l8-56-18-23 20 10 8-37 4 36 22-16-18 29 7 58m-15-62-21-16m32 1 19-18" stroke-width="7"/>
+   <path d="M1435 360l5-48-16-20 18 9 6-33 4 33 18-14-15 25 5 48m-15-48-18-14m29 3 16-17" stroke-width="6"/>
+   <path d="M1510 455l7-60-20-25 22 11 7-40 5 39 21-17-17 30 8 62m-17-62-22-17m36 1 18-18" stroke-width="8"/>
+   <path d="M1580 350l5-43-14-19 16 8 6-31 3 30 18-12-14 23 5 44m-13-43-16-13m28 0 15-14" stroke-width="5"/>
+   <path d="M1320 300l4-35-13-17 15 7 5-26 3 26 15-11-12 20 4 36" stroke-width="5"/>
+  </g>
+  <g fill="none" stroke="#786b68" stroke-opacity=".58" stroke-width="3">
+   <path d="M1300 470l55-28 44 16 38-34 50 18 43-32 60 20"/>
+   <path d="M1335 510l36-17 38 12 35-20 47 15 38-22"/>
+  </g>
+  <g fill="#22232b" stroke="#6f5960" stroke-opacity=".5" stroke-width="2">
+   <path d="M1370 465q18-22 35-2l-9 21h-24Z"/><path d="M1460 495q20-25 39-2l-10 24h-27Z"/>
+   <path d="M1550 475q16-18 31-1l-8 19h-22Z"/>
+  </g>
+ </g>
+ <g data-atlas-geography-layer="waterways" class="atlas-waterways"> class="atlas-waterways">
   <path d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="#385d67" stroke-opacity=".48" stroke-width="18" stroke-linecap="round"/>
   <path class="atlas-river-main" d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="url(#river)" stroke-width="8" stroke-linecap="round"/>
   <path d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="#d5e5d9" stroke-opacity=".5" stroke-width="1.6" stroke-linecap="round"/>
