@@ -538,7 +538,7 @@ function cosmeticShowcaseCard(item,compact=false){
  return '<article class="cosmetic-showcase-item cosmetic-slot--'+esc(item.slot)+'" data-cosmetic-key="'+esc(item.key)+'"><div class="cosmetic-preview" aria-hidden="true"><span class="cosmetic-preview-orbit"></span><strong>'+COSMETIC_SLOT_GLYPHS[item.slot]+'</strong></div><div class="cosmetic-showcase-copy"><strong>'+esc(item.name)+'</strong><span>'+COSMETIC_SLOT_LABELS[item.slot]+'</span></div></article>';
 }
 
-function publicHomeShowcasePage(user,data){
+export function publicHomeShowcasePage(user,data){
  const settings=data.settings||{show_stats:false,show_achievements:true,show_collections:true,show_activity:false,show_cosmetics:true};
  const rooms=data.rooms.map(x=>HOME_ROOMS.find(r=>r.key===x.room_key)?.name||x.room_key);
  const unlockedRooms=new Set(data.rooms.map(x=>x.room_key));
