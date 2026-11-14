@@ -186,7 +186,7 @@ export async function saveHomeLayout(db,{guildId,userId,layout,activeRoom='start
 export const HOME_LAYOUT_PRESET_LIMIT=6;
 function normalizeHomeLayoutPresetName(value){
  const name=String(value||'').trim();
- return /^[\\p{L}\\p{N} _-]{1,32}$/u.test(name)?name:null;
+ return /^[\p{L}\p{N} _-]{1,32}$/u.test(name)?name:null;
 }
 export async function listHomeLayoutPresets(db,{guildId,userId}){
  player(guildId,userId);await ensurePlayerExperienceSchema(db);
