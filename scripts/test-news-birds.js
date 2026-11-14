@@ -43,12 +43,16 @@ test('digest renderer creates individual clickable image embeds and deduplicates
  ],new Date('2026-11-05T12:00:00.000Z'));
  assert.equal(embeds.length,2);
  assert.equal(embeds[0].title,'Nintendo Switch 2 sales');
- assert.equal(embeds[0].url,'https://www.animenewsnetwork.com/news/2026-11-05/game');
- assert.equal(embeds[0].image.url,'https://cdn.animenewsnetwork.com/thumb.jpg');
+ assert.equal(embeds[0].url,undefined);
+ assert.equal(embeds[0].image,undefined);
+ assert.equal(embeds[0].thumbnail.url,'https://cdn.animenewsnetwork.com/thumb.jpg');
+ assert.match(embeds[0].description,/\\[Haberi oku →\\]\\(https:\\/\\/www\\.animenewsnetwork\\.com\\/news\\/2026-11-05\\/game\\)/);
  assert.equal(embeds[0].fields[0].value,'Oyun');
  assert.equal(embeds[1].title,'New Manga License');
- assert.equal(embeds[1].url,'https://www.animenewsnetwork.com/news/2026-11-05/manga');
- assert.equal(embeds[1].image.url,'https://cdn.animenewsnetwork.com/manga.jpg');
+ assert.equal(embeds[1].url,undefined);
+ assert.equal(embeds[1].image,undefined);
+ assert.equal(embeds[1].thumbnail.url,'https://cdn.animenewsnetwork.com/manga.jpg');
+ assert.match(embeds[1].description,/\\[Haberi oku →\\]\\(https:\\/\\/www\\.animenewsnetwork\\.com\\/news\\/2026-11-05\\/manga\\)/);
  assert.equal(embeds[1].fields[0].value,'Manga');
  const duplicates=buildAnimeNewsDigestEmbeds([
   {title:'New Anime Season',link:'https://www.animenewsnetwork.com/news/2026-11-05/season'},
