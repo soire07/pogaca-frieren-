@@ -261,10 +261,9 @@ test('painterly terrain avoids tiled forest stamps and identical repeated mounta
   const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
   for (const variant of ['a', 'b', 'c', 'd']) {
     assert.match(artwork, new RegExp('id="atlas-canopy-' + variant + '"'), 'forest canopy needs distinct crown geometry: ' + variant);
-    assert.match(artwork, new RegExp('id="atlas-peak-' + variant + '"'), 'mountain relief needs distinct peak geometry: ' + variant);
     assert.match(artwork, new RegExp('href="#atlas-canopy-' + variant + '"'), 'forest should use canopy variant ' + variant);
-    assert.match(artwork, new RegExp('href="#atlas-peak-' + variant + '"'), 'mountains should use peak variant ' + variant);
   }
+  assert.doesNotMatch(artwork, /<use href="#atlas-peak-[a-d]"/, 'mountain system should use continuous relief geometry rather than oversized icon stamps');
   assert.doesNotMatch(artwork, /<use href="#atlas-canopy" transform="translate\(\d+ \d+\) scale\([^)]+\)"\/>/);
   assert.doesNotMatch(artwork, /<use href="#atlas-peak" transform="translate\(\d+ \d+\) scale\([^)]+\)"\/>/);
   assert.match(artwork, /fill="url\(#forest-canopy\)" filter="url\(#biome-edge\)" opacity="\.22"/, 'the tiled forest underpainting must not overpower the individual canopy crowns');
