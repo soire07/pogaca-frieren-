@@ -135,3 +135,21 @@ test('browser smoke workflows pin Playwright to a supported Ubuntu LTS runner', 
   assert.ok(production.includes('runs-on: ubuntu-24.04'));
   assert.ok(!production.includes('runs-on: ubuntu-latest'), 'production WebKit/Chromium installation must use the same supported LTS image');
 });
+
+
+test('additional guild onboarding is manual, explicitly confirmed, and guild-only', async () => {
+  const source = await workflow('register-additional-guild-commands.yml');
+  const triggerBlock = source.split('permissions:')[0];
+
+  assert.ok(triggerBlock.includes('workflow_dispatch:'), 'additional guild registration must be manually triggered');
+  assert.ok(!/schedule:|push:|pull_request:/.test(triggerBlock), 'additional guild registration must never run automatically');
+  assert.ok(source.includes('guild_id:'), 'the target guild ID must be an explicit workflow input');
+  assert.ok(source.includes('confirm_guild_id:'), 'the target guild ID must be confirmed a second time');
+  assert.ok(source.includes('[[ "$GUILD_ID" != "$CONFIRM_GUILD_ID" ]]'), 'the confirmation must match exactly');
+  assert.ok(source.includes('^[0-9]{17,20}$'), 'only Discord snowflake IDs may be accepted');
+  assert.ok(source.includes('1539562273197260860') && source.includes('1564945192803639356'), 'main and test guilds must be protected from this onboarding path');
+  assert.ok(source.indexOf('npm run check') < source.indexOf('npm run deploy-commands'), 'all checks must pass before any Discord write');
+  assert.ok(source.includes('GUILD_IDS: ${{ inputs.guild_id }}'), 'only the explicitly confirmed target guild may receive guild commands');
+  assert.ok(source.includes('SKIP_GLOBAL_COMMAND_SYNC: "true"'), 'adding a guild must not rewrite global commands');
+  assert.ok(source.includes('group: discord-command-registration'), 'guild registrations must be serialized with other command syncs');
+});

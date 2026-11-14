@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { ActivityType, ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, Collection, EmbedBuilder, Events, GatewayIntentBits, MessageFlags, PermissionFlagsBits } from 'discord.js';
+import { ActivityType, ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, Collection, EmbedBuilder, Events, GatewayIntentBits, MessageFlags, PermissionFlagsBits, REST } from 'discord.js';
 import { readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -38,6 +38,7 @@ import { processGuardianIncident, processPendingGuardianRepairDispatch, refreshG
 import { handleNeuralQualityReportRequest } from './guardian/neural-quality-report-route.js';
 import { saveGuardianQualityReport } from './guardian/quality-report-store.js';
 import { areGuildCommandFeaturesEnabled, getComponentCommandName, getGuildFeatureEnabled, getCommandFeatureKeys, initGuildFeatureSettingsSchema } from './guild-feature-settings.js';
+import { registerGuildCommands } from './guild-command-registration.js';
 import { handlePublicSiteRequest } from './public-site.js';
 import { shouldSkipFallbackResponse } from './guardian/http-response-guard.js';
 import { withHttpErrorBoundary } from './guardian/http-error-boundary.js';
@@ -254,6 +255,37 @@ async function processDueGuildEventReminders(readyClient = client) {
     eventReminderSweepRunning = false;
   }
 }
+
+const guildCommandRest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+const guildCommandRegistrationInFlight = new Set();
+
+client.on(Events.GuildCreate, async guild => {
+  if (!guild?.id || guildCommandRegistrationInFlight.has(guild.id)) return;
+  guildCommandRegistrationInFlight.add(guild.id);
+  try {
+    const result = await registerGuildCommands({
+      guildId: guild.id,
+      applicationId: client.user?.id,
+      commands: [...client.commands.values()],
+      rest: guildCommandRest
+    });
+    console.log('Yeni sunucu komut kaydı:', JSON.stringify({
+      guild: guild.name,
+      guildId: guild.id,
+      status: result.status,
+      commandCount: result.count
+    }));
+  } catch (error) {
+    console.error('Yeni sunucuya slash komutları kaydedilemedi:', JSON.stringify({
+      guild: guild.name,
+      guildId: guild.id,
+      message: error?.message || String(error)
+    }));
+    await recordOwnerError(pool, 'guild-command-registration', error?.name || 'Error', error?.message || '').catch(() => {});
+  } finally {
+    guildCommandRegistrationInFlight.delete(guild.id);
+  }
+});
 
 client.once(Events.ClientReady, async readyClient => {
   // Slash komutları yalnızca deploy-commands.js / GitHub Actions tarafından kaydedilir.
