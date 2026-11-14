@@ -2096,6 +2096,15 @@ footer nav a{min-width:0;max-width:100%;overflow-wrap:anywhere}
 .player-cosmetic-identity{display:flex;align-items:center;gap:18px;min-width:0;margin:22px 0;padding:18px;border:1px solid #c7a9f255;border-radius:20px;background:linear-gradient(125deg,#211a35,#100e1d 72%);box-shadow:0 18px 48px #05040d55}
 .player-cosmetic-avatar{position:relative;display:grid;place-items:center;flex:0 0 86px;width:86px;height:86px;border:2px solid #9c8bb8;border-radius:50%;background:radial-gradient(circle at 50% 38%,#b99be955,transparent 68%),#110e1c;box-shadow:0 0 0 5px #8b6ac622,inset 0 0 24px #c6a6ff33}
 .player-cosmetic-avatar span{color:#f4e8ff;font:42px Georgia,serif;text-shadow:0 0 18px #c7a6ff}
+.player-cosmetic-avatar img{display:block;width:100%;height:100%;min-width:0;min-height:0;object-fit:cover;border-radius:50%}
+.profile-cosmetic-identity{position:relative;overflow:hidden}
+.profile-cosmetic-identity[data-cosmetic-theme="spring"]{border-color:#8cc9a477;background:radial-gradient(ellipse at 88% 12%,#9cdeb955,transparent 46%),linear-gradient(125deg,#1b3029,#111b1a 72%)}
+.profile-cosmetic-identity[data-cosmetic-theme="winter"]{border-color:#9bcdf088;background:radial-gradient(ellipse at 88% 12%,#8bc8f366,transparent 46%),linear-gradient(125deg,#1a2b43,#101827 72%)}
+.player-cosmetic-banner-label,.player-cosmetic-collection-label{width:max-content;max-width:100%;padding:4px 9px;border:1px solid #b99be955;border-radius:999px;color:#dfd0f7;background:#ffffff0b;font-size:11px}
+.player-cosmetic-banner-label[data-guild-banner="north_banner"]{border-color:#9bcdf0aa;color:#c7e8ff;background:#7bcaff18}
+.player-cosmetic-collection-label[data-collection-display="star_display"]{border-color:#e3c88b99;color:#f5dfad;background:#e3c88b16}
+@media(max-width:560px){.profile-cosmetic-identity{gap:14px;padding:14px}.profile-cosmetic-identity .player-cosmetic-avatar{flex-basis:72px;width:72px;height:72px}.profile-cosmetic-identity .player-cosmetic-character-name{font-size:clamp(20px,6vw,28px)}}
+
 .player-cosmetic-avatar[data-profile-frame="moon_frame"]{border:4px double #e4d1ff;box-shadow:0 0 0 4px #a98bdc77,0 0 26px #d4baff88,inset 0 0 20px #c6a6ff44}
 .player-cosmetic-avatar[data-profile-frame="fern_frame"]{border:4px double #9fd8b7;box-shadow:0 0 0 4px #5c9b7c77,0 0 24px #79d3a188,inset 0 0 20px #6cb88a44}
 .player-cosmetic-avatar[data-avatar-border="silver_border"]{outline:3px solid #d8deeb;outline-offset:5px}
