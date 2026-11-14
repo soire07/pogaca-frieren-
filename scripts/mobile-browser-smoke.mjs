@@ -133,7 +133,7 @@ for (const scenario of scenarios) {
       });
     });
     if (biomeLabelArt.length !== 6 ||
-        biomeLabelArt.some(label => !label.text.includes('Tamamlanma') || !/\\d+%/.test(label.text) || !label.insideViewport)) {
+        biomeLabelArt.some(label => !label.text.includes('Tamamlanma') || !/[0-9]+%/.test(label.text) || !label.insideViewport)) {
       throw new Error(scenario.name + ' biome labels/progress are missing or outside the map viewport: ' + JSON.stringify(biomeLabelArt));
     }
     const expectedSettlementKeys = [
