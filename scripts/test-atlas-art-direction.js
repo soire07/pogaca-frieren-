@@ -458,8 +458,8 @@ test('map overlays show each biome name and its live completion percentage at st
 test('Ende and Demon King castle use inward display anchors and zoom never shrinks below map bounds', async () => {
   const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
   const client = await readFile(new URL('../public-assets/exploration-atlas.js', import.meta.url), 'utf8');
-  assert.ok(atlas.includes("place.key==='ende'?86:place.key==='demon-kings-castle'?82"));
-  assert.ok(atlas.includes("place.key==='ende'?17:place.key==='demon-kings-castle'?30"));
+  assert.ok(atlas.includes("place.key==='ende'?85:place.key==='demon-kings-castle'?82"));
+  assert.ok(atlas.includes("place.key==='ende'?27:place.key==='demon-kings-castle'?30"));
   assert.ok(atlas.includes("place.key==='ende' ? 0.84 : place.key==='demon-kings-castle' ? 0.9 : 1"));
   assert.ok(client.includes('clamp(scale*delta,1,3.2)'));
   assert.ok(client.includes('clamp(scale*(distance/pinchDistance),1,3.2)'));
@@ -503,10 +503,16 @@ test('Demon King fortress footprint stays inside the atlas landmass and its visu
   assert.ok(atlas.includes('export function getAtlasSettlementVisualPosition(place,markerPositions=[])'));
   assert.ok(atlas.includes("'demon-kings-castle':{x:82,y:30}"));
   assert.match(atlas, /atlas-settlement-architecture atlas-settlement-silhouettes/);
-  assert.ok(atlas.includes("place.key==='ende'?86:place.key==='demon-kings-castle'?82"));
+  assert.ok(atlas.includes("place.key==='ende'?85:place.key==='demon-kings-castle'?82"));
   assert.ok(locations.includes("key:'demon-kings-castle', name:'İblis Kralı’nın Şatosu', subtitle:'Ende', regionKey:'aus', x:94, y:24"));
   const fortress = getAtlasSettlementVisualPosition({ key:'demon-kings-castle', x:94, y:24 });
   assert.deepEqual({ x:fortress.x, y:fortress.y }, { x:82, y:30 });
+  const ende = getAtlasSettlementVisualPosition({ key:'ende', x:88, y:15 });
+  assert.deepEqual({ x:ende.x, y:ende.y }, { x:85, y:27 });
+  assert.ok(isInsideAtlasLand(ende.x, ende.y), 'Ende visual anchor must sit inside the land silhouette');
+  for (const [key,x,y] of [['orman',27.5,37.25],['merkez',31.25,76.25],['harabeler',49.25,55.25],['kuzey',59,23.75],['yayla',77,71.75],['aus',82,34]]) {
+    assert.ok(isInsideAtlasLand(x,y), key+' biome label anchor must remain on land');
+  }
   for (const [dx,dy] of [[-3.65,-6.15],[0,-6.15],[3.65,-6.15],[3.65,0],[3.65,6.15],[0,6.15],[-3.65,6.15],[-3.65,0]]) {
     assert.ok(isInsideAtlasLand(fortress.x+dx,fortress.y+dy,0.25), 'fortress footprint must stay on land');
   }
@@ -523,4 +529,17 @@ test('biome overlays use broad connected shapes and the Demon King wasteland sta
   assert.match(atlas, /atlas-ashen-ground/);
   assert.match(atlas, /atlas-demon-wastes/);
   assert.match(atlas, /atlas-demon-fortress-safe-inset/);
+});
+
+
+test('six biome art direction keeps every regional signature distinct and the demon frontier legible', async () => {
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const artDirection = css.slice(css.lastIndexOf('Six-biome art-direction pass'));
+  for (const biome of ['central-meadow','great-forest','ancient-ruins','northern-ice','schwer-highlands','ausserst-arcana']) {
+    assert.match(artDirection, new RegExp('\\.biome-' + biome + '\\{'), 'missing visual treatment for ' + biome);
+  }
+  assert.match(artDirection, /atlas-ashen-ground[\\s\\S]*?opacity:\\.34/);
+  assert.match(artDirection, /atlas-demon-fog[\\s\\S]*?opacity:\\.3/);
+  assert.match(artDirection, /atlas-biome-transition[\\s\\S]*?opacity:\\.24/);
+  assert.match(artDirection, /@media\\(max-width:700px\\)/);
 });
