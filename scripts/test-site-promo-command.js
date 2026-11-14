@@ -13,7 +13,7 @@ test('/site komutu tanıtım embedini ve doğru web bağlantısını sunar', asy
   const embed = payload.embeds[0].toJSON();
   assert.equal(embed.title, '🌙 Frieren Portalı');
   assert.match(embed.description, /frierenbot\.vercel\.app/);
-  assert.equal(embed.image.url, 'https://frierenbot.vercel.app/site-banner.webp');
+  assert.equal(embed.image.url, 'https://frierenbot.vercel.app/assets/site-banner.webp');
   assert.ok(embed.fields.length >= 3);
   assert.ok(payload.components[0].components.some(button => button.toJSON().url === 'https://frierenbot.vercel.app'));
 });
