@@ -252,38 +252,38 @@
  <!-- Six regional signatures: local flora, geology and magical climate, kept below the landmark layer. -->
  <g class="atlas-biome-signatures" pointer-events="none">
   <!-- Central grasslands: flower clusters, wind-combed grass and pale limestone outcrops. -->
-  <g class="biome-central-meadow" opacity=".78">
+  <g class="biome-central-meadow" opacity=".9">
    <g fill="none" stroke="#e6d99e" stroke-width="2.2" stroke-linecap="round"><path d="M330 760q-7-18-1-30m4 30q8-17 17-20m-5 29q-4-17 5-28M525 875q-5-16 2-26m0 26q7-14 16-18M670 820q-5-17 2-28m1 28q8-14 16-17"/></g>
    <g fill="#e7d39b" stroke="#8c986c" stroke-width="1"><circle cx="328" cy="728" r="4"/><circle cx="349" cy="740" r="3.5"/><circle cx="527" cy="849" r="4"/><circle cx="544" cy="854" r="3"/><circle cx="673" cy="789" r="4"/></g>
    <g fill="none" stroke="#6d865e" stroke-opacity=".56" stroke-width="3" stroke-linecap="round"><path d="M275 935q40-22 79-7m80-105q31-19 62-5m105 130q40-22 76-4m-328-224q28-17 55-6"/></g>
    <g fill="#c5b99a" stroke="#8d927e" stroke-opacity=".65" stroke-width="1.5"><path d="m620 915 15-9 18 7-7 13-20 1Z"/><path d="m385 845 11-7 14 5-5 11-15 1Z"/></g>
   </g>
   <!-- Great forest: layered fern understory and shafts of filtered canopy light. -->
-  <g class="biome-great-forest" opacity=".72">
+  <g class="biome-great-forest" opacity=".84">
    <g fill="none" stroke="#a9bd91" stroke-opacity=".5" stroke-width="2.2" stroke-linecap="round"><path d="M250 515q-18-18-22-38m22 38q2-26 17-39m-17 39q18-13 32-12M370 575q-16-20-14-39m14 39q8-24 25-31M535 545q-18-17-19-35m19 35q11-23 28-28"/></g>
    <g fill="none" stroke="#d4d9ad" stroke-opacity=".18" stroke-width="12" stroke-linecap="round"><path d="M300 320 360 560M430 300 470 540M545 350 570 520"/></g>
    <g fill="none" stroke="#18382f" stroke-opacity=".7" stroke-width="5" stroke-linecap="round"><path d="M215 470q70-30 132 2m42 80q68-32 120-2m-18-166q65-25 118 7"/></g>
   </g>
   <!-- Ancient ruins: broken paving, toppled columns and weathered masonry. -->
-  <g class="biome-ancient-ruins" opacity=".72">
+  <g class="biome-ancient-ruins" opacity=".82">
    <g fill="none" stroke="#786d60" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M760 760l28-12 19 17-17 15-25-5Zm82-56 20-11 17 13-10 17-25-4Zm80 104 25-13 18 15-13 17-25-3Z"/><path d="M800 850v-47l12-8 12 8v47m-24-38h24m-7-16 7-9 7 9M930 890v-36l10-7 10 7v36"/></g>
    <g fill="none" stroke="#d4c7a8" stroke-opacity=".55" stroke-width="3"><path d="m745 805 31-17 19 11-14 25-31 2m91-93 22-14 25 13m-5 78 27-16 20 11-14 24"/></g>
    <g fill="none" stroke="#635b54" stroke-opacity=".56" stroke-width="2"><path d="m850 760 12 18-9 14 16 15m-83 35 13-10 15 12m117-20 9 10-7 15"/></g>
   </g>
   <!-- Northern icefields: blue crevasses, frozen runoff and wind-carved snow shelves. -->
-  <g class="biome-northern-ice" opacity=".74">
+  <g class="biome-northern-ice" opacity=".86">
    <g fill="none" stroke="#e6f0ed" stroke-opacity=".7" stroke-width="3" stroke-linecap="round"><path d="M1165 235q45-30 86-4t80-2m-125 62q52-23 96 0t82 3m-42 87q38-20 75 0t67 2"/></g>
    <g fill="none" stroke="#739aa0" stroke-opacity=".54" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="m1210 190 24 26-12 25 28 23m96-45-20 27 17 20-13 24m76 50-18 22 20 19-11 26m-190 18 20 20-8 18"/></g>
    <g fill="#d9e8e4" fill-opacity=".34" stroke="#f2f4e9" stroke-opacity=".5" stroke-width="1.5"><path d="m1395 220 18-34 13 35-14 19Z"/><path d="m1500 330 17-29 12 34-18 17Z"/><path d="m1270 400 15-25 12 29-15 13Z"/></g>
   </g>
   <!-- Schwer highlands: exposed scree fans, talus and wind-cut rock strata. -->
-  <g class="biome-schwer-highlands" opacity=".7">
+  <g class="biome-schwer-highlands" opacity=".82">
    <g fill="none" stroke="#6c7c79" stroke-opacity=".58" stroke-width="4" stroke-linecap="round"><path d="M1000 600q42-27 83-4t79-2m-120 55q47-24 89-3t76 0m-160 77q42-20 79-2"/></g>
    <g fill="#7e8980" fill-opacity=".35" stroke="#e1dfcb" stroke-opacity=".4" stroke-width="1"><path d="m1045 715 15-10 19 9-9 13-21-2Z"/><path d="m1160 760 18-12 21 9-11 15-22 1Z"/><path d="m1270 680 14-9 17 8-9 12-19 1Z"/><path d="m1115 835 13-8 17 7-8 11-18 1Z"/></g>
    <g fill="none" stroke="#e6e1cd" stroke-opacity=".4" stroke-width="2" stroke-linecap="round"><path d="M1060 625q30-13 57 0m112 77q27-12 48 1m-181 103q28-11 51 0"/></g>
   </g>
   <!-- Äußerst arcane frontier: restrained mana veins and old warding circles. -->
-  <g class="biome-ausserst-arcana" opacity=".62">
+  <g class="biome-ausserst-arcana" opacity=".78">
    <g fill="none" stroke="#8f82b0" stroke-width="3" stroke-opacity=".56" stroke-linecap="round"><path d="M1320 280q-34 35-12 66t-17 58m-50-103q35 17 51 44t56 32m-18-96q-10 35 15 58t22 48"/></g>
    <g fill="none" stroke="#d8c9e8" stroke-width="2" stroke-opacity=".5"><circle cx="1375" cy="350" r="28"/><circle cx="1375" cy="350" r="18"/><path d="M1375 314v72m-36-36h72m-61-25 50 50m0-50-50 50"/></g>
    <g fill="#c6b5d9" fill-opacity=".55"><path d="m1288 390 5-12 5 12-5 12Z"/><path d="m1440 270 5-12 5 12-5 12Z"/><path d="m1480 390 5-12 5 12-5 12Z"/></g>
