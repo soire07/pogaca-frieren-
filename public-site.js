@@ -44,7 +44,7 @@ import { getGuildRpgContent } from './owner-rpg-content.js';
 import { DEFAULT_DAILY_QUESTS, getDailyQuestObjectiveSql } from './owner-rpg-quests.js';
 import { listCardVariants } from './card-variants.js';
 import { listGuildEmbedTemplates, listGuildCustomCommands, listGuildSpellAutomations, saveGuildEmbedTemplate, saveGuildCustomCommand, saveGuildSpellAutomation } from './guild-workshop.js';
-import { HOME_ROOMS, HOME_DECORATIONS, HOME_DECORATION_CATALOG, HOME_STATIONS, ALCHEMY_RECIPES, PLAYER_COSMETICS, getPlayerHome, unlockHomeRoom, saveHomeLayout, purchaseCosmetic, equipCosmetic, saveCosmeticPreset, applyCosmeticPreset, checkInGuildEvent, getCosmeticAcquisitionHistory, getHomeTrophies, placeHomeTrophy, setHomeVisibility, getPublicPlayerHome, brewHomePotion, claimEventMilestone, getPlayerProfileSettings, setPlayerProfileSettings } from './player-experience.js';
+import { HOME_ROOMS, HOME_DECORATIONS, HOME_DECORATION_CATALOG, HOME_STATIONS, ALCHEMY_RECIPES, PLAYER_COSMETICS, getPlayerHome, unlockHomeRoom, saveHomeLayout, listHomeLayoutPresets, saveHomeLayoutPreset, applyHomeLayoutPreset, deleteHomeLayoutPreset, purchaseCosmetic, equipCosmetic, saveCosmeticPreset, applyCosmeticPreset, checkInGuildEvent, getCosmeticAcquisitionHistory, getHomeTrophies, placeHomeTrophy, setHomeVisibility, getPublicPlayerHome, brewHomePotion, claimEventMilestone, getPlayerProfileSettings, setPlayerProfileSettings } from './player-experience.js';
 
 const SITE_COOKIE = 'frieren_site_session';
 const siteSocialSchemaReady=new WeakMap();
@@ -1302,6 +1302,9 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     if (!requireSiteAccount(res, session?.id)) return true;
       const action=String(form.get('action')||'');
       if(action==='unlock-room')status=(await unlockHomeRoom(db,{guildId,userId:profile.user_id,roomKey:String(form.get('roomKey')||'')})).status;
+      else if(action==='save-layout-preset')status=(await saveHomeLayoutPreset(db,{guildId,userId:profile.user_id,presetName:String(form.get('presetName')||'')})).status;
+      else if(action==='apply-layout-preset')status=(await applyHomeLayoutPreset(db,{guildId,userId:profile.user_id,presetName:String(form.get('presetName')||'')})).status;
+      else if(action==='delete-layout-preset')status=(await deleteHomeLayoutPreset(db,{guildId,userId:profile.user_id,presetName:String(form.get('presetName')||'')})).status;
       else if(action==='save-layout'){
         try{
           const decorations=form.getAll('layoutDecoration');
@@ -1657,14 +1660,18 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const profile=await getLinkedAdventurer(db,user.id,guildId);
     if(!profile){res.writeHead(403,{'Cache-Control':'no-store'});res.end('Bu sunucudaki karakter web hesabına bağlı değil.');return true;}
     const home=await getPlayerHome(db,{guildId,userId:profile.user_id});
-    const [owned,loadout,presets,events,trophies]=await Promise.all([
+    const [owned,loadout,presets,events,trophies,layoutPresets]=await Promise.all([
       getCosmeticAcquisitionHistory(db,{guildId,userId:profile.user_id}),
       db.query('SELECT slot,cosmetic_key FROM player_cosmetic_loadout WHERE guild_id=$1 AND user_id=$2',[guildId,profile.user_id]),
       db.query('SELECT preset_name FROM player_cosmetic_presets WHERE guild_id=$1 AND user_id=$2 ORDER BY preset_name',[guildId,profile.user_id]),
       db.query("SELECT e.event_id,e.title,e.starts_at,e.ends_at,COALESCE(p.progress,0)::int AS participation,COALESCE(c.progress,0)::int AS checkin FROM guild_events e LEFT JOIN guild_event_progress p ON p.event_id=e.event_id AND p.guild_id=e.guild_id AND p.user_id=$2 AND p.progress_key='participation' LEFT JOIN guild_event_progress c ON c.event_id=e.event_id AND c.guild_id=e.guild_id AND c.user_id=$2 AND c.progress_key='checkin' WHERE e.guild_id=$1 AND e.status IN ('scheduled','completed') AND e.ends_at>NOW()-INTERVAL '90 days' ORDER BY e.starts_at DESC LIMIT 50",[guildId,profile.user_id]),
-      getHomeTrophies(db,{guildId,userId:profile.user_id})
+      getHomeTrophies(db,{guildId,userId:profile.user_id}),
+      listHomeLayoutPresets(db,{guildId,userId:profile.user_id})
     ]);
-    const html=playerExperiencePage(user,profile,{...home,events:events.rows},owned,loadout.rows,presets.rows,trophies,url.searchParams.get('status'));
+    let html=playerExperiencePage(user,profile,{...home,events:events.rows},owned,loadout.rows,presets.rows,trophies,url.searchParams.get('status'));
+    const layoutPresetOptions=layoutPresets.map(item=>'<option value="'+esc(item.preset_name)+'">'+esc(item.preset_name)+' · '+esc(HOME_ROOMS.find(room=>room.key===item.active_room)?.name||item.active_room)+'</option>').join('');
+    const layoutPresetPanel='<section class="card home-layout-presets"><h2>Ev Yerleşimi Presetleri</h2><p>Farklı oda düzenlerini kaydet; istediğinde tek işlemle geri yükle. En fazla 6 kayıt tutabilirsin.</p><form method="post" action="/maceraci/yasam"><input type="hidden" name="csrf" value="'+esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET))+'"><input type="hidden" name="guildId" value="'+esc(guildId)+'"><input type="hidden" name="action" value="save-layout-preset"><label>Yeni preset adı<input name="presetName" maxlength="32" required pattern="[A-Za-z0-9 ÇĞİÖŞÜçğıöşü_-]{1,32}" placeholder="Örn. Kış Bahçesi"></label><button type="submit">Mevcut düzeni kaydet</button></form>'+(layoutPresets.length?'<form method="post" action="/maceraci/yasam"><input type="hidden" name="csrf" value="'+esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET))+'"><input type="hidden" name="guildId" value="'+esc(guildId)+'"><label>Kayıtlı düzen<select name="presetName" required>'+layoutPresetOptions+'</select></label><div class="actions"><button type="submit" name="action" value="apply-layout-preset">Düzeni yükle</button><button type="submit" name="action" value="delete-layout-preset" class="secondary">Kaydı sil</button></div></form>':'<p>Henüz kayıtlı düzen yok.</p>')+'</section>';
+    html=html.includes('</main>')?html.replace('</main>',layoutPresetPanel+'</main>'):html.replace('</body>',layoutPresetPanel+'</body>');
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
     res.end(html);return true;
   }

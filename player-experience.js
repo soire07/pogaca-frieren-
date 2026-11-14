@@ -102,6 +102,7 @@ export async function ensurePlayerExperienceSchema(db){
  await db.query(`
  CREATE TABLE IF NOT EXISTS player_profile_settings(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,show_stats BOOLEAN NOT NULL DEFAULT FALSE,show_achievements BOOLEAN NOT NULL DEFAULT TRUE,show_collections BOOLEAN NOT NULL DEFAULT TRUE,show_activity BOOLEAN NOT NULL DEFAULT FALSE,show_cosmetics BOOLEAN NOT NULL DEFAULT TRUE,active_title TEXT,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
  CREATE TABLE IF NOT EXISTS player_homes(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,active_room TEXT NOT NULL DEFAULT 'starter',layout JSONB NOT NULL DEFAULT '[]'::jsonb,is_public BOOLEAN NOT NULL DEFAULT FALSE,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
+ CREATE TABLE IF NOT EXISTS player_home_layout_presets(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,preset_name VARCHAR(32) NOT NULL,active_room TEXT NOT NULL,layout JSONB NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id,preset_name),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
  CREATE TABLE IF NOT EXISTS player_home_rooms(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,room_key TEXT NOT NULL,unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id,room_key),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
  CREATE TABLE IF NOT EXISTS player_home_trophies(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,achievement_key TEXT NOT NULL,display_slot INTEGER NOT NULL CHECK(display_slot BETWEEN 0 AND 5),displayed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(guild_id,user_id,achievement_key),UNIQUE(guild_id,user_id,display_slot),FOREIGN KEY(guild_id,user_id,achievement_key) REFERENCES achievement_claims(guild_id,user_id,achievement_key) ON DELETE CASCADE);
  CREATE TABLE IF NOT EXISTS player_cosmetic_ownership(guild_id TEXT NOT NULL,user_id TEXT NOT NULL,cosmetic_key TEXT NOT NULL,acquired_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),acquisition_source TEXT NOT NULL DEFAULT 'shop',PRIMARY KEY(guild_id,user_id,cosmetic_key),FOREIGN KEY(guild_id,user_id) REFERENCES users(guild_id,user_id) ON DELETE CASCADE);
@@ -181,6 +182,55 @@ export async function unlockHomeRoom(pool,{guildId,userId,roomKey}){
 export async function saveHomeLayout(db,{guildId,userId,layout,activeRoom='starter'}){
  player(guildId,userId);const clean=validateHomeLayout(layout);await ensureUser(guildId,userId,db);await db.query("INSERT INTO player_home_rooms(guild_id,user_id,room_key) VALUES($1,$2,'starter') ON CONFLICT DO NOTHING",[guildId,userId]);const r=await db.query('SELECT room_key FROM player_home_rooms WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);const owned=new Set(r.rows.map(x=>x.room_key));if(!owned.has(activeRoom)||clean.some(x=>!owned.has(x.roomKey)))return {status:'room_locked'};
  await db.query('INSERT INTO player_homes(guild_id,user_id,active_room,layout) VALUES($1,$2,$3,$4::jsonb) ON CONFLICT(guild_id,user_id) DO UPDATE SET active_room=EXCLUDED.active_room,layout=EXCLUDED.layout,updated_at=NOW()',[guildId,userId,activeRoom,JSON.stringify(clean)]);return {status:'saved',activeRoom,layout:clean};
+}
+export const HOME_LAYOUT_PRESET_LIMIT=6;
+function normalizeHomeLayoutPresetName(value){
+ const name=String(value||'').trim();
+ return /^[\p{L}\p{N} _-]{1,32}$/u.test(name)?name:null;
+}
+export async function listHomeLayoutPresets(db,{guildId,userId}){
+ player(guildId,userId);await ensurePlayerExperienceSchema(db);
+ const result=await db.query('SELECT preset_name,active_room,jsonb_array_length(layout)::int AS decoration_count,updated_at FROM player_home_layout_presets WHERE guild_id=$1 AND user_id=$2 ORDER BY updated_at DESC,preset_name',[guildId,userId]);
+ return result.rows;
+}
+export async function saveHomeLayoutPreset(pool,{guildId,userId,presetName}){
+ player(guildId,userId);const name=normalizeHomeLayoutPresetName(presetName);if(!name)return {status:'invalid_preset'};
+ await ensurePlayerExperienceSchema(pool);await getPlayerHome(pool,{guildId,userId});
+ const c=await pool.connect();
+ try{
+  await c.query('BEGIN');
+  const home=await c.query('SELECT active_room,layout FROM player_homes WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',[guildId,userId]);
+  if(!home.rowCount){await c.query('ROLLBACK');return {status:'home_missing'};}
+  const existing=await c.query('SELECT 1 FROM player_home_layout_presets WHERE guild_id=$1 AND user_id=$2 AND preset_name=$3',[guildId,userId,name]);
+  const count=await c.query('SELECT COUNT(*)::int AS total FROM player_home_layout_presets WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+  if(!existing.rowCount&&Number(count.rows[0]?.total||0)>=HOME_LAYOUT_PRESET_LIMIT){await c.query('ROLLBACK');return {status:'preset_limit',limit:HOME_LAYOUT_PRESET_LIMIT};}
+  const layout=validateHomeLayout(Array.isArray(home.rows[0].layout)?home.rows[0].layout:[]);
+  await c.query('INSERT INTO player_home_layout_presets(guild_id,user_id,preset_name,active_room,layout) VALUES($1,$2,$3,$4,$5::jsonb) ON CONFLICT(guild_id,user_id,preset_name) DO UPDATE SET active_room=EXCLUDED.active_room,layout=EXCLUDED.layout,updated_at=NOW()',[guildId,userId,name,home.rows[0].active_room,JSON.stringify(layout)]);
+  await c.query('COMMIT');return {status:'saved',presetName:name,limit:HOME_LAYOUT_PRESET_LIMIT};
+ }catch(error){await c.query('ROLLBACK').catch(()=>{});throw error;}finally{c.release();}
+}
+export async function applyHomeLayoutPreset(pool,{guildId,userId,presetName}){
+ player(guildId,userId);const name=normalizeHomeLayoutPresetName(presetName);if(!name)return {status:'invalid_preset'};
+ await ensurePlayerExperienceSchema(pool);await getPlayerHome(pool,{guildId,userId});
+ const c=await pool.connect();
+ try{
+  await c.query('BEGIN');
+  const home=await c.query('SELECT active_room FROM player_homes WHERE guild_id=$1 AND user_id=$2 FOR UPDATE',[guildId,userId]);
+  const preset=await c.query('SELECT active_room,layout FROM player_home_layout_presets WHERE guild_id=$1 AND user_id=$2 AND preset_name=$3',[guildId,userId,name]);
+  if(!preset.rowCount){await c.query('ROLLBACK');return {status:'preset_missing'};}
+  const layout=validateHomeLayout(Array.isArray(preset.rows[0].layout)?preset.rows[0].layout:[]);
+  const unlocked=await c.query('SELECT room_key FROM player_home_rooms WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+  const rooms=new Set(unlocked.rows.map(row=>row.room_key));
+  if(!rooms.has(preset.rows[0].active_room)||layout.some(item=>!rooms.has(item.roomKey))){await c.query('ROLLBACK');return {status:'room_locked'};}
+  await c.query('UPDATE player_homes SET active_room=$3,layout=$4::jsonb,updated_at=NOW() WHERE guild_id=$1 AND user_id=$2',[guildId,userId,preset.rows[0].active_room,JSON.stringify(layout)]);
+  await c.query('COMMIT');return {status:'applied',presetName:name,activeRoom:preset.rows[0].active_room,layout};
+ }catch(error){await c.query('ROLLBACK').catch(()=>{});throw error;}finally{c.release();}
+}
+export async function deleteHomeLayoutPreset(pool,{guildId,userId,presetName}){
+ player(guildId,userId);const name=normalizeHomeLayoutPresetName(presetName);if(!name)return {status:'invalid_preset'};
+ await ensurePlayerExperienceSchema(pool);
+ const result=await pool.query('DELETE FROM player_home_layout_presets WHERE guild_id=$1 AND user_id=$2 AND preset_name=$3 RETURNING preset_name',[guildId,userId,name]);
+ return result.rowCount?{status:'deleted',presetName:name}:{status:'preset_missing'};
 }
 export async function purchaseCosmetic(pool,{guildId,userId,cosmeticKey}){
  player(guildId,userId);const item=PLAYER_COSMETICS.find(x=>x.key===cosmeticKey);if(!item)return {status:'invalid_cosmetic'};await ensureUser(guildId,userId,pool);const c=await pool.connect();
