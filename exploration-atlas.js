@@ -128,16 +128,25 @@ const settlementSilhouetteTemplates = Object.freeze({
   'demon-kings-castle': `<g class="castle-architecture demon-fortress"><path class="castle-wall" d="M-73 38V-9h146v47H59V3H-59v35Z" fill="#493d48" stroke="#c58d8c" stroke-width="3.5"/><path class="battlement" d="M-73-9v-15h12v8h10v-8h12v15m78 0v-15h12v8h10v-8h12v15" fill="#72535d" stroke="#dca5a0" stroke-width="2.5"/><path d="M-64-10v-46h24v46m80 0v-46h24v46M-25 38V-31h50v69Z" fill="#71515c" stroke="#d9a3a0" stroke-width="3"/><path d="M-70-56-52-82-34-56m68 0 18-26 18 26M-32-31 0-66 32-31Z" fill="#9b5960" stroke="#e5b2a5" stroke-width="2.8"/><rect x="-56" y="-42" width="9" height="18" fill="#202d3a"/><rect x="47" y="-42" width="9" height="18" fill="#202d3a"/><rect x="-9" y="-19" width="18" height="18" fill="#202d3a"/><path class="arched-gate" d="M-15 38V10Q0-13 15 10V38" fill="#202d3a" stroke="#e2b7a8" stroke-width="3"/><path d="M-7 9V-14m-8 8h30M-69 42h138" stroke="#f0c7a2" stroke-width="2.5"/><path d="M-43-6v-18m86 18v-18" stroke="#d28a87" stroke-width="2"/><path class="castle-masonry-detail" d="M-54 8h37M17 8h37M-54 18h39M15 18h39M-45 28h28M17 28h28M-40 10v6M-24 19v7M24 10v6M40 19v7" fill="none" stroke="#eadcc3" stroke-opacity=".22" stroke-width="1.5" stroke-linecap="round"/><g class="castle-ember-lights" fill="#e7a16e" opacity=".78"><rect x="-54" y="-40" width="5" height="13" rx="1"/><rect x="49" y="-40" width="5" height="13" rx="1"/><rect x="-4" y="-17" width="8" height="13" rx="1"/></g></g>`
 });
 
+const ATLAS_SETTLEMENT_VISUAL_ANCHORS = Object.freeze({
+  // These inset anchors keep the large fortress silhouette clear of the clipped eastern coastline.
+  'demon-kings-castle':{x:82,y:30},
+  ende:{x:86,y:17}
+});
+function getAtlasSettlementVisualPosition(place,markerPositions=[]) {
+  const safeAnchor=ATLAS_SETTLEMENT_VISUAL_ANCHORS[place.key];
+  if(safeAnchor)return {...place,...safeAnchor};
+  return markerPositions.find(marker=>marker.key===place.key)||place;
+}
 function buildAtlasSettlementSilhouettes(settlements=FRIEREN_WORLD_SETTLEMENTS,markerPositions=[]) {
-  const positions=new Map(markerPositions.map(marker=>[marker.key,marker]));
   const groups=settlements.filter(place=>settlementSilhouetteTemplates[place.key]).map(place=>{
-    const position=positions.get(place.key)||place;
+    const position=getAtlasSettlementVisualPosition(place,markerPositions);
     const x=Math.round(Number(position.x)*18);
     const y=Math.round(Number(position.y)*12);
-    const scale=place.key==='ende' ? 0.78 : place.key==='demon-kings-castle' ? 0.82 : 1;
+    const scale=place.key==='ende' ? 0.84 : place.key==='demon-kings-castle' ? 0.9 : 1;
     return `<g class="atlas-settlement-silhouette atlas-settlement-${place.key}" data-settlement="${place.key}" transform="translate(${x} ${y}) scale(${scale})">${settlementSilhouetteTemplates[place.key]}</g>`;
   }).join('');
-  return `<g class="atlas-settlement-architecture atlas-settlement-silhouettes" aria-hidden="true" pointer-events="none">${groups}</g>`;
+  return `<g class="atlas-settlement-architecture atlas-settlement-silhouettes atlas-demon-fortress-safe-inset" aria-hidden="true" pointer-events="none">${groups}</g>`;
 }
 
 export function getAtlasBiomeCompletionPercent(item={}) {
@@ -179,7 +188,7 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
     })),
     ...FRIEREN_WORLD_SETTLEMENTS.map(place=>({
       id:'city:'+place.key,key:place.key,targetKey:place.key,label:place.name,type:'city',icon:'⌂',
-      x:place.key==='ende'?85:place.key==='demon-kings-castle'?89:place.x,y:place.key==='ende'?27:place.key==='demon-kings-castle'?38:place.y,focus:'city',subtitle:place.subtitle
+      x:place.key==='ende'?86:place.key==='demon-kings-castle'?82:place.x,y:place.key==='ende'?17:place.key==='demon-kings-castle'?30:place.y,focus:'city',subtitle:place.subtitle
     })),
     ...points.flatMap(({item})=>item.bosses.map(boss=>{
       const location=resolveAtlasBossLocation(boss);
@@ -238,8 +247,8 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
   </g>
  </g>
  <g class="atlas-demon-wastes" data-atlas-geography-layer="demon-wastes">
-  <path class="atlas-ashen-ground" d="M1280 150C1400 130 1545 170 1645 270 1695 345 1640 455 1550 500 1455 545 1320 480 1275 385 1235 300 1230 210 1280 150Z" fill="#171b24" opacity=".54"/>
-  <path class="atlas-demon-fog" d="M1230 205C1360 115 1570 155 1675 285S1665 495 1515 540 1260 470 1215 350Z" fill="url(#atlas-ashen-wash)" filter="url(#atlas-demon-haze)"/>
+  <path class="atlas-ashen-ground" d="M1190 155C1320 85 1535 110 1660 245 1720 335 1685 470 1585 535 1470 590 1300 520 1230 425 1165 340 1145 235 1190 155Z" fill="#10141e" opacity=".78"/>
+  <path class="atlas-demon-fog" d="M1155 205C1320 85 1575 115 1700 275S1680 530 1510 585 1220 500 1165 365Z" fill="url(#atlas-ashen-wash)" filter="url(#atlas-demon-haze)"/>
   <g class="atlas-dead-tree" stroke="#29252c" stroke-linecap="round" stroke-linejoin="round" fill="none">
    <path d="M1350 420l8-56-18-23 20 10 8-37 4 36 22-16-18 29 7 58m-15-62-21-16m32 1 19-18" stroke-width="7"/>
    <path d="M1435 360l5-48-16-20 18 9 6-33 4 33 18-14-15 25 5 48m-15-48-18-14m29 3 16-17" stroke-width="6"/>
