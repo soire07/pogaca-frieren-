@@ -69,6 +69,7 @@ export async function setActivePet(dbPool,{guildId,userId,petKey}) {
   }catch(error){await db.query('ROLLBACK').catch(()=>{});throw error;}finally{db.release();}
 }
 export async function renamePet(dbPool,{guildId,userId,petKey,name}) {
+  await initPetSchema(dbPool);
   const nickname=normalizePetName(name);if(!nickname)return {status:'invalid_name'};
   const db=await dbPool.connect();
   try{
@@ -78,6 +79,7 @@ export async function renamePet(dbPool,{guildId,userId,petKey,name}) {
 }
 export async function careForPet(dbPool,{guildId,userId,petKey,action}) {
   if(!['feed','play','train'].includes(action))return {status:'invalid_action'};
+  await initPetSchema(dbPool);
   const db=await dbPool.connect();
   try{
     await db.query('BEGIN');
@@ -94,6 +96,7 @@ export async function careForPet(dbPool,{guildId,userId,petKey,action}) {
   }catch(error){await db.query('ROLLBACK').catch(()=>{});throw error;}finally{db.release();}
 }
 export async function getPetSupportPreview(db,{guildId,userId,petKey}) {
+  await initPetSchema(db);
   const result=await db.query('SELECT pet_key,nickname,level,mood FROM user_pets WHERE guild_id=$1 AND user_id=$2 AND pet_key=$3',[guildId,userId,petKey]);
   if(!result.rowCount)return {status:'not_owned'};
   const pet=PET_CATALOG.find(item=>item.key===petKey);
