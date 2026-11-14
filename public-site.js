@@ -1,5 +1,6 @@
 
 import { readFile } from 'node:fs/promises';
+import { termsPage, privacyPage } from './legal-pages.js';
 import { PermissionFlagsBits } from 'discord.js';
 import { getCompanion } from './companions.js';
 import { getFishCollection } from './fishing.js';
@@ -1364,12 +1365,12 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/destek', '/maceraci/oyuncu', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/profil', '/profil/media', '/profil/media/public', '/hesap-merkezi', '/bildirimler', '/pazar', '/ansiklopedi', '/ara']);
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/hizmet-kosullari', '/gizlilik-politikasi', '/destek', '/maceraci/oyuncu', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/profil', '/profil/media', '/profil/media/public', '/hesap-merkezi', '/bildirimler', '/pazar', '/ansiklopedi', '/ara']);
   const isPublicProfilePath=url.pathname.startsWith('/u/');
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname) && !isPublicProfilePath) return false;
   const sessionUser = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
   const user = await enrichSiteUser(db,client,sessionUser || (url.pathname === '/maceraci/ev' ? { id: 'public-viewer', username: 'Gezgin' } : (url.pathname === '/kesfet' || url.pathname === '/ansiklopedi' || url.pathname === '/ara' || url.pathname === '/maceraci/oyuncu' || isPublicProfilePath) ? { id: '', username: 'Gezgin', avatarUrl: '/assets/site-avatar.webp' } : null));
-  if (!user && url.pathname !== '/kesfet' && url.pathname !== '/ansiklopedi' && url.pathname !== '/ara' && url.pathname !== '/maceraci/oyuncu' && !isPublicProfilePath && url.pathname !== '/profil/media/public') {
+  if (!user && url.pathname !== '/hizmet-kosullari' && url.pathname !== '/gizlilik-politikasi' && url.pathname !== '/kesfet' && url.pathname !== '/ansiklopedi' && url.pathname !== '/ara' && url.pathname !== '/maceraci/oyuncu' && !isPublicProfilePath && url.pathname !== '/profil/media/public') {
     res.writeHead(302, { Location: '/login', 'Cache-Control': 'no-store' });
     res.end();
     return true;
@@ -1648,7 +1649,7 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Content-Security-Policy':"default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"});
     res.end(html);return true;
   }
-  const routes = new Map([['/kesfet', () => home(client, user, createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET))], ['/pogaca', () => pogaca(client, user)], ['/komutlar', () => commandCatalog(client, user)], ['/frieren-ai', () => aiPage(user)], ['/ansiklopedi', () => characterEncyclopediaPage(user)], ['/ara', () => siteSearchPage(client,user,url.searchParams.get('q'),url.searchParams.get('category'))]]);
+  const routes = new Map([['/hizmet-kosullari', () => termsPage()], ['/gizlilik-politikasi', () => privacyPage()], ['/kesfet', () => home(client, user, createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET))], ['/pogaca', () => pogaca(client, user)], ['/komutlar', () => commandCatalog(client, user)], ['/frieren-ai', () => aiPage(user)], ['/ansiklopedi', () => characterEncyclopediaPage(user)], ['/ara', () => siteSearchPage(client,user,url.searchParams.get('q'),url.searchParams.get('category'))]]);
   const render = routes.get(url.pathname);
   if (!render) return false;
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'" });
