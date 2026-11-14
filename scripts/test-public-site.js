@@ -1490,7 +1490,7 @@ test('global account profile renders without a guild picker and keeps profile me
   assert.match(response.body,/sunucu.*karakteri seçmen gerekmez/i);
   assert.match(response.body,/data-profile-media-editor/);
   assert.doesNotMatch(response.body,/Sunucu seç|Karakter seç/);
-  assert.match(response.body,/theme-gallery\.js\?v=theme-gallery-1/);
+  assert.match(response.body,/theme-gallery\.js\?v=theme-gallery-2/);
   const themeAsset=res();
   assert.equal(await handlePublicSiteRequest(request('/assets/theme-gallery.js'),themeAsset,{db:null}),true);
   assert.equal(themeAsset.status,200);
@@ -1623,7 +1623,7 @@ test('dedicated user center pages expose the new account, social and life naviga
  assert.match(source,/inventory-center-page/);
  assert.match(source,/notification-center-page/);
  assert.match(source,/public-assets\/user-center\.js', 'public-assets\/public-chat\.js'].includes/);
- assert.match(source,/site\.css\?v=mobile-385-1/);
+ assert.match(source,/site\.css\?v=cosmetics-386-1/);
  assert.match(source,/public-chat\.js\?v=chat-282-1/);
  const chatClient=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');
  assert.ok(!chatClient.includes('for(const emoji of ["❤️","✨","😂","😍","🥰","😭","👀","🎉","🙌","💜","🍪","🌸"])'));
