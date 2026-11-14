@@ -3,58 +3,90 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const readJson = async path => JSON.parse(await readFile(new URL('../' + path, import.meta.url), 'utf8'));
-const readText = path => readFile(new URL('../' + path, import.meta.url), 'utf8');
+const fileCache = new Map();
+const readText = async path => {
+  if (!fileCache.has(path)) {
+    fileCache.set(path, readFile(new URL('../' + path, import.meta.url), 'utf8').catch(() => null));
+  }
+  return fileCache.get(path);
+};
+const namedTestBody = (content, name) => {
+  const declaration = "test('" + name + "'";
+  const start = content.indexOf(declaration);
+  if (start < 0) return null;
+  const next = content.indexOf("\\ntest(", start + declaration.length);
+  return content.slice(start, next < 0 ? content.length : next);
+};
 
-test('feature evidence map references unique, registered feature IDs without promoting inventory status', async () => {
+test('feature evidence map references current source and named test assertions without promoting inventory status', async () => {
   const inventory = await readJson('feature-inventory.json');
   const evidence = await readJson('feature-evidence.json');
   const known = new Map(inventory.features.map(feature => [feature.id, feature]));
   const ids = evidence.entries.map(entry => entry.featureId);
+  const errors = [];
 
-  assert.equal(evidence.schemaVersion, 1);
-  assert.equal(new Set(ids).size, ids.length, 'feature evidence IDs must be unique');
+  if (evidence.schemaVersion !== 1) errors.push('unsupported schemaVersion: ' + evidence.schemaVersion);
+  if (new Set(ids).size !== ids.length) errors.push('feature evidence IDs must be unique');
+
   for (const entry of evidence.entries) {
-    assert.ok(known.has(entry.featureId), 'unknown feature ID: ' + entry.featureId);
-    assert.equal(known.get(entry.featureId).status, 'implemented_needs_runtime_test',
-      'evidence mapping must not silently promote inventory status: ' + entry.featureId);
-    assert.ok(['automated_static_assertion', 'automated_partial', 'automated_tested', 'isolated_postgresql_integration'].includes(entry.evidenceLevel));
-    assert.ok(entry.limitation, 'every evidence entry must state its verification limit');
+    const feature = known.get(entry.featureId);
+    if (!feature) errors.push(entry.featureId + ': feature ID is absent from feature-inventory.json');
+    else if (feature.status !== 'implemented_needs_runtime_test') {
+      errors.push(entry.featureId + ': evidence mapping must not silently promote inventory status');
+    }
+    if (!['automated_static_assertion', 'automated_partial', 'automated_tested', 'isolated_postgresql_integration'].includes(entry.evidenceLevel)) {
+      errors.push(entry.featureId + ': invalid evidence level ' + entry.evidenceLevel);
+    }
+    if (!entry.limitation?.trim()) errors.push(entry.featureId + ': explicit verification limitation is missing');
 
-    for (const source of entry.sources) {
-      assert.ok(!source.path.startsWith('/') && !source.path.includes('..'), 'unsafe source path');
-      const content = await readText(source.path);
-      for (const marker of source.markers) {
-        assert.ok(content.includes(marker), entry.featureId + ': source marker missing: ' + source.path + ' → ' + marker);
+    for (const source of entry.sources || []) {
+      if (source.path.startsWith('/') || source.path.includes('..')) {
+        errors.push(entry.featureId + ': unsafe source path ' + source.path);
+        continue;
+      }
+      const sourceContent = await readText(source.path);
+      if (sourceContent === null) {
+        errors.push(entry.featureId + ': source file not found: ' + source.path);
+        continue;
+      }
+      for (const marker of source.markers || []) {
+        if (!sourceContent.includes(marker)) errors.push(entry.featureId + ': source marker missing: ' + source.path + ' → ' + marker);
       }
     }
 
     const testContent = await readText(entry.test.path);
-    const testDeclaration = "test('" + entry.test.name + "'";
-    const testStart = testContent.indexOf(testDeclaration);
-    assert.ok(testStart >= 0, entry.featureId + ': named test not found: ' + entry.test.name);
-    const nextTestStart = testContent.indexOf("\ntest(", testStart + testDeclaration.length);
-    const namedTestBody = testContent.slice(testStart, nextTestStart < 0 ? testContent.length : nextTestStart);
-    for (const marker of entry.test.markers) {
-      assert.ok(namedTestBody.includes(marker),
-        entry.featureId + ': test assertion marker must exist inside its named test: ' + marker);
+    if (testContent === null) {
+      errors.push(entry.featureId + ': test file not found: ' + entry.test.path);
+    } else {
+      const body = namedTestBody(testContent, entry.test.name);
+      if (body === null) errors.push(entry.featureId + ': named test not found: ' + entry.test.name);
+      else for (const marker of entry.test.markers || []) {
+        if (!body.includes(marker)) errors.push(entry.featureId + ': test assertion marker missing: ' + entry.test.path + ' → ' + marker);
+      }
     }
+
     for (const integrationTest of entry.integrationTests || []) {
-      assert.ok(integrationTest.path.startsWith('scripts/'), 'integration test must live under scripts/');
+      if (!integrationTest.path.startsWith('scripts/')) {
+        errors.push(entry.featureId + ': integration test must live under scripts/: ' + integrationTest.path);
+        continue;
+      }
       const integrationContent = await readText(integrationTest.path);
-      assert.ok(
-        integrationContent.includes('assertIsolatedAuditDatabase') ||
-        (integrationContent.includes('dedicatedAuditDatabase') && integrationContent.includes('withIsolatedTestSchema')),
-        entry.featureId + ': integration test must guard its isolated PostgreSQL environment'
-      );
-      const declaration = "test('" + integrationTest.name + "'";
-      const start = integrationContent.indexOf(declaration);
-      assert.ok(start >= 0, entry.featureId + ': isolated integration test not found: ' + integrationTest.name);
-      const next = integrationContent.indexOf("\ntest(", start + declaration.length);
-      const body = integrationContent.slice(start, next < 0 ? integrationContent.length : next);
-      for (const marker of integrationTest.markers) {
-        assert.ok(body.includes(marker), entry.featureId + ': integration assertion marker missing: ' + marker);
+      if (integrationContent === null) {
+        errors.push(entry.featureId + ': integration test file not found: ' + integrationTest.path);
+        continue;
+      }
+      if (!integrationContent.includes('assertIsolatedAuditDatabase') &&
+          !(integrationContent.includes('dedicatedAuditDatabase') && integrationContent.includes('withIsolatedTestSchema'))) {
+        errors.push(entry.featureId + ': integration test lacks isolated PostgreSQL guard: ' + integrationTest.path);
+      }
+      const body = namedTestBody(integrationContent, integrationTest.name);
+      if (body === null) errors.push(entry.featureId + ': isolated integration test not found: ' + integrationTest.name);
+      else for (const marker of integrationTest.markers || []) {
+        if (!body.includes(marker)) errors.push(entry.featureId + ': integration assertion marker missing: ' + integrationTest.path + ' → ' + marker);
       }
     }
   }
+
+  assert.deepEqual(errors, [], 'Feature evidence map mismatches:\\n' + errors.join('\\n'));
   console.log('Feature evidence traceability: ' + evidence.entries.length + ' manually mapped records; inventory statuses unchanged.');
 });
