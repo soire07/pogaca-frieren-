@@ -1,6 +1,6 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { pool } from './database/db.js';
-import { HOME_ROOMS, HOME_DECORATIONS, HOME_STATIONS, ALCHEMY_RECIPES, PLAYER_COSMETICS, getPlayerHome, unlockHomeRoom, saveHomeLayout, purchaseCosmetic, equipCosmetic, saveCosmeticPreset, applyCosmeticPreset, brewHomePotion, getHomeTrophies, placeHomeTrophy, setHomeVisibility, claimEventMilestone } from './player-experience.js';
+import { HOME_ROOMS, HOME_DECORATIONS, HOME_DECORATION_CATALOG, HOME_STATIONS, ALCHEMY_RECIPES, PLAYER_COSMETICS, getPlayerHome, unlockHomeRoom, saveHomeLayout, purchaseCosmetic, equipCosmetic, saveCosmeticPreset, applyCosmeticPreset, brewHomePotion, getHomeTrophies, placeHomeTrophy, setHomeVisibility, claimEventMilestone } from './player-experience.js';
 
 const rooms=HOME_ROOMS.map(x=>({name:x.name,value:x.key}));
 const cosmetics=PLAYER_COSMETICS.map(x=>({name:x.name,value:x.key}));
@@ -29,7 +29,7 @@ export default {
   if(action==='paylasim'){const r=await setHomeVisibility(pool,{...base,isPublic:i.options.getBoolean('acik')});return reply(i,r.status==='updated'?(r.isPublic?'Ev vitrinin topluluğa açıldı. Web panelinden bağlantını paylaşabilirsin.':'Ev vitrinin gizlendi.'):'Paylaşım ayarı değiştirilemedi.');}
   if(action==='istasyonlar'){const unlocked=new Set((await getPlayerHome(pool,base)).rooms.map(x=>x.room_key));return reply(i,'**Ev İş İstasyonları**\n'+HOME_STATIONS.map(x=>'• '+x.name+' — '+(unlocked.has(x.roomKey)?'Açık':'Kilitli')+'\n  '+x.commands.join(' · ')).join('\n'));}
   if(action==='iksir-demle'){const r=await brewHomePotion(pool,{...base,recipeKey:i.options.getString('tarif')});const m={brewed:'Üretildi: '+r.output+'. Malzemeler envanterinden düşüldü.',station_locked:'Önce Simya Laboratuvarını açmalısın: /yasam oda-ac · alchemy.',missing_material:'Eksik malzeme: '+r.material+' · Gerekli: '+r.required+' · Sende: '+r.available,invalid_recipe:'İksir tarifi bulunamadı.'};return reply(i,m[r.status]||'İksir üretilemedi.');}
-  if(action==='dekorasyonlar')return reply(i,'**Ev Dekorasyonları**\n'+HOME_DECORATIONS.map(x=>'• '+x).join('\n'));
+  if(action==='dekorasyonlar')return reply(i,'**Ev Dekorasyonları**\n'+HOME_DECORATION_CATALOG.map(x=>'• '+x.emoji+' '+x.name+' (`'+x.key+'`)').join('\n'));
   if(action==='kupalar'){const rows=await getHomeTrophies(pool,base);return reply(i,rows.length?'**Kazanılmış Kupalar**\n'+rows.map(x=>'• '+x.achievement_key+(x.display_slot===null?'':' · Vitrin '+x.display_slot)).join('\n'):'Henüz kazanılmış başarımın yok.');}
   if(action==='kupa-yerlestir'){const r=await placeHomeTrophy(pool,{...base,achievementKey:i.options.getString('basarim'),displaySlot:i.options.getInteger('konum')});return reply(i,r.status==='placed'?'Kupa Zafer Salonuna yerleştirildi.':r.status==='room_locked'?'Önce Zafer Salonunu açmalısın.':r.status==='trophy_missing'?'Bu başarıma sahip değilsin.':'Kupa veya konum geçersiz.');}
   if(action==='oda-ac'){const r=await unlockHomeRoom(pool,{...base,roomKey:i.options.getString('oda')});const m={unlocked:'Oda açıldı: '+r.room.name+'. Kalan altın: '+r.balance,already_unlocked:'Bu oda zaten açık.',level_locked:'Gereken seviye: '+r.requiredLevel,insufficient_funds:'Gerekli altın: '+r.cost,invalid_room:'Oda bulunamadı.'};return reply(i,m[r.status]||'Oda açılamadı.');}
