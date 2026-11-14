@@ -1205,9 +1205,9 @@
         "path": "scripts/test-utils.js",
         "name": "final dungeon boss has three phases and stronger phase-scaled special attacks",
         "markers": [
-          "calculateFinalDungeonBossRawDamage(",
-          "isFinalDungeonBossEnraged(",
-          "shouldFinalDungeonBossSpecialAttack(",
+          "calculateFinalDungeonBossRawDamage",
+          "isFinalDungeonBossEnraged",
+          "shouldFinalDungeonBossSpecialAttack",
           "İblis Lordu son evreye geçti"
         ]
       },
