@@ -1241,6 +1241,10 @@ test('adventurer profile page is guild-scoped and renders canonical XP, titles, 
  assert.equal(await handlePublicSiteRequest(request('/maceraci/profil?guildId='+guildId,{id:accountId,username:'Gezgin'}),response,{db}),true);
  assert.equal(response.status,200);
  assert.match(response.body,/Maceracı Profili/);
+ assert.match(response.body,/class="player-cosmetic-identity profile-cosmetic-identity"/);
+ assert.match(response.body,/data-profile-frame="moon_frame"/);
+ assert.match(response.body,/data-cosmetic-theme="default"/);
+ assert.match(response.body,/data-title-effect="none"/);
  assert.match(response.body,/Keşif ve Büyü Günlüğü/);
  assert.match(response.body,/Büyü arşivi/);
  assert.match(response.body,/1\/7 kayıt/);
