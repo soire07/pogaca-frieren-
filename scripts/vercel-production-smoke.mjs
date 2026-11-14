@@ -19,7 +19,7 @@ const routes = [
   { path: '/', label: 'site root' }
 ];
 const assets = [
-  { path: '/assets/site.css?v=mobile-385-1', label: 'site stylesheet' },
+  { path: '/assets/site.css?v=cosmetics-386-1', label: 'site stylesheet' },
   { path: '/assets/exploration-atlas.js?v=atlas-371-1', label: 'world atlas client script' }
 ];
 const engines = [
