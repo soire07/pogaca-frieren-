@@ -1,6 +1,6 @@
 import { Routes } from 'discord.js';
 
-const SNOWFLAKE = /^\\d{17,20}$/;
+const SNOWFLAKE = /^\d{17,20}$/;
 const GLOBAL_COMMAND_NAMES = new Set(['haberleri-ayarla', 'haberleri-kapat']);
 const PROTECTED_GUILD_IDS = new Set([
   '1539562273197260860',
