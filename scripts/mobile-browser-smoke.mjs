@@ -188,14 +188,22 @@ for (const scenario of scenarios) {
       const endePin = box('.atlas-pin-city[data-atlas-open="ende"]');
       const fortressPin = box('.atlas-pin-city[data-atlas-open="demon-kings-castle"]');
       const biome = box('.atlas-biome-label[data-atlas-biome-label="aus"]');
+      const art = document.querySelector('.atlas-map-art').getBoundingClientRect();
+      const anchor = key => {
+        const node = document.querySelector('[data-settlement="'+key+'"]');
+        const match = /translate\\(([-0-9.]+)\\s+([-0-9.]+)\\)/.exec(node?.getAttribute('transform') || '');
+        return match ? { x:art.left+Number(match[1])/1800*art.width, y:art.top+Number(match[2])/1200*art.height } : null;
+      };
+      const pinCenter = value => value ? { x:value.centerX,y:value.centerY } : null;
+      const distance = (a,b) => a && b ? Math.hypot(a.x-b.x,a.y-b.y) : Infinity;
       const overlaps = (a,b) => Boolean(a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
       return {
         ende, fortress, endePin, fortressPin, biome,
         skylinesOverlap:overlaps(ende,fortress),
         biomeOverlapsEnde:overlaps(biome,ende),
         biomeOverlapsFortress:overlaps(biome,fortress),
-        endePinDrift:ende && endePin ? Math.hypot(ende.centerX-endePin.centerX,ende.centerY-endePin.centerY) : Infinity,
-        fortressPinDrift:fortress && fortressPin ? Math.hypot(fortress.centerX-fortressPin.centerX,fortress.centerY-fortressPin.centerY) : Infinity
+        endePinDrift:distance(pinCenter(endePin),anchor('ende')),
+        fortressPinDrift:distance(pinCenter(fortressPin),anchor('demon-kings-castle'))
       };
     });
     if (northernLandmarkLayout.skylinesOverlap || northernLandmarkLayout.biomeOverlapsEnde ||
