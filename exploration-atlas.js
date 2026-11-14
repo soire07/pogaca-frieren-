@@ -165,7 +165,8 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
     })),
     ...ATLAS_HISTORICAL_EVENTS.map(event=>({id:'event:'+event.id,key:event.regionKey,targetKey:event.id,label:event.title,type:'event',icon:'◷',x:event.x,y:event.y,focus:'event',subtitle:event.episodeLabel}))
   ];
-  const arrangedMarkers=declutterAtlasPins(markerConfigs);\n  const markerPins=arrangedMarkers.map(marker=>pin(marker)).join('');
+  const arrangedMarkers=declutterAtlasPins(markerConfigs);
+  const markerPins=arrangedMarkers.map(marker=>pin(marker)).join('');
   const fogPaths=points.filter(point=>!point.item.discovered).map(point=>{
     const path=FOG_PATHS[point.item.region.key];
     return path?'<path d="'+path+'" fill="#243647" opacity=".18" stroke="#d4c4a1" stroke-opacity=".16" stroke-width=".35"/>':'';
