@@ -1,0 +1,60 @@
+const BASE = 'https://frierenbot.vercel.app';
+const UPDATED = '14 Kasım 2026';
+const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function shell(title, description, body, path) {
+  return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<title>' + esc(title) + ' · Poğaça Frieren</title><meta name="description" content="' + esc(description) + '">'
+    + '<meta name="robots" content="index,follow"><link rel="canonical" href="' + BASE + path + '">'
+    + '<style>'
+    + ':root{color-scheme:dark;background:#100d18;color:#eee8f7;font-family:Inter,system-ui,-apple-system,sans-serif}'
+    + '*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -15%,#493266 0,transparent 48%),#100d18;line-height:1.75}'
+    + 'a{color:#d6b5ff}header,main,footer{width:min(900px,calc(100% - 32px));margin:auto}'
+    + 'header{padding:24px 0;border-bottom:1px solid #b99bdb33;display:flex;gap:18px;align-items:center;flex-wrap:wrap}'
+    + 'header a{text-decoration:none;color:#eadcf9;font-weight:650}header .brand{font-family:Georgia,serif;font-size:20px;margin-right:auto}'
+    + 'main{padding:36px 0 64px}h1{font:clamp(30px,6vw,44px) Georgia,serif;line-height:1.2;margin:0 0 10px;color:#f4eaff}'
+    + '.meta{color:#b9a9ca;font-size:13px;margin-bottom:28px}.intro{padding:18px 20px;border:1px solid #b99bdb44;border-radius:16px;background:#241b32;margin:22px 0 30px}'
+    + 'h2{font-size:20px;margin:30px 0 8px;color:#e7d4ff}p,li{color:#d5cadd}ul{padding-left:22px}li{margin:6px 0}'
+    + 'footer{border-top:1px solid #b99bdb33;padding:22px 0 36px;color:#a99bb8;font-size:13px;display:flex;gap:16px;flex-wrap:wrap}'
+    + 'footer a{color:#cdb4ed}@media(max-width:560px){header{gap:12px}header .brand{width:100%}main{padding-top:26px}}'
+    + '</style></head><body><header><a class="brand" href="/">✧ Poğaça Frieren</a><a href="/pogaca">Bot</a><a href="/frieren-ai">Frieren AI</a><a href="/destek">Destek</a></header>'
+    + '<main>' + body + '</main><footer><span>© Poğaça Frieren</span><a href="/hizmet-kosullari">Hizmet Koşulları</a><a href="/gizlilik-politikasi">Gizlilik Politikası</a><a href="/destek">Destek Merkezi</a></footer></body></html>';
+}
+
+export function termsPage() {
+  const body = '<h1>Hizmet Koşulları</h1><div class="meta">Son güncelleme: ' + UPDATED + '</div>'
+    + '<div class="intro">Poğaça Frieren; Discord botu, Frieren temalı oyun/RPG özellikleri ve bunlarla bağlantılı web hizmetlerinden oluşur. Hizmeti kullanarak aşağıdaki koşulları kabul etmiş olursun.</div>'
+    + '<h2>1. Hizmetin kullanımı</h2><p>Hizmeti yalnızca yürürlükteki mevzuata, Discord Kullanım Koşulları ve Topluluk Kuralları’na uygun şekilde kullanmalısın. Hesaplarını, botu veya web özelliklerini başkalarının haklarını ihlal etmek, güvenliği bozmak, spam göndermek ya da sisteme yetkisiz erişmek için kullanamazsın.</p>'
+    + '<h2>2. Discord ve hesaplar</h2><p>Discord hesabı, sunucular, mesajlaşma altyapısı ve Discord tarafından sağlanan özellikler Discord’un kendi koşullarına tabidir. Poğaça Frieren, Discord tarafından işletilmez veya Discord tarafından onaylandığı anlamına gelecek şekilde sunulmaz. Hesap ve sunucu erişim izinlerinin doğru yönetilmesinden kullanıcı sorumludur.</p>'
+    + '<h2>3. Oyun verileri ve sanal öğeler</h2><p>RPG ilerlemesi, karakterler, envanter, para birimleri, koleksiyonlar ve benzeri oyun kayıtları hizmetin dijital özellikleridir; gerçek para veya mülkiyet hakkı oluşturmaz. Denge, hata düzeltmesi, kötüye kullanımın önlenmesi veya hizmetin devamı için oyun değerleri ve özellikleri değiştirilebilir. Açıkça belirtilmedikçe oyun verilerinin gerçek para karşılığı veya devredilebilir değeri yoktur.</p>'
+    + '<h2>4. Kullanıcı içeriği ve davranış</h2><p>Gönderdiğin mesaj, profil bilgisi, görsel ve diğer içeriklerden sen sorumlusun. Başkalarının gizliliğini, fikrî mülkiyetini veya güvenliğini ihlal eden içerik paylaşmamalısın. Topluluk alanlarında görünür kıldığın içerikler diğer kullanıcılar tarafından görüntülenebilir.</p>'
+    + '<h2>5. Kullanılabilirlik ve değişiklikler</h2><p>Hizmet kesintisiz veya hatasız çalışma garantisi vermez. Bakım, güvenlik olayı, üçüncü taraf kesintisi veya teknik nedenlerle bazı özellikler geçici olarak kullanılamayabilir. Özellikleri geliştirebilir, değiştirebilir veya sonlandırabiliriz; önemli değişiklikleri uygun kanallardan duyurmaya çalışırız.</p>'
+    + '<h2>6. Kötüye kullanım ve erişimin kısıtlanması</h2><p>Bu koşulların, Discord kurallarının veya güvenlik gerekliliklerinin ihlali hâlinde ilgili özelliğe erişim sınırlandırılabilir ya da durdurulabilir. Mümkün olduğunda sorun destek kanalı üzerinden çözümlenir.</p>'
+    + '<h2>7. Sorumluluğun sınırları</h2><p>Hizmet, uygulanabilir hukukun izin verdiği ölçüde “olduğu gibi” sunulur. Kanunen hariç tutulamayacak tüketici hakları ve zorunlu sorumluluklar saklıdır. Teknik kesinti, üçüncü taraf hizmetleri veya kullanıcı kaynaklı veri kaybı nedeniyle doğabilecek sonuçlar bakımından, hukukun izin verdiği sınırlar geçerlidir.</p>'
+    + '<h2>8. Koşulların güncellenmesi</h2><p>Koşullar güncellenebilir. Güncel metin bu sayfada yayımlanır; güncelleme tarihi sayfanın üst kısmında gösterilir. Değişikliklerden sonra hizmeti kullanmaya devam etmen, uygulanabilir hukuk çerçevesinde güncel koşullara tabi olacağın anlamına gelir.</p>'
+    + '<h2>9. İletişim</h2><p>Hizmetle ilgili soru ve talepler için <a href="/destek">Destek Merkezi</a> üzerinden hesap açarak destek talebi oluşturabilirsin.</p>';
+  return shell('Hizmet Koşulları', 'Poğaça Frieren hizmetlerinin kullanım koşulları.', body, '/hizmet-kosullari');
+}
+
+export function privacyPage() {
+  const body = '<h1>Gizlilik Politikası</h1><div class="meta">Son güncelleme: ' + UPDATED + '</div>'
+    + '<div class="intro">Bu metin, Poğaça Frieren Discord botu ve <a href="' + BASE + '">frierenbot.vercel.app</a> web hizmetlerinin hangi bilgileri işleyebildiğini, neden kullandığını ve hesap verileri üzerinde hangi kontrollerin bulunduğunu açıklar.</div>'
+    + '<h2>1. İşlenen veri kategorileri</h2><ul>'
+    + '<li><strong>Hesap bilgileri:</strong> Web hesabı kullanıldığında kullanıcı adı, e-posta adresi, parola özeti (parolanın kendisi değil), hesap oluşturma ve e-posta doğrulama bilgileri.</li>'
+    + '<li><strong>Discord bilgileri:</strong> Discord kullanıcı kimliği, kullanıcı adı ve avatar bilgisi; Discord ile hesap bağlama veya bot özelliklerini kullanma durumunda sunucu kimliği ve ilgili kullanıcı/sunucu bağlantıları.</li>'
+    + '<li><strong>Oyun kayıtları:</strong> Karakter seviyesi, XP, oyun para birimi, istatistikler, envanter, koleksiyonlar, başarımlar, etkinlik katılımı, pazar ve benzeri RPG ilerleme kayıtları.</li>'
+    + '<li><strong>İletişim ve topluluk içeriği:</strong> Destek talepleri ve yanıtları, genel sohbet mesajları, doğrudan/grup mesajları, mesaj tepkileri, okundu bilgileri, engelleme/şikâyet kayıtları ve gönderdiğin profil veya sohbet medyası.</li>'
+    + '<li><strong>Teknik ve güvenlik verileri:</strong> Oturum ve CSRF güvenlik belirteçleri, istek güvenliği/rate-limit olayları, hata ve tanılama kayıtları. Güvenlik amacıyla istek IP adresi gibi bağlantı bilgileri işlenebilir.</li>'
+    + '<li><strong>Frieren AI verileri:</strong> Kalıcı bellek özelliği etkin ve kullanıldığında Discord kullanıcı kimliğine bağlı açıkça kaydedilen anılar ile konuşma bağlamı. Konuşma kayıtları kullanıcı ve konuşma kimliğine göre ayrılır; her konuşmada en fazla son 80 kayıt tutulacak şekilde sınırlandırılır. Kaydedilmiş anılar ayrıca yönetilir ve kendiliğinden konuşma geçmişiyle aynı şey değildir.</li>'
+    + '</ul>'
+    + '<h2>2. Verileri hangi amaçlarla kullanırız?</h2><p>Veriler; bot ve web hesabını çalıştırmak, Discord hesabını bağlamak, RPG ilerlemesini kaydetmek, sohbet ve destek özelliklerini sunmak, kullanıcı tercihlerini uygulamak, güvenliği sağlamak, kötüye kullanımı önlemek, hataları teşhis etmek ve hizmeti geliştirmek için işlenir.</p>'
+    + '<h2>3. Çerezler ve oturum</h2><p>Giriş ve güvenlik için gerekli oturum çerezleri kullanılır. Site oturum çerezi HttpOnly, Secure ve SameSite=Lax nitelikleriyle ayarlanır ve kodda sekiz saatlik süreye sahiptir. Discord OAuth güvenlik durum çerezi kısa süreli kullanılır. Bu sayfada reklam/izleme çerezi kullanıldığı iddia edilmez; tarayıcı ve altyapı sağlayıcılarının kendi teknik kayıtları ayrıca oluşabilir.</p>'
+    + '<h2>4. Verilerin paylaşılması</h2><p>Veriler satılmaz. Hizmetin çalışması için gerekli olduğunda bilgiler Discord, barındırma ve veritabanı altyapısı sağlayıcıları, e-posta gönderim sağlayıcısı ve ilgili AI özelliğinde yapılandırılmış model/AI sağlayıcısı gibi hizmet sağlayıcılarıyla işlenebilir. Bu sağlayıcılar kendi hizmetlerinin teknik kayıtlarını kendi koşulları ve yükümlülükleri kapsamında tutabilir. Kullanıcı tarafından herkese açık sohbet, profil veya sunucu alanına gönderilen içerik, ilgili alanın görünürlük ayarlarına göre diğer kullanıcılara gösterilebilir.</p>'
+    + '<h2>5. Saklama süreleri</h2><p>Hesap ve oyun kayıtları, ilgili hizmeti sunmak için gerekli olduğu sürece saklanır. Genel sohbet akışında yalnızca son 30 gün içindeki mesajlar listelenir; bu görünürlük sınırı tek başına veritabanından otomatik silme süresi anlamına gelmez. Frieren AI konuşma bağlamı her konuşma için en fazla 80 kayıtla sınırlandırılır; açıkça kaydedilen anılar, kullanıcı silene kadar saklanabilir. Destek, güvenlik ve teknik kayıtlar ihtiyaç ve uygulanabilir yükümlülükler doğrultusunda tutulur. Tüm kayıt türleri için tek bir sabit saklama süresi taahhüt edilmez.</p>'
+    + '<h2>6. Erişim, dışa aktarma ve silme</h2><p>Web hesabında <a href="/hesap-merkezi">Hesap Merkezi</a> üzerinden verilerini dışa aktarabilir ve portal hesabını silebilirsin. Portal hesabının silinmesi web kimliğini ve Discord bağlantılarını, destek kayıtlarını ve bu hesaba bağlı portal verilerinin ilgili bölümünü kaldırır. Discord sunucularında tutulan RPG oyuncu kayıtları bu işlemle silinmez; bu kayıtlar botun sunucu oyun verisi olarak korunur. Sohbet veya medya gibi belirli içeriklerin silinmesi için ilgili özelliğin silme kontrollerini kullanabilir ya da <a href="/destek">Destek Merkezi</a> üzerinden talep gönderebilirsin. Frieren AI'da açıkça kaydedilmiş anılar, ilgili bellek silme komutlarıyla silinebilir; bu işlem konuşma geçmişini otomatik olarak temizlemeyebilir.</p>'
+    + '<h2>7. Güvenlik</h2><p>Parolalar düz metin olarak saklanmaz; kodda scrypt tabanlı parola özeti kullanılır. Oturum, CSRF, istek sınırlandırma ve erişim kontrolleri gibi korumalar uygulanır. Bununla birlikte internet üzerinden hiçbir aktarım veya depolama yöntemi mutlak güvenlik garantisi vermez.</p>'
+    + '<h2>8. Çocuklar ve üçüncü taraf hizmetleri</h2><p>Discord ve kullandığın diğer platformların yaş ve kullanım koşullarına uymalısın. Discord, AI, barındırma, veritabanı ve e-posta sağlayıcılarının kendi gizlilik metinleri de geçerlidir; bu sağlayıcıların uygulamalarını kendi adımıza kontrol ettiğimizi iddia etmiyoruz.</p>'
+    + '<h2>9. Politika değişiklikleri</h2><p>Bu politika, hizmetin özellikleri veya hukuki gereklilikler değiştiğinde güncellenebilir. En güncel metin bu adreste yayımlanır ve son güncelleme tarihi üstte gösterilir.</p>'
+    + '<h2>10. Gizlilik talepleri ve iletişim</h2><p>Verilerine erişim, düzeltme, silme veya işleme hakkında soru sormak için giriş yaptıktan sonra <a href="/destek">Destek Merkezi</a> üzerinden talep oluştur. Talebin niteliğine ve geçerli hukuka göre kimlik doğrulaması veya ek bilgi gerekebilir.</p>';
+  return shell('Gizlilik Politikası', 'Poğaça Frieren veri işleme ve gizlilik politikası.', body, '/gizlilik-politikasi');
+}
