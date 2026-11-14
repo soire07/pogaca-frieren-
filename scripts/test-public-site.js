@@ -2033,3 +2033,20 @@ test('theme gallery asset updates the account profile preview without saving the
  assert.match(script,/showcase\.dataset\.theme = select\.value/);
  assert.match(script,/gallery\.dataset\.livePreview = 'true'/);
 });
+
+
+test('player home layout editor asset is served and supports pointer and keyboard reordering', async () => {
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/assets/home-layout-editor.js'),response,{db:null}),true);
+ assert.equal(response.status,200);
+ assert.match(response.headers['Content-Type'],/javascript/);
+ const script=response.body.toString('utf8');
+ for(const token of ['data-home-layout-editor','data-home-layout-grid','data-home-layout-slot','dragstart','dragover','drop','data-home-layout-move','aria-live','layoutPosition'])assert.ok(script.includes(token),'home editor must support '+token);
+ const site=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
+ assert.match(site,/data-home-layout-grid/);
+ assert.match(site,/data-home-layout-move="up"/);
+ assert.match(site,/home-layout-editor\.js\?v=1/);
+ const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
+ assert.match(css,/\.home-layout-slot\.is-dragging/);
+ assert.match(css,/prefers-reduced-motion:reduce\)\{\.home-layout-slot/);
+});
