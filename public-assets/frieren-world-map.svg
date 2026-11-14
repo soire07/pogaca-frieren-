@@ -117,26 +117,22 @@
  <path d="M675 470C810 390 1000 415 1115 520 1225 622 1190 805 1040 865 900 925 735 842 680 720 640 632 635 540 675 470Z" fill="url(#sandstone)" filter="url(#biome-edge)" opacity=".42"/>
  <path d="M675 470C810 390 1000 415 1115 520 1225 622 1190 805 1040 865 900 925 735 842 680 720 640 632 635 540 675 470Z" fill="url(#rock-hatch)" opacity=".36"/>
  <!-- mountain systems with layered ridgelines, not repeated cartoon peaks -->
- <path d="M680 240C760 190 850 190 925 236 1010 190 1115 210 1185 280L1265 405C1160 465 1080 425 1000 390 900 450 795 410 715 360Z" fill="#657b7a" opacity=".5"/>
- <g opacity=".96">
-  <path d="M690 357 735 304 770 321 818 242 850 275 898 208 936 249 978 218 1025 270 1065 245 1110 301 1150 286 1198 352 1242 390 1190 414 1125 385 1070 405 1012 371 958 403 900 369 844 392 788 360 730 380Z" fill="#405a5e" opacity=".56"/>
-  <path d="M700 347 748 294 780 319 820 232 852 271 900 194 939 246 982 207 1025 262 1068 238 1110 293 1154 278 1202 345 1250 387" fill="none" stroke="#e2e3d6" stroke-opacity=".55" stroke-width="7" stroke-linejoin="round"/>
-  <path d="m748 294 20 45 37-21 15-86 32 56 48-94 39 52 43-45 43 55 43-24 42 55 44-15 48 65" fill="none" stroke="#9aada7" stroke-opacity=".8" stroke-width="13" stroke-linejoin="round"/>
-  <path d="m820 232 15 48 17-9 48-77 18 57 21-5 43-39 18 48 24-3 44 39 20-17 41 52" fill="none" stroke="#d5ddd3" stroke-opacity=".72" stroke-width="4" stroke-linejoin="round"/>
-  <path d="m900 194 20 59 19-7 43-39 21 59 19-4 43 39 23-14 40 56" fill="none" stroke="#f1eee0" stroke-opacity=".7" stroke-width="2.8" stroke-linejoin="round"/>
-  <path d="M725 365q80-32 142-3t137-3 150 15 94 28" fill="none" stroke="#293f48" stroke-opacity=".45" stroke-width="17" stroke-linecap="round"/>
-  <path d="M1040 548 1080 518 1114 548 1156 510 1198 554 1234 535 1276 590 1318 575 1365 640 1400 702 1368 766 1320 802 1270 766 1230 787 1178 744 1135 758 1090 711 1050 676 1024 616Z" fill="#425d60" opacity=".42"/>
-  <path d="M1040 548 1080 518 1114 548 1156 510 1198 554 1234 535 1276 590 1318 575 1365 640 1400 702 1368 766" fill="none" stroke="#d9dfd2" stroke-opacity=".54" stroke-width="6" stroke-linejoin="round"/>
-  <path d="m1080 518 25 62 49-70 44 68 36-43 42 65 42-25 47 65 35 62" fill="none" stroke="#a8b9b1" stroke-opacity=".7" stroke-width="12" stroke-linejoin="round"/>
-  <path d="m1156 510 14 64 28-6 44-33 18 68 24-6 34 46 24-15 36 74" fill="none" stroke="#eef0e3" stroke-opacity=".62" stroke-width="3.5" stroke-linejoin="round"/>
-  <path d="M1018 690q105-65 193-12t154 87" fill="none" stroke="#2c444b" stroke-opacity=".42" stroke-width="19" stroke-linecap="round"/>
+ <g class="atlas-mountain-backdrop" pointer-events="none">
+ <path d="M675 330Q760 242 845 266Q910 204 988 238Q1070 192 1158 270Q1228 320 1270 405Q1195 454 1120 422Q1040 456 970 418Q885 458 808 414Q735 406 675 330Z" fill="#657b7a" opacity=".38"/>
+ <path d="M690 338Q766 270 844 286Q913 225 986 257Q1067 213 1146 282Q1212 337 1242 396" fill="none" stroke="#dce4d9" stroke-opacity=".5" stroke-width="5" stroke-linecap="round"/>
+ <path d="M712 356Q786 297 854 310Q920 256 986 286Q1055 246 1125 309Q1180 356 1218 410" fill="none" stroke="#9aadaa" stroke-opacity=".72" stroke-width="13" stroke-linecap="round"/>
+ <path d="M754 375Q824 326 878 339Q938 291 997 316Q1055 284 1110 333Q1157 371 1191 419" fill="none" stroke="#e6e9dc" stroke-opacity=".42" stroke-width="2.4" stroke-linecap="round"/>
+ <path d="M1010 555Q1080 493 1152 520Q1212 488 1280 552Q1360 612 1400 720Q1360 795 1286 810Q1208 844 1132 786Q1055 732 1010 650Z" fill="#687c78" opacity=".34"/>
+ <path d="M1030 590Q1094 530 1158 548Q1220 515 1280 580Q1340 642 1372 718" fill="none" stroke="#e2e7dc" stroke-opacity=".48" stroke-width="5" stroke-linecap="round"/>
+ <path d="M1050 618Q1110 565 1168 580Q1222 550 1274 612Q1320 665 1350 730" fill="none" stroke="#a8b9b1" stroke-opacity=".7" stroke-width="12" stroke-linecap="round"/>
  </g>
- <path d="M770 430C875 385 990 410 1080 465 1170 520 1210 610 1160 690" fill="none" stroke="#d4ded2" stroke-opacity=".46" stroke-width="6"/>
- <path d="M790 458C890 418 990 440 1070 490 1135 530 1165 590 1138 645" fill="none" stroke="#3d5b61" stroke-opacity=".35" stroke-width="12"/>
- <!-- Schwer mountain chain -->
- <path d="M1050 530C1155 465 1260 500 1345 580 1430 655 1455 765 1380 850 1280 890 1165 830 1090 765 1020 700 1000 600 1050 530Z" fill="#687c78" opacity=".4"/>
- <g opacity=".88"><use href="#ridge" x="1040" y="555"/><use href="#ridge" x="1170" y="590"/><use href="#ridge" x="1300" y="655"/><use href="#ridge" x="1190" y="735"/></g>
- <path d="M1020 820C1130 760 1260 795 1360 875" fill="none" stroke="#e6e1cf" stroke-opacity=".5" stroke-width="5"/>
+ <!-- Lower foothill strata: broad, broken ridges rather than repeated peak icons. -->
+ <g class="atlas-schwer-foothills" fill="none" stroke-linecap="round">
+  <path d="M1035 625Q1110 550 1180 580T1320 650Q1390 720 1360 800" stroke="#344f56" stroke-opacity=".42" stroke-width="29"/>
+  <path d="M1035 610Q1110 535 1180 565T1320 635Q1380 700 1350 785" stroke="#a8b9b1" stroke-opacity=".68" stroke-width="14"/>
+  <path d="M1055 600Q1120 535 1185 555T1310 625Q1365 690 1340 770" stroke="#eef0e3" stroke-opacity=".55" stroke-width="3"/>
+  <path d="M1080 680Q1150 625 1210 650T1325 725M1110 730Q1170 685 1230 705T1330 770" stroke="#526b6b" stroke-opacity=".42" stroke-width="6"/>
+ </g>
  <!-- relief shadows and foothill systems -->
  <g opacity=".22"><use href="#atlas-hill" x="340" y="710"/><use href="#atlas-hill" x="505" y="810"/><use href="#atlas-hill" x="620" y="900"/></g>
  <g opacity=".55"><use href="#hillshade" x="330" y="610"/><use href="#hillshade" x="480" y="660"/><use href="#hillshade" x="600" y="790"/><use href="#hillshade" x="350" y="870"/><use href="#hillshade" x="520" y="925"/><use href="#hillshade" x="1350" y="450"/></g>
