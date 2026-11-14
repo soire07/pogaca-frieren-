@@ -319,7 +319,8 @@ test('atlas settlement silhouettes give each established town a distinct, coordi
   const expected = [
     ['strahl', 39, 79], ['royal-capital', 49, 88], ['waal', 51, 63],
     ['fabel-village', 51, 48], ['graf-granat', 55, 58], ['aeusserst', 68, 42],
-    ['village-of-sword', 75, 62], ['weise', 82, 46]
+    ['village-of-sword', 75, 62], ['weise', 82, 46], ['ende', 88, 15],
+    ['demon-kings-castle', 94, 24]
   ];
   assert.match(atlas, /const settlementSilhouetteTemplates = Object\.freeze\(\{/);
   assert.match(atlas, /function buildAtlasSettlementSilhouettes\(settlements=FRIEREN_WORLD_SETTLEMENTS\)/);
