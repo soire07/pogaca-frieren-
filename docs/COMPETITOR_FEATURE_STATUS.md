@@ -5,6 +5,17 @@
 > Kaynak listeler: `docs/COMPETITOR_FEATURE_MATRIX.md`, `docs/ENTERTAINMENT_FEATURE_BACKLOG.md`  
 > Bu belge ilk kaynak/test eşleştirmesidir; canlı Discord doğrulaması veya tamamlanma beyanı değildir.
 
+## Sonraki denetim güncellemesi — 2026-11-14
+
+- Güncel `main`: `97b4595f96f5a69757805b26f3ef29b6edeaae28`.
+- Güncel özellik envanteri: **2.021 kayıt = 346 kanıt bağlantılı mevcut özellik + 1.675 planlı kayıt**. `auditComplete=false` korunuyor.
+- 1.675 planlı kayıt 1.675 birbirinden bağımsız yetenek değildir: denetim 325 kategori/yetenek grubu bulur; 225 grupta tekrarlanan eylem varyantları vardır (1.350 ek kayıt). Bu tekrarlar otomatik olarak silinmedi ve planlı özellikler uygulanmış sayılmadı.
+- Yeni kanıt eşlemeleri: ENT-041 kişisel ev ve oda bazlı dekorasyon düzenleyicisi; ENT-042 kozmetik yükleme/vitrin efektleri; EVENT-003 bağlı oyuncunun yaşam panelinde etkinlik kayıt/yoklama ilerlemesi. Kanıt kapsamları yalnızca ilgili birim ve web-route testleriyle sınırlıdır.
+- PR #217, 2026-11-05 tarihinde `main` içine merge edilmiştir. Aşağıdaki 2026-11-04 tarihli tablolar tarihsel ilk eşleştirmeyi korur; bugünkü durum için `feature-inventory.json`, güncel kaynak kod ve CI kullanılmalıdır.
+- Ev sistemi PR #387, Guard sender PR #388 ve özellik kanıtı PR #389 birleştirildi. #342 ve #367 eski dalları, #335 ise #388 ile değiştirildi.
+- Render canlı bot açılışında 87 komut yüklendiğini ve PostgreSQL bağlantısını doğruladı; bu kayıt gerçek kullanıcı etkileşimiyle bütün komutların canlı Discord E2E test edildiği anlamına gelmez.
+- Frieren Neural kalite kapısı PR #341 draft olarak kalır. Otomatik testler geçse bile iki bağımsız insan incelemesi, eğitim kökeni ve held-out metrikleri olmadan model üretime alınmaz.
+
 ## Güncel entegrasyon durumu — 2026-11-04
 
 İlk eşleştirmede PR #185 üzerinde bulunan modüller, güncel onarım dalına topluca merge edilmeden ayrı `feat/frieren-platform-expansion-batch` dalına seçilerek taşındı ve güncel kodla uyumlandırıldı. Bu dalın kod doğrulama commit'i: `d792ad979e3441b7ef2eb019f828134d40aeb7be`.
