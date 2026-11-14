@@ -122,6 +122,7 @@ for (const scenario of scenarios) {
           htmlOverflowX:getComputedStyle(document.documentElement).overflowX,
           bodyOverflowX:getComputedStyle(document.body).overflowX, offenders, wideScrollers };
       });
+      if (layout.offenders.length) throw new Error(scenario.name + ' category ' + route + ' has elements outside the viewport: ' + JSON.stringify(layout.offenders));
       if (layout.documentWidth > layout.width + 1 || layout.bodyWidth > layout.width + 1 || layout.scrollX !== 0) {
         throw new Error(scenario.name + ' category ' + route + ' has horizontal page overflow: ' + JSON.stringify(layout));
       }
