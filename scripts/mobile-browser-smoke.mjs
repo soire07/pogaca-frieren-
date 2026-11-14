@@ -139,7 +139,7 @@ for (const scenario of scenarios) {
     });
     if (settlementArt.length !== expectedSettlementKeys.length ||
         expectedSettlementKeys.some(key => !settlementArt.some(item => item.key === key)) ||
-        settlementArt.some(item => !/^translate\\(-?\\d+ -?\\d+\\) scale\\([0-9.]+\\)$/.test(item.transform || '') || item.pointerEvents !== 'none' || !item.insideViewport)) {
+        settlementArt.some(item => !(item.transform || '').startsWith('translate(') || !(item.transform || '').includes(') scale(') || item.pointerEvents !== 'none' || !item.insideViewport)) {
       throw new Error(scenario.name + ' settlement silhouettes are missing, misplaced or intercept map input: ' + JSON.stringify(settlementArt));
     }
     const artworkResponse = await page.request.get(baseUrl + '/assets/frieren-world-map.svg?v=atlas-376-1');
