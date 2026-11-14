@@ -149,8 +149,17 @@ test('local zoom plans are anchored to existing settlements and explicitly schem
   assert.match(layer, /data-atlas-local-detail-layer/);
   assert.match(layer, /data-atlas-local-settlement="Strahl"/);
   assert.match(layer, /data-atlas-local-settlement="Äußerst"/);
-  assert.equal((layer.match(/class="atlas-local-settlement-plan"/g)||[]).length, FRIEREN_WORLD_SETTLEMENTS.length);
+  assert.equal((layer.match(/class="atlas-local-settlement-plan(?: |--)/g)||[]).length, FRIEREN_WORLD_SETTLEMENTS.length);
   assert.doesNotMatch(layer, /undefined|NaN/);
+  for (const archetype of ['walled','market','hamlet']) assert.match(layer, new RegExp('atlas-local-settlement-plan--' + archetype), 'the catalog should exercise every settlement layout archetype');
+  assert.match(layer, /atlas-local-street/);
+  assert.match(layer, /atlas-local-building/);
+  assert.match(layer, /atlas-local-plaza/);
+  assert.match(layer, /atlas-local-garden/);
+  assert.doesNotMatch(layer, /M-38-5H38M-5-38V38M-28-28L28 28M28-28L-28 28/,
+    'local plans must not use the old generic crosshair placeholder');
+  assert.ok((layer.match(/class="atlas-local-building"/g)||[]).length >= FRIEREN_WORLD_SETTLEMENTS.length * 5,
+    'each settlement needs a meaningful building cluster');
 });
 
 test('rendered atlas exposes user-calibrated scale, seasonal ecology and local detail controls', () => {
