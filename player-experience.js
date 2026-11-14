@@ -12,7 +12,17 @@ export const HOME_ROOMS=Object.freeze([
  {key:'guild_hall',name:'Lonca Salonu',level:35,cost:8500},
  {key:'seasonal',name:'Mevsim Odası',level:40,cost:10000}
 ]);
-export const HOME_DECORATIONS=Object.freeze(['book_shelf','mana_lamp','crystal_vase','fern_herbarium','trophy_case','star_map','alchemy_table','workbench']);
+export const HOME_DECORATION_CATALOG=Object.freeze([
+ {key:'book_shelf',name:'Büyü Kitaplığı',emoji:'📚'},
+ {key:'mana_lamp',name:'Mana Lambası',emoji:'✧'},
+ {key:'crystal_vase',name:'Kristal Vazo',emoji:'💎'},
+ {key:'fern_herbarium',name:'Fern Herbaryumu',emoji:'🌿'},
+ {key:'trophy_case',name:'Kupa Vitrini',emoji:'🏆'},
+ {key:'star_map',name:'Yıldız Haritası',emoji:'🌌'},
+ {key:'alchemy_table',name:'Simya Masası',emoji:'⚗️'},
+ {key:'workbench',name:'Zanaat Tezgâhı',emoji:'⚒️'}
+]);
+export const HOME_DECORATIONS=Object.freeze(HOME_DECORATION_CATALOG.map(item=>item.key));
 export const PLAYER_COSMETICS=Object.freeze([
  {key:'moon_frame',slot:'profile_frame',name:'Ay Işığı Çerçevesi',level:3,cost:500},
  {key:'fern_frame',slot:'profile_frame',name:'Fern Çerçevesi',level:12,cost:1800},
@@ -79,11 +89,13 @@ export async function setPlayerProfileSettings(db,{guildId,userId,settings}){
 }
 export function validateHomeLayout(layout){
  if(!Array.isArray(layout)||layout.length>12)throw new Error('HOME_LAYOUT_INVALID');
+ const roomKeys=new Set(HOME_ROOMS.map(room=>room.key));
  const positions=new Set();
  return layout.map(x=>{
-  const roomKey=String(x?.roomKey||''),decorationKey=String(x?.decorationKey||''),position=Number(x?.position);
-  if(!/^[a-z0-9_]{2,32}$/.test(roomKey)||!HOME_DECORATIONS.includes(decorationKey)||!Number.isInteger(position)||position<0||position>11||positions.has(position))throw new Error('HOME_LAYOUT_INVALID');
-  positions.add(position);return {roomKey,decorationKey,position};
+  const roomKey=String(x?.roomKey||''),decorationKey=String(x?.decorationKey||''),position=x?.position;
+  const positionKey=roomKey+':'+position;
+  if(!roomKeys.has(roomKey)||!HOME_DECORATIONS.includes(decorationKey)||!Number.isInteger(position)||position<0||position>11||positions.has(positionKey))throw new Error('HOME_LAYOUT_INVALID');
+  positions.add(positionKey);return {roomKey,decorationKey,position};
  });
 }
 export async function ensurePlayerExperienceSchema(db){
