@@ -123,7 +123,7 @@ function buildAtlasSettlementSilhouettes(settlements=FRIEREN_WORLD_SETTLEMENTS,m
     const position=positions.get(place.key)||place;
     const x=Math.round(Number(position.x)*18);
     const y=Math.round(Number(position.y)*12);
-    const scale=place.key==='ende'?.62:place.key==='demon-kings-castle'?.54:1;
+    const scale=place.key==='ende' ? 0.62 : place.key==='demon-kings-castle' ? 0.54 : 1;
     return `<g class="atlas-settlement-silhouette atlas-settlement-${place.key}" data-settlement="${place.key}" transform="translate(${x} ${y}) scale(${scale})">${settlementSilhouetteTemplates[place.key]}</g>`;
   }).join('');
   return `<g class="atlas-settlement-architecture atlas-settlement-silhouettes" aria-hidden="true" pointer-events="none">${groups}</g>`;
