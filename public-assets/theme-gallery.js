@@ -5,10 +5,12 @@
   const select = form?.querySelector('select[name="theme"]');
   if (!select) return;
 
+  const showcase = document.querySelector('.account-profile-showcase[data-theme]');
   const sync = () => {
     for (const choice of gallery.querySelectorAll('[data-theme-choice]')) {
       choice.setAttribute('aria-pressed', String(choice.dataset.themeChoice === select.value));
     }
+    if (showcase) showcase.dataset.theme = select.value;
   };
 
   gallery.addEventListener('click', event => {
@@ -23,5 +25,6 @@
 
   select.addEventListener('change', sync);
   gallery.dataset.themeGalleryReady = 'true';
+  gallery.dataset.livePreview = 'true';
   sync();
 })();

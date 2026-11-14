@@ -2061,3 +2061,55 @@ html:has(.encyclopedia-page),body:has(.encyclopedia-page){width:100%;max-width:1
 /* The shared footer is present on every category page. Let its links wrap on narrow screens. */
 footer nav{flex-wrap:wrap;min-width:0;max-width:100%}
 footer nav a{min-width:0;max-width:100%;overflow-wrap:anywhere}
+
+
+/* Player cosmetics: visible previews for every equipped slot. */
+.cosmetic-showcase-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;min-width:0}
+.cosmetic-showcase-item{position:relative;display:flex;align-items:center;gap:12px;min-width:0;min-height:94px;padding:12px;border:1px solid #bda4e855;border-radius:16px;background:linear-gradient(145deg,#211a35,#100e1d);overflow:hidden}
+.cosmetic-preview{position:relative;display:grid;place-items:center;flex:0 0 58px;width:58px;height:58px;border:2px solid #b99be9;border-radius:17px;background:radial-gradient(circle at 50% 35%,#bca2f344,transparent 68%),#100d1b;box-shadow:inset 0 0 18px #bca2f322,0 0 18px #a78bfa22}
+.cosmetic-preview strong{position:relative;z-index:1;color:#f0e3ff;font:26px Georgia,serif;text-shadow:0 0 12px #c7a6ff}
+.cosmetic-preview-orbit{position:absolute;inset:5px;border:1px dashed #e2ceff77;border-radius:12px;transform:rotate(-12deg)}
+.cosmetic-showcase-copy{display:grid;gap:5px;min-width:0}
+.cosmetic-showcase-copy strong{color:#f1e8ff;font-size:13px;overflow-wrap:anywhere}
+.cosmetic-showcase-copy span{color:#bcaed2;font-size:11px}
+.cosmetic-slot--profile_frame .cosmetic-preview{border-radius:50%;border:3px double #d7bdff;box-shadow:0 0 0 3px #8b6ac655,0 0 22px #b99be977}
+.cosmetic-slot--nameplate .cosmetic-preview{width:72px;flex-basis:72px;border-radius:12px;background:linear-gradient(120deg,#39274f,#171326 60%,#503b6e)}
+.cosmetic-slot--title_effect .cosmetic-preview{border-color:#e2c6ff;box-shadow:0 0 24px #c99cff77,inset 0 0 18px #c99cff44}
+.cosmetic-slot--spell_trail .cosmetic-preview:before{content:"";position:absolute;width:42px;height:3px;border-radius:99px;background:linear-gradient(90deg,transparent,#c9a8ff,#fff);transform:rotate(-35deg);box-shadow:0 0 12px #c9a8ff}
+.cosmetic-slot--victory_pose .cosmetic-preview{border-radius:50% 50% 14px 14px;background:linear-gradient(160deg,#75518c,#21172f 72%)}
+.cosmetic-slot--avatar_border .cosmetic-preview{border:4px solid #d7dbe8;border-radius:50%;box-shadow:0 0 0 3px #77809a,0 0 18px #d7dbe855}
+.cosmetic-slot--guild_banner{width:100%;background:linear-gradient(110deg,#18152d,#2d2447)}
+.cosmetic-slot--guild_banner .cosmetic-preview{flex-basis:76px;width:76px;border-radius:12px;background:linear-gradient(120deg,#32274f,#11182d)}
+.cosmetic-slot--seasonal_theme .cosmetic-preview{background:radial-gradient(circle at 50% 30%,#b9a6ff66,transparent 65%),linear-gradient(145deg,#17233b,#11101e)}
+.cosmetic-slot--collection_display .cosmetic-preview{border-radius:12px;background:repeating-linear-gradient(45deg,#241b39 0 8px,#34264d 8px 16px)}
+.cosmetic-shop-card .cosmetic-showcase-item{margin-bottom:8px}
+.cosmetic-showcase-grid--profile{grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))}
+.player-showcase[data-cosmetic-theme="spring"]{background:radial-gradient(ellipse at 90% 12%,#78b88a20,transparent 40%)}
+.player-showcase[data-cosmetic-theme="winter"]{background:radial-gradient(ellipse at 90% 12%,#8bbbe833,transparent 42%)}
+@media(prefers-reduced-motion:no-preference){.cosmetic-slot--title_effect .cosmetic-preview{animation:cosmetic-glow 3.2s ease-in-out infinite alternate}.cosmetic-slot--spell_trail .cosmetic-preview-orbit{animation:cosmetic-orbit 5s linear infinite}}
+@keyframes cosmetic-glow{from{filter:brightness(.92)}to{filter:brightness(1.28)}}
+@keyframes cosmetic-orbit{to{transform:rotate(348deg)}}
+@media(max-width:560px){.cosmetic-showcase-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.cosmetic-showcase-item{gap:8px;padding:9px;min-height:82px}.cosmetic-preview{width:48px;height:48px;flex-basis:48px}.cosmetic-showcase-copy strong{font-size:12px}.cosmetic-showcase-copy span{font-size:10px}}
+@media(max-width:360px){.cosmetic-showcase-grid{grid-template-columns:1fr}}
+
+/* Apply equipped cosmetics to the actual public character identity, not only inventory tiles. */
+.player-cosmetic-identity{display:flex;align-items:center;gap:18px;min-width:0;margin:22px 0;padding:18px;border:1px solid #c7a9f255;border-radius:20px;background:linear-gradient(125deg,#211a35,#100e1d 72%);box-shadow:0 18px 48px #05040d55}
+.player-cosmetic-avatar{position:relative;display:grid;place-items:center;flex:0 0 86px;width:86px;height:86px;border:2px solid #9c8bb8;border-radius:50%;background:radial-gradient(circle at 50% 38%,#b99be955,transparent 68%),#110e1c;box-shadow:0 0 0 5px #8b6ac622,inset 0 0 24px #c6a6ff33}
+.player-cosmetic-avatar span{color:#f4e8ff;font:42px Georgia,serif;text-shadow:0 0 18px #c7a6ff}
+.player-cosmetic-avatar[data-profile-frame="moon_frame"]{border:4px double #e4d1ff;box-shadow:0 0 0 4px #a98bdc77,0 0 26px #d4baff88,inset 0 0 20px #c6a6ff44}
+.player-cosmetic-avatar[data-profile-frame="fern_frame"]{border:4px double #9fd8b7;box-shadow:0 0 0 4px #5c9b7c77,0 0 24px #79d3a188,inset 0 0 20px #6cb88a44}
+.player-cosmetic-avatar[data-avatar-border="silver_border"]{outline:3px solid #d8deeb;outline-offset:5px}
+.player-cosmetic-avatar[data-avatar-border="gold_border"]{outline:3px solid #e7c77b;outline-offset:5px;box-shadow:0 0 0 9px #b8893a55,0 0 28px #f1d38a99}
+.player-cosmetic-identity-copy{display:grid;gap:7px;min-width:0}
+.player-cosmetic-nameplate{width:max-content;max-width:100%;padding:8px 13px;border:1px solid #b99be944;border-radius:12px;background:#ffffff08}
+.player-cosmetic-nameplate[data-nameplate="star_nameplate"]{border-color:#d9c0ff;background:linear-gradient(110deg,#4a3568,#20172f 70%);box-shadow:0 0 18px #c3a0ff55}
+.player-cosmetic-nameplate[data-nameplate="rune_nameplate"]{border:1px solid #8f7fc0;background:repeating-linear-gradient(135deg,#29213d 0 7px,#34294d 7px 14px);box-shadow:inset 0 0 0 2px #9d8bd522}
+.player-cosmetic-character-name{margin:0;color:#f6edff;font:clamp(23px,4vw,34px) Georgia,serif}
+.player-cosmetic-character-name[data-title-effect="mana_title"]{text-shadow:0 0 8px #bda0ff,0 0 22px #a57bff}
+.player-cosmetic-character-name[data-title-effect="aurora_title"]{background:linear-gradient(90deg,#d6c4ff,#9ce5d2,#b9c7ff);background-clip:text;-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 0 10px #a7d9d288)}
+.player-cosmetic-nameplate p{margin:4px 0 0;color:#c9bbdf;font-size:12px}
+.player-cosmetic-spell-trail{display:flex;align-items:center;gap:8px;color:#d9c6ff;font-size:11px}
+.player-cosmetic-spell-trail span:first-child{color:#f1e5ff;letter-spacing:2px;text-shadow:0 0 12px #c7a6ff}
+.player-cosmetic-spell-trail[data-spell-trail="frost_trail"] span:first-child{color:#bfe7ff;text-shadow:0 0 14px #7bcaff}
+.player-cosmetic-victory-pose{width:max-content;max-width:100%;padding:4px 9px;border:1px solid #d7b56b88;border-radius:999px;background:#c79c3822;color:#f1d89b;font-size:11px}
+@media(max-width:560px){.player-cosmetic-identity{gap:13px;padding:13px}.player-cosmetic-avatar{flex-basis:68px;width:68px;height:68px}.player-cosmetic-avatar span{font-size:34px}.player-cosmetic-nameplate{padding:7px 10px}}

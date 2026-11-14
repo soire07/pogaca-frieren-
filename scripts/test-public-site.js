@@ -1490,7 +1490,7 @@ test('global account profile renders without a guild picker and keeps profile me
   assert.match(response.body,/sunucu.*karakteri seçmen gerekmez/i);
   assert.match(response.body,/data-profile-media-editor/);
   assert.doesNotMatch(response.body,/Sunucu seç|Karakter seç/);
-  assert.match(response.body,/theme-gallery\.js\?v=theme-gallery-1/);
+  assert.match(response.body,/theme-gallery\.js\?v=theme-gallery-2/);
   const themeAsset=res();
   assert.equal(await handlePublicSiteRequest(request('/assets/theme-gallery.js'),themeAsset,{db:null}),true);
   assert.equal(themeAsset.status,200);
@@ -1623,7 +1623,7 @@ test('dedicated user center pages expose the new account, social and life naviga
  assert.match(source,/inventory-center-page/);
  assert.match(source,/notification-center-page/);
  assert.match(source,/public-assets\/user-center\.js', 'public-assets\/public-chat\.js'].includes/);
- assert.match(source,/site\.css\?v=mobile-385-1/);
+ assert.match(source,/site\.css\?v=cosmetics-386-1/);
  assert.match(source,/public-chat\.js\?v=chat-282-1/);
  const chatClient=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');
  assert.ok(!chatClient.includes('for(const emoji of ["❤️","✨","😂","😍","🥰","😭","👀","🎉","🙌","💜","🍪","🌸"])'));
@@ -1962,4 +1962,40 @@ test('illustrated atlas preserves the source map aspect ratio so pins and discov
  assert.doesNotMatch(css,/\.atlas-map-viewport\{min-height:300px\}/);
  const artwork=await readFile(new URL('../public-assets/frieren-world-map.svg',import.meta.url),'utf8');
  assert.match(artwork,/viewBox="0 0 1800 1200"/);
+});
+
+
+test('public player showcase renders equipped cosmetics as visible slot previews and applies seasonal theme',()=>{
+ const html=publicHomeShowcasePage(visitor,{
+  settings:{show_stats:false,show_achievements:true,show_collections:true,show_activity:false,show_cosmetics:true},
+  profile:{character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,boss_defeats:0,dungeon_wins:0},
+  rooms:[],trophies:[],loadout:[
+   {cosmetic_key:'moon_frame'},{cosmetic_key:'star_nameplate'},{cosmetic_key:'mana_title'},
+   {cosmetic_key:'arcane_trail'},{cosmetic_key:'victory_bloom'},{cosmetic_key:'silver_border'},{cosmetic_key:'winter_theme'},
+   {cosmetic_key:'relic_display'}
+  ],home:{layout:[]},companion:null,cardVariants:[],activity:[]
+ });
+ for(const key of ['moon_frame','star_nameplate','mana_title','arcane_trail','victory_bloom','silver_border','winter_theme','relic_display']){
+  assert.ok(html.includes('data-cosmetic-key="'+key+'"'),key+' should be rendered in the equipped cosmetics showcase');
+ }
+ for(const slot of ['profile_frame','nameplate','title_effect','spell_trail','avatar_border','seasonal_theme','collection_display']){
+  assert.ok(html.includes('cosmetic-slot--'+slot),slot+' should have a visual treatment');
+ }
+ assert.match(html,/data-cosmetic-theme="winter"/);
+ assert.match(html,/data-profile-frame="moon_frame"/);
+ assert.match(html,/data-avatar-border="silver_border"/);
+ assert.match(html,/data-nameplate="star_nameplate"/);
+ assert.match(html,/data-title-effect="mana_title"/);
+ assert.match(html,/data-spell-trail="arcane_trail"/);
+ assert.match(html,/data-victory-pose="victory_bloom"/);
+ assert.match(html,/Kuşanılan Kozmetikler/);
+});
+
+test('theme gallery asset updates the account profile preview without saving the profile',async()=>{
+ const response=res();
+ assert.equal(await handlePublicSiteRequest(request('/assets/theme-gallery.js'),response,{db:null}),true);
+ assert.equal(response.status,200);
+ const script=response.body.toString('utf8');
+ assert.match(script,/showcase\.dataset\.theme = select\.value/);
+ assert.match(script,/gallery\.dataset\.livePreview = 'true'/);
 });
