@@ -363,20 +363,26 @@ try {
     console.log(`Updated ${guild.commands.length} commands in ${guild.name} (${guild.kind}, ID ending ${guild.id.slice(-4)}).`);
   }
 
-  // Only the two approved news controls are globally available.
-  // Every other slash command remains guild-scoped.
-  const globalRoute = Routes.applicationCommands(clientId);
-  const existingGlobalCommands = await discordRequest(globalRoute);
-  const existingGlobalByName = new Map(existingGlobalCommands.map(command => [command.name, command]));
-  const sameGlobalNames = existingGlobalCommands.length === globalCommands.length
-    && globalCommands.every(command => existingGlobalByName.has(command.name));
-  const sameGlobalDefinitions = sameGlobalNames
-    && globalCommands.every(command => matchesDesiredCommand(existingGlobalByName.get(command.name), command));
-  if (sameGlobalDefinitions) {
-    console.log('Global news command allowlist unchanged; skipped write to preserve daily quota.');
+  if (process.env.SKIP_GLOBAL_COMMAND_SYNC === 'true') {
+    console.log('Global command sync explicitly skipped; existing global commands were not changed.');
   } else {
-    await putWithDiagnostics(globalRoute, globalCommands, 'global news command allowlist');
-    console.log('Registered only /haberleri-ayarla and /haberleri-kapat globally.');
+    // Only the two approved news controls are globally available.
+    // Every other slash command remains guild-scoped.
+    const globalRoute = Routes.applicationCommands(clientId);
+    const existingGlobalCommands = await discordRequest(globalRoute);
+    const existingGlobalByName = new Map(existingGlobalCommands.map(command => [command.name, command]));
+    const sameGlobalNames = existingGlobalCommands.length === globalCommands.length
+      && globalCommands.every(command => existingGlobalByName.has(command.name));
+    const sameGlobalDefinitions = sameGlobalNames
+      && globalCommands.every(command => matchesDesiredCommand(existingGlobalByName.get(command.name), command));
+    if (sameGlobalDefinitions) {
+      console.log('Global news command allowlist unchanged; skipped write to preserve daily quota.');
+    } else {
+      await putWithDiagnostics(globalRoute, globalCommands, 'global news command allowlist');
+      console.log('Registered only /haberleri-ayarla and /haberleri-kapat globally.');
+    }
+  
+  
   }
 
   await publishCommitStatus('success', targetDescription);
