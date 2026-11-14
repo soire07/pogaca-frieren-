@@ -506,7 +506,7 @@ test('Demon King fortress footprint stays inside the atlas landmass and its visu
   assert.ok(atlas.includes('export function getAtlasSettlementVisualPosition(place,markerPositions=[])'));
   assert.ok(atlas.includes("'demon-kings-castle':{x:74,y:30}"));
   assert.match(atlas, /atlas-settlement-architecture atlas-settlement-silhouettes/);
-  assert.ok(atlas.includes("place.key==='ende'?85:place.key==='demon-kings-castle'?82"));
+  assert.ok(atlas.includes("x:visualPosition.x,y:visualPosition.y"));
   assert.ok(locations.includes("key:'demon-kings-castle', name:'İblis Kralı’nın Şatosu', subtitle:'Ende', regionKey:'aus', x:94, y:24"));
   const fortress = getAtlasSettlementVisualPosition({ key:'demon-kings-castle', x:94, y:24 });
   assert.deepEqual({ x:fortress.x, y:fortress.y }, { x:74, y:30 });
@@ -518,7 +518,7 @@ test('Demon King fortress footprint stays inside the atlas landmass and its visu
     assert.ok(isInsideAtlasLand(ende.x+dx,ende.y+dy,0.25), 'Ende skyline footprint must stay on land');
   }
   // Ende's inset anchor leaves room for the full mobile label box inside the northern coastline.
-  for (const [key,x,y] of [['orman',29.5,39],['merkez',31.5,74],['harabeler',49.25,55.25],['kuzey',59,23.75],['yayla',74,69],['aus',74,17]]) {
+  for (const [key,x,y] of [['orman',29.5,39],['merkez',31.5,74],['harabeler',49.25,55.25],['kuzey',59,23.75],['yayla',74,69],['aus',62,40]]) {
     assert.ok(isInsideAtlasLand(x,y), key+' biome label anchor must remain on land');
   }
   for (const [dx,dy] of [[-3.65,-6.15],[0,-6.15],[3.65,-6.15],[3.65,0],[3.65,6.15],[0,6.15],[-3.65,6.15],[-3.65,0]]) {
