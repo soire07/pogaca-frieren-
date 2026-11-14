@@ -19,7 +19,7 @@ const routes = [
   { path: '/', label: 'site root' }
 ];
 const assets = [
-  { path: '/assets/site.css?v=atlas-370-1', label: 'site stylesheet' },
+  { path: '/assets/site.css?v=mobile-385-1', label: 'site stylesheet' },
   { path: '/assets/exploration-atlas.js?v=atlas-371-1', label: 'world atlas client script' }
 ];
 const engines = [
@@ -72,16 +72,47 @@ for (const scenario of engines) {
           if (response.status() !== 200) throw new Error('HTTP ' + response.status());
           if (new URL(page.url()).origin !== baseUrl.origin) throw new Error('redirected outside the canonical site origin');
           await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
-          const details = await page.evaluate(() => ({
-            title: document.title,
-            textLength: (document.body?.innerText || '').trim().length,
-            width: document.documentElement.clientWidth,
-            documentWidth: document.documentElement.scrollWidth,
-            hasViewport: Boolean(document.querySelector('meta[name="viewport"]')),
-            hasDiscordAction: Boolean(document.querySelector('a[href="/site/discord/login"]'))
-          }));
+          const details = await page.evaluate(() => {
+            const width = document.documentElement.clientWidth;
+            const describe = node => {
+              const rect = node.getBoundingClientRect();
+              const style = getComputedStyle(node);
+              const ancestors = [];
+              let parent = node.parentElement;
+              while (parent && ancestors.length < 5) {
+                const parentStyle = getComputedStyle(parent);
+                ancestors.push({ tag: parent.tagName, id: parent.id,
+                  className: typeof parent.className === 'string' ? parent.className : '',
+                  width: Math.round(parent.getBoundingClientRect().width), overflowX: parentStyle.overflowX });
+                parent = parent.parentElement;
+              }
+              return { tag: node.tagName, id: node.id,
+                className: typeof node.className === 'string' ? node.className : '',
+                left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width),
+                position: style.position, transform: style.transform, overflowX: style.overflowX, ancestors };
+            };
+            const offenders = [...document.querySelectorAll('body *')].filter(node => {
+              if (!node.getClientRects().length) return false;
+              const rect = node.getBoundingClientRect();
+              return rect.right > width + 1 || rect.left < -1;
+            }).map(describe).slice(0, 20);
+            const pseudo = ['::before','::after'].flatMap(pseudo => {
+              const style = getComputedStyle(document.body, pseudo);
+              if (style.content === 'none' || style.content === 'normal') return [];
+              return [{ pseudo: 'body' + pseudo, position: style.position, left: style.left,
+                right: style.right, width: style.width, transform: style.transform, overflowX: style.overflowX }];
+            });
+            window.scrollTo(9999, 0);
+            return { title: document.title, textLength: (document.body?.innerText || '').trim().length,
+              width, innerWidth: window.innerWidth, documentWidth: document.documentElement.scrollWidth,
+              bodyWidth: document.body.scrollWidth, bodyClientWidth: document.body.clientWidth,
+              scrollX: window.scrollX, htmlOverflowX: getComputedStyle(document.documentElement).overflowX,
+              bodyOverflowX: getComputedStyle(document.body).overflowX, offenders, pseudo,
+              hasViewport: Boolean(document.querySelector('meta[name="viewport"]')),
+              hasDiscordAction: Boolean(document.querySelector('a[href="/site/discord/login"]')) };
+          });
           if (!details.title) throw new Error('document title is empty');
-          if (details.documentWidth > details.width + 1) throw new Error('horizontal overflow: ' + details.documentWidth + ' > ' + details.width);
+          if (details.documentWidth > details.width + 1) throw new Error('horizontal overflow: ' + details.documentWidth + ' > ' + details.width + ' · diagnostics: ' + JSON.stringify(details));
           if (!details.hasViewport) throw new Error('responsive viewport metadata is missing');
           if (route.requiresDiscordAction && !details.hasDiscordAction) throw new Error('Discord sign-in action is missing');
           if (route.minimumTextLength && details.textLength < route.minimumTextLength) throw new Error('public page content is unexpectedly short: ' + details.textLength + ' characters');

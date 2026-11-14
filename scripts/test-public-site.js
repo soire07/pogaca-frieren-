@@ -1623,7 +1623,7 @@ test('dedicated user center pages expose the new account, social and life naviga
  assert.match(source,/inventory-center-page/);
  assert.match(source,/notification-center-page/);
  assert.match(source,/public-assets\/user-center\.js', 'public-assets\/public-chat\.js'].includes/);
- assert.match(source,/site\.css\?v=atlas-379-1/);
+ assert.match(source,/site\.css\?v=mobile-385-1/);
  assert.match(source,/public-chat\.js\?v=chat-282-1/);
  const chatClient=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');
  assert.ok(!chatClient.includes('for(const emoji of ["❤️","✨","😂","😍","🥰","😭","👀","🎉","🙌","💜","🍪","🌸"])'));
@@ -1804,6 +1804,19 @@ test('universal site search indexes pages, Discord commands, characters and spel
  assert.match(commands.body,/Discord komutu/);
 });
 
+test('mobile homepage locks the document to the viewport and keeps the accessibility trigger compact', async () => {
+ const homepage=res();
+ assert.equal(await handlePublicSiteRequest({method:'GET',url:'/',headers:{}},homepage),true);
+ assert.equal(homepage.status,200);
+ assert.match(homepage.body,/data-accessibility-panel/);
+ const stylesheet=res();
+ assert.equal(await handlePublicSiteRequest({method:'GET',url:'/assets/site.css',headers:{}},stylesheet),true);
+ const css=String(stylesheet.body);
+ assert.ok(css.includes('html{scroll-behavior:smooth;width:100%;max-width:100%;overflow-x:clip}'));
+ assert.ok(css.includes('.accessibility-panel>summary{list-style:none;display:flex;align-items:center;justify-content:center;width:max-content;max-width:100%;min-height:34px;'));
+ assert.ok(css.includes('footer nav{flex-wrap:wrap;min-width:0;max-width:100%}'));
+ assert.ok(css.includes('footer nav a{min-width:0;max-width:100%;overflow-wrap:anywhere}'));
+});
 test('public pages expose persistent and keyboard-accessible reading controls', async () => {
  const response=res();
  assert.equal(await handlePublicSiteRequest(request('/ansiklopedi'),response,{db:null}),true);
