@@ -46,7 +46,7 @@ export function buildAtlasLocalDetailLayer(settlements = []) {
     const y = Number(place.y) * 12;
     const label = String(place.name).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
     const seed = Array.from(String(place.key || place.name)).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    const archetype = ['walled','market','hamlet'][seed % 3];
+    const archetype = ['walled','market','hamlet'][(seed + String(place.key || place.name).length) % 3];
     const rotation = (seed % 7) * 5 - 15;
     const buildings = buildingLots.map(([bx, by], index) => {
       const width = 8 + ((seed + index * 3) % 4);
