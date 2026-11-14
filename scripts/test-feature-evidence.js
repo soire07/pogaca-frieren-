@@ -94,6 +94,17 @@ test('feature evidence map promotes only fully automated evidence and preserves 
     }
   }
 
+  for (const feature of inventory.features) {
+    if (feature.id.startsWith('ROADMAP-')) continue;
+    if (!mappedIds.has(feature.id) && feature.status !== 'implemented_needs_runtime_test') {
+      errors.push(feature.id + ': unmapped feature cannot be promoted without direct named evidence');
+    }
+    if (feature.status === 'live_verified') {
+      errors.push(feature.id + ': live_verified requires a separate live-runtime evidence record');
+    }
+  }
+
   assert.deepEqual(errors, [], 'Feature evidence map mismatches:\n' + errors.join('\n'));
-  console.log('Feature evidence traceability: ' + evidence.entries.length + ' manually mapped records; inventory statuses unchanged.');
+  const automatedVerified = inventory.features.filter(feature => feature.status === 'automated_verified').length;
+  console.log('Feature evidence traceability: ' + evidence.entries.length + ' manually mapped records; ' + automatedVerified + ' automated_verified; live verification remains separate.');
 });
