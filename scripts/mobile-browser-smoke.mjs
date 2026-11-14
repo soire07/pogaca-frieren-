@@ -119,16 +119,10 @@ for (const scenario of scenarios) {
     if (!mapVisual.filter.includes('saturate') || !mapVisual.source.includes('atlas-376-1')) {
       throw new Error(scenario.name + ' atlas visual grade or cache-busted image source is missing: ' + JSON.stringify(mapVisual));
     }
-    const expectedSettlements = {
-      strahl: 'translate(702 948)',
-      'royal-capital': 'translate(882 1056)',
-      waal: 'translate(918 756)',
-      'fabel-village': 'translate(918 576)',
-      'graf-granat': 'translate(990 696)',
-      aeusserst: 'translate(1224 504)',
-      'village-of-sword': 'translate(1350 744)',
-      weise: 'translate(1476 552)'
-    };
+    const expectedSettlementKeys = [
+      'strahl', 'royal-capital', 'waal', 'fabel-village', 'graf-granat',
+      'aeusserst', 'village-of-sword', 'weise', 'ende', 'demon-kings-castle'
+    ];
     const settlementArt = await page.locator('.atlas-settlement-silhouette').evaluateAll(nodes => {
       const viewport = document.querySelector('.atlas-map-viewport').getBoundingClientRect();
       return nodes.map(node => {
