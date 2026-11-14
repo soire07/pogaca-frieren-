@@ -1994,30 +1994,6 @@ body.atlas-modal-open{overflow:hidden}
 
 
 /* Six-biome art-direction pass: restore regional separation and readable terrain detail. */
-.atlas-map-art .biome-central-meadow{
-  opacity:.9;
-  filter:saturate(1.16) contrast(1.035);
-}
-.atlas-map-art .biome-great-forest{
-  opacity:.84;
-  filter:saturate(1.2) contrast(1.04);
-}
-.atlas-map-art .biome-ancient-ruins{
-  opacity:.82;
-  filter:saturate(1.08) contrast(1.055);
-}
-.atlas-map-art .biome-northern-ice{
-  opacity:.86;
-  filter:saturate(1.12) brightness(1.035);
-}
-.atlas-map-art .biome-schwer-highlands{
-  opacity:.82;
-  filter:saturate(1.08) contrast(1.06);
-}
-.atlas-map-art .biome-ausserst-arcana{
-  opacity:.78;
-  filter:saturate(1.16) contrast(1.06);
-}
 .atlas-map-art [data-atlas-geography-layer="biomes"] .atlas-biome-ashen-north{
   opacity:.38;
 }
@@ -2059,14 +2035,6 @@ body.atlas-modal-open{overflow:hidden}
   box-shadow:0 4px 12px #05091088;
 }
 @media(max-width:700px){
-  .atlas-map-art .biome-central-meadow,
-  .atlas-map-art .biome-great-forest,
-  .atlas-map-art .biome-ancient-ruins,
-  .atlas-map-art .biome-northern-ice,
-  .atlas-map-art .biome-schwer-highlands,
-  .atlas-map-art .biome-ausserst-arcana{
-    filter:none;
-  }
   .atlas-map-art [data-atlas-geography-layer="demon-wastes"] .atlas-ashen-ground{opacity:.3}
   .atlas-map-art [data-atlas-geography-layer="demon-wastes"] .atlas-demon-fog{opacity:.24}
 }
