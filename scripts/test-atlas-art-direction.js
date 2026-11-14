@@ -311,3 +311,26 @@ test('atlas decluttering keeps bosses, settlements and dungeons inside the illus
   assert.ok(arranged.every(pin => isInsideAtlasLand(pin.x, pin.y)), 'every rendered pin must remain within the land silhouette');
   assert.notDeepEqual(arranged.map(pin => [pin.x,pin.y]), source.map(pin => [pin.x,pin.y]));
 });
+
+
+test('atlas settlement silhouettes give each established town a distinct, coordinate-anchored skyline', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  const locations = await readFile(new URL('../exploration-world-locations.js', import.meta.url), 'utf8');
+  const expected = [
+    ['strahl', 702, 948],
+    ['royal-capital', 882, 1056],
+    ['waal', 918, 756],
+    ['fabel-village', 918, 576],
+    ['graf-granat', 990, 696],
+    ['aeusserst', 1224, 504],
+    ['village-of-sword', 1350, 744],
+    ['weise', 1476, 552]
+  ];
+  for (const [key, x, y] of expected) {
+    const pattern = new RegExp('<g class="atlas-settlement-silhouette atlas-settlement-' + key + '" data-settlement="' + key + '" transform="translate\\(' + x + ' ' + y + '\\)">');
+    assert.match(atlas, pattern, 'settlement silhouette must be anchored to canonical coordinates: ' + key);
+  }
+  assert.match(atlas, /atlas-settlement-silhouette[^]*pointer-events="none"/);
+  assert.match(locations, /key:'royal-capital', name:'Kraliyet Başkenti'[^]*x:49, y:88/);
+  assert.match(locations, /key:'aeusserst', name:'Äußerst'[^]*x:68, y:42/);
+});
