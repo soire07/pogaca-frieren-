@@ -34,6 +34,25 @@ test('account-only player routes reject legacy Discord sessions before querying 
   }
 });
 
+
+test('terms and privacy policy pages are public, canonical, and linked to each other without login', async () => {
+  for (const [path, heading, required] of [
+    ['/hizmet-kosullari', 'Hizmet Koşulları', ['Discord Kullanım Koşulları', '/destek', '/gizlilik-politikasi']],
+    ['/gizlilik-politikasi', 'Gizlilik Politikası', ['son 80 kayıt', 'parola özeti', '/hesap-merkezi', '/destek', '/hizmet-kosullari']]
+  ]) {
+    const response = res();
+    assert.equal(await handlePublicSiteRequest({ method: 'GET', url: path, headers: {} }, response), true, path);
+    assert.equal(response.status, 200, path);
+    assert.match(response.headers['Content-Type'], /text\/html/);
+    assert.match(response.body, new RegExp('<h1>' + heading + '</h1>'));
+    assert.match(response.body, new RegExp('rel="canonical"'));
+    assert.match(response.body, new RegExp(path));
+    for (const token of required) assert.ok(response.body.includes(token), path + ' should include ' + token);
+    assert.match(response.body, /Hizmet Koşulları/);
+    assert.match(response.body, /Gizlilik Politikası/);
+  }
+});
+
 test('public landing exposes complete social preview metadata for link sharing', async () => {
   const response = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/tanitim', headers: {} }, response), true);
@@ -1846,7 +1865,7 @@ test('illustrated atlas background is served as a first-party image asset', asyn
  assert.ok(artwork.startsWith('<svg'));
  assert.match(artwork,/KUZEY KITASI/);
  const atlas=renderExplorationAtlas({mapContent:{regions:[],summary:{}}});
- assert.ok(atlas.includes('src="/assets/frieren-world-map.svg?v=atlas-379-1"'));
+ assert.ok(atlas.includes('src="/assets/frieren-world-map.svg?v=atlas-377-1"'));
  assert.match(atlas,/atlas-pin-layer/);
  assert.doesNotMatch(atlas,/<svg class="atlas-world-map"/);
 });
