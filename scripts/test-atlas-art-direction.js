@@ -158,7 +158,7 @@ test('mountain systems read as continuous layered ridgelines, not repeated toy-l
   assert.ok(artwork.includes('Q750 305 800 314') && artwork.includes('stroke-width="31"'), 'main mountain ridge must use layered continuous relief strokes');
   const relief = artwork.slice(artwork.indexOf('<g class="atlas-mountain-relief"'), artwork.indexOf('<g class="atlas-meadow-texture"'));
   assert.doesNotMatch(relief, /<use href="#atlas-peak-[a-d]"/, 'large repeated peak stamps must not dominate mountain ranges');
-  assert.match(artwork, /fill="url\\(#terrain-grain\\)" opacity=".42"/);
+  assert.ok(artwork.includes('fill="url(#terrain-grain)" opacity=".42"'));
   assert.match(artwork, /GRÖSSE ORMANI/);
   assert.match(artwork, /KUZEY PLATOSU/);
 });
@@ -168,8 +168,8 @@ test('Great Forest uses irregular separated groves and varied canopy spacing ins
   assert.match(artwork, /class="atlas-forest-groves"/);
   assert.match(artwork, /class="atlas-forest-canopy" opacity=".9"/);
   assert.match(artwork, /M235 525Q260 480 314 480/);
-  assert.match(artwork, /translate\\(334 318\\).*scale\\(\\.48\\)/);
-  assert.match(artwork, /translate\\(548 505\\).*scale\\(\\.48\\)/);
+  assert.ok(artwork.includes('translate(334 318) rotate(8) scale(.48)'));
+  assert.ok(artwork.includes('translate(548 505) rotate(19) scale(.48)'));
   assert.match(artwork, /GRÖSSE ORMANI/);
 });
 
