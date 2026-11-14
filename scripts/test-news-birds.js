@@ -136,7 +136,7 @@ test('news digest keeps article links separate from clean summaries and uses com
  assert.equal(embeds[0].url,undefined);
  assert.equal(embeds[0].image,undefined);
  assert.equal(embeds[0].thumbnail.url,'https://cdn.animenewsnetwork.com/frieren.jpg');
- assert.doesNotMatch(embeds[0].description,/https?:\/\//);
+ assert.doesNotMatch(embeds[0].description.split('[Haberi oku')[0],/https?:\/\//);
  assert.match(embeds[0].description,/\[Haberi oku →\]\(https:\/\/www\.animenewsnetwork\.com\/news\/2026-11-14\/frieren-update\)/);
  assert.equal((embeds[0].description.match(/https?:\/\//g)||[]).length,1);
 });
