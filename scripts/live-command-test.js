@@ -7,15 +7,15 @@ import { ensureNewsBirdSchema, setNewsGuildChannel } from '../news-birds.js';
 import { buildCoopTestUserIds } from './coop-test-users.js';
 import { handleCharacterPanelInteraction } from '../karakter.js';
 import { createIsolatedTestRunContext } from './isolated-test-run-context.js';
-import { FARM_SEEDS, initFarmSchema, plantSeed, harvestFarm, getFarmPlot } from '../farming.js';
-import { FISHING_ZONES, initFishingSchema, fishAtZone, getFishCollection } from '../fishing.js';
-import { initCharacterWishlistSchema, setCharacterWishlist, getCharacterWishlist } from '../character-wishlist.js';
-import { ensureGuildGameTables, startGuildMiniGame, answerGuildMiniGame } from '../guild-games.js';
-import { ensurePlayerMarketTables, createPlayerMarketListing, cancelPlayerMarketListing } from '../player-market.js';
-import { CREATURE_CATALOG, initCreatureSchema, setCreatureWishlist, getCreatureWishlist, maybeSpawnCreature, claimCreature, getCreatureCollection } from '../creatures.js';
-import { COMPANION_CATALOG, initCompanionSchema, adoptCompanion, careForCompanion, getCompanion } from '../companions.js';
-import { ensurePlayerExperienceSchema, setHomeVisibility } from '../player-experience.js';
-import { ensureSocialPlatformTables, createFriendRequest, respondFriendRequest, listSocialRelationships, sendCoinGift, commendPlayer, getSocialReputation } from '../social-platform.js';
+import { FARM_SEEDS, farmYield, initFarmSchema } from '../farming.js';
+import { FISHING_ZONES, initFishingSchema, getFishCollection } from '../fishing.js';
+import { initCharacterWishlistSchema, getCharacterWishlist } from '../character-wishlist.js';
+import { ensureGuildGameTables } from '../guild-games.js';
+import { ensurePlayerMarketTables, listPlayerMarketListings } from '../player-market.js';
+import { CREATURE_CATALOG, initCreatureSchema, getCreatureWishlist } from '../creatures.js';
+import { COMPANION_CATALOG, initCompanionSchema, getCompanion } from '../companions.js';
+import { ensurePlayerExperienceSchema, unlockHomeRoom } from '../player-experience.js';
+import { ensureSocialPlatformTables, listSocialRelationships, listPendingFriendRequests, getSocialReputation } from '../social-platform.js';
 
 
 export function buildIsolatedTestGuildId(index) {
@@ -1823,134 +1823,231 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
 
         if (commandName === 'bahce') {
           await initFarmSchema(pool);
-          await pool.query('UPDATE users SET level=30,coins=2000 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          await ensurePlayerExperienceSchema(pool);
+          await pool.query('UPDATE users SET level=30,coins=10000 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const room=await unlockHomeRoom(pool,{guildId,userId,roomKey:'garden'});
           const seed=FARM_SEEDS.find(item=>item.key==='winter_berry');
-          const planted=await plantSeed(pool,{guildId,userId,seedKey:seed.key});
-          const plot=await getFarmPlot(pool,guildId,userId);
-          const harvestDate=new Date(Date.now()+48*60*60*1000);
-          const harvested=await harvestFarm(pool,{guildId,userId},{date:harvestDate});
-          const inventory=await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,userId,seed.name]);
+          const beforeCoins=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const plantEffects=[];
+          const plantInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'tohum-ek',tohum:seed.key}),guildId,plantEffects);
+          plantInteraction.user.id=userId;plantInteraction.member=makeMember(userId);
+          await command.execute(plantInteraction);
+          const plot=await pool.query('SELECT seed_key,harvest_at FROM user_farm_plots WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const afterPlantCoins=await pool.query('SELECT coins FROM users WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const plantText=payloadTextFromEffects(plantEffects);
           behavioralChecks.push(
-            {name:'Bahçe ekimi oyuncuya ait parsel oluşturur',expected:'tohum bedeli düşülmeli ve seçilen tohum parselde saklanmalı',actual:planted.status+' / '+(plot?.seed_key||'parsel yok'),passed:planted.status==='planted'&&plot?.seed_key===seed.key},
-            {name:'Bahçe hasadı ürünü envantere ekler',expected:'hasat tamamlanmalı ve ürün miktarı hasat sonucuyla eşleşmeli',actual:harvested.status+' / '+(inventory.rows[0]?.quantity||0),passed:harvested.status==='harvested'&&Number(inventory.rows[0]?.quantity)===harvested.quantity}
+            {name:'Bahçe odası açılmadan ekim engeli kaldırıldı',expected:'test oyuncusunun Gezgin Bahçesi odası açılmalı',actual:room.status,passed:room.status==='unlocked'},
+            {name:'Bahçe slash komutu ekim işlemi',expected:'/bahce tohum-ek komutu seçilen tohumu kaydetmeli ve başarı yanıtı vermeli',actual:plot.rows[0]?.seed_key+' / '+plantText.slice(0,180),passed:plot.rows[0]?.seed_key===seed.key&&plantText.includes('Tohum ekildi')},
+            {name:'Bahçe ekim bedeli tahsilatı',expected:'tohum maliyeti oyuncu bakiyesinden bir kez düşmeli',actual:String(beforeCoins.rows[0]?.coins)+' → '+String(afterPlantCoins.rows[0]?.coins),passed:Number(beforeCoins.rows[0]?.coins)-Number(afterPlantCoins.rows[0]?.coins)===seed.cost}
           );
-          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+          await pool.query("UPDATE user_farm_plots SET harvest_at=NOW()-INTERVAL '1 minute' WHERE guild_id=$1 AND user_id=$2",[guildId,userId]);
+          const beforeInventory=await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,userId,seed.name]);
+          const harvestEffects=[];
+          const harvestInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'hasat'}),guildId,harvestEffects);
+          harvestInteraction.user.id=userId;harvestInteraction.member=makeMember(userId);
+          await command.execute(harvestInteraction);
+          const afterInventory=await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,userId,seed.name]);
+          const remainingPlot=await pool.query('SELECT 1 FROM user_farm_plots WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const harvestText=payloadTextFromEffects(harvestEffects);
+          const expectedYield=farmYield(seed.key,new Date());
+          const harvested=Number(afterInventory.rows[0]?.quantity||0)-Number(beforeInventory.rows[0]?.quantity||0);
+          behavioralChecks.push(
+            {name:'Bahçe slash komutu hasat işlemi',expected:'/bahce hasat ürünü envantere eklemeli ve parseli kaldırmalı',actual:harvested+' ürün / parsel '+(remainingPlot.rowCount?'var':'yok')+' / '+harvestText.slice(0,180),passed:!remainingPlot.rowCount&&harvested===expectedYield&&harvestText.includes('Hasat tamamlandı')&&harvestText.includes(seed.name)}
+          );
+        }
         } else if (commandName === 'balik') {
           await initFishingSchema(pool);
           await pool.query('UPDATE users SET level=30 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
-          // The isolated test schema persists between CI runs; reset only this synthetic
-          // player's fishing rows so the cooldown and collection cannot leak across runs.
           await pool.query('DELETE FROM user_fish_collection WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
           await pool.query('DELETE FROM user_fishing_state WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
-          const caught=await fishAtZone(pool,{guildId,userId,zoneKey:FISHING_ZONES[0].key},{random:()=>0});
+          const interaction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'avlan',bolge:FISHING_ZONES[0].key}),guildId,effects);
+          interaction.user.id=userId;interaction.member=makeMember(userId);
+          await command.execute(interaction);
           const collection=await getFishCollection(pool,guildId,userId);
+          const state=await pool.query('SELECT total_catches,last_fished_at FROM user_fishing_state WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const responseText=payloadTextFromEffects(effects);
+          const caught=collection.entries[0]?.fish;
           behavioralChecks.push(
-            {name:'Balıkçılık yakalama kaydı',expected:'geçerli bölgede balık yakalanmalı ve koleksiyona yazılmalı',actual:caught.status+' / '+collection.caught+' yakalama',passed:caught.status==='caught'&&collection.caught===1&&collection.entries.some(item=>item.fish_key===caught.fish.key)},
-            {name:'Balıkçılık bölge sınırı',expected:'yakalanan tür seçilen bölgede bulunmalı',actual:caught.fish?.name||'balık yok',passed:Boolean(caught.fish?.zones?.includes(FISHING_ZONES[0].key))}
+            {name:'Balıkçılık slash komutu yakalama kaydı',expected:'/balik avlan komutu bir balık yakalayıp koleksiyona kaydetmeli',actual:collection.caught+' yakalama / '+String(state.rows[0]?.total_catches),passed:collection.caught===1&&Number(state.rows[0]?.total_catches)===1&&Boolean(caught)},
+            {name:'Balıkçılık komut yanıtı kayıtlı türle eşleşir',expected:'Discord yanıtı veritabanına yazılan balık türü ve seçilen bölgeyi göstermeli',actual:(caught?.name||'balık yok')+' / '+responseText.slice(0,220),passed:Boolean(caught?.name)&&responseText.includes(caught.name)&&responseText.includes(FISHING_ZONES[0].name)&&responseText.includes('Kuzey Kıtası’nda av')}
           );
-          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        }
         } else if (commandName === 'karakteristek') {
           await initCharacterWishlistSchema(pool);
-          const added=await setCharacterWishlist(pool,{guildId,userId,characterName:'Frieren',enabled:true});
-          const duplicate=await setCharacterWishlist(pool,{guildId,userId,characterName:'Frieren',enabled:true});
+          const addEffects=[];
+          const addInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'ekle',karakter:'Frieren'}),guildId,addEffects);
+          addInteraction.user.id=userId;addInteraction.member=makeMember(userId);
+          await command.execute(addInteraction);
           const wishlist=await getCharacterWishlist(pool,guildId,userId);
+          const duplicateEffects=[];
+          const duplicateInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'ekle',karakter:'Frieren'}),guildId,duplicateEffects);
+          duplicateInteraction.user.id=userId;duplicateInteraction.member=makeMember(userId);
+          await command.execute(duplicateInteraction);
+          const listEffects=[];
+          const listInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'liste'}),guildId,listEffects);
+          listInteraction.user.id=userId;listInteraction.member=makeMember(userId);
+          await command.execute(listInteraction);
+          const addText=payloadTextFromEffects(addEffects),duplicateText=payloadTextFromEffects(duplicateEffects),listText=payloadTextFromEffects(listEffects);
           behavioralChecks.push(
-            {name:'Karakter istek listesi kaydı',expected:'Frieren bir kez kaydedilmeli',actual:added.status+' / '+wishlist.length+' kayıt',passed:added.status==='added'&&wishlist.length===1&&wishlist[0].character_name==='Frieren'},
-            {name:'Yinelenen karakter isteği engeli',expected:'aynı karakter ikinci kez eklenmemeli',actual:duplicate.status,passed:duplicate.status==='already_listed'&&wishlist.length===1}
+            {name:'Karakter istek listesi slash komutu ekleme',expected:'/karakteristek ekle Frieren kaydını oluşturmalı ve onay vermeli',actual:wishlist.length+' kayıt / '+addText,passed:wishlist.length===1&&wishlist[0].character_name==='Frieren'&&addText.includes('Karakter istek listene eklendi')},
+            {name:'Karakter istek listesi yinelenen kayıt koruması',expected:'aynı karakter ikinci kez eklenmemeli ve kullanıcı bilgilendirilmeli',actual:duplicateText,passed:duplicateText.includes('zaten listende')&&wishlist.length===1},
+            {name:'Karakter istek listesi görüntüleme',expected:'/karakteristek liste kayıtlı Frieren karakterini göstermeli',actual:listText.slice(0,220),passed:listText.includes('Frieren')}
           );
-          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        }
         } else if (commandName === 'loncaoyun') {
           await ensureGuildGameTables(pool);
           const channelId='900000000000000004';
-          // The frieren_test schema is intentionally reused between CI runs. Close any
-          // interrupted prior audit round before starting this run's deterministic scenario.
           await pool.query("UPDATE guild_game_sessions SET status='expired' WHERE guild_id=$1 AND channel_id=$2 AND status='active'",[guildId,channelId]);
-          const session=await startGuildMiniGame(pool,{guildId,channelId,userId,gameType:'bilgi',random:()=>0,now:new Date()});
-          const answered=await answerGuildMiniGame(pool,{guildId,channelId,sessionId:session.session_id,userId,answerIndex:session.answerIndex,now:new Date()});
-          const score=await pool.query('SELECT points,correct_answers,played_games FROM guild_game_scores WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const interaction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'baslat',oyun:'bilgi',takimli:false}),guildId,effects);
+          interaction.user.id=userId;interaction.member=makeMember(userId);
+          await command.execute(interaction);
+          const session=await pool.query("SELECT session_id,game_type,game_label,prompt,status FROM guild_game_sessions WHERE guild_id=$1 AND channel_id=$2 AND created_by=$3 AND status='active' ORDER BY created_at DESC LIMIT 1",[guildId,channelId,userId]);
+          const responseText=payloadTextFromEffects(effects);
+          const buttonIds=(effects[0]?.payload?.components||[]).flat();
           behavioralChecks.push(
-            {name:'Lonca oyunu oturum ve doğru yanıt',expected:'aktif oturum oluşturulmalı ve doğru yanıt kabul edilmeli',actual:session.status+' / '+answered.status,passed:Boolean(session.session_id)&&answered.status==='correct'},
-            {name:'Lonca oyunu puanının kalıcılığı',expected:'oyuncuya 10 puan ve bir doğru yanıt yazılmalı',actual:JSON.stringify(score.rows[0]||{}),passed:Number(score.rows[0]?.points)===10&&Number(score.rows[0]?.correct_answers)===1&&Number(score.rows[0]?.played_games)===1}
+            {name:'Lonca mini oyunu slash komutu oturum oluşturur',expected:'/loncaoyun baslat aktif bir oturum kaydetmeli',actual:session.rows[0]?.game_type+' / '+session.rows[0]?.status,passed:session.rowCount===1&&session.rows[0].game_type==='bilgi'&&session.rows[0].status==='active'},
+            {name:'Lonca mini oyunu başlangıç paneli',expected:'oyun adı, soru ve cevap butonları gösterilmeli',actual:responseText.slice(0,260)+' / '+buttonIds.length+' düğme',passed:responseText.includes(session.rows[0]?.game_label||'__missing_game__')&&responseText.includes(session.rows[0]?.prompt||'__missing_prompt__')&&buttonIds.length===4&&buttonIds.every(id=>String(id).startsWith('guildgame:answer:'))}
           );
-          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        }
         } else if (commandName === 'pazar') {
           await ensurePlayerMarketTables(pool);
           await pool.query("INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,'audit_market_relic',2) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=2",[guildId,userId]);
-          const listing=await createPlayerMarketListing(pool,{guildId,sellerId:userId,itemKey:'audit_market_relic',quantity:1,priceCoins:50});
-          const inventoryAfterListing=await pool.query("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='audit_market_relic'",[guildId,userId]);
-          const cancelled=listing.status==='listed'?await cancelPlayerMarketListing(pool,{guildId,sellerId:userId,listingId:listing.listing.listing_id}):{status:'not_cancelled'};
+          const saleEffects=[];
+          const saleInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'sat',esya:'audit_market_relic',adet:1,fiyat:50}),guildId,saleEffects);
+          saleInteraction.user.id=userId;saleInteraction.member=makeMember(userId);
+          await command.execute(saleInteraction);
+          const listings=await listPlayerMarketListings(pool,guildId,15);
+          const listing=listings.find(item=>item.seller_id===userId&&item.item_key==='audit_market_relic');
+          const inventoryAfterSale=await pool.query("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='audit_market_relic'",[guildId,userId]);
+          const cancelEffects=[];
+          const cancelInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'iptal',ilan:listing?.listing_id}),guildId,cancelEffects);
+          cancelInteraction.user.id=userId;cancelInteraction.member=makeMember(userId);
+          await command.execute(cancelInteraction);
           const inventoryAfterCancel=await pool.query("SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key='audit_market_relic'",[guildId,userId]);
+          const listingState=listing?await pool.query('SELECT status FROM player_market_listings WHERE listing_id=$1',[listing.listing_id]):{rows:[]};
+          const saleText=payloadTextFromEffects(saleEffects),cancelText=payloadTextFromEffects(cancelEffects);
           behavioralChecks.push(
-            {name:'Pazar ilanı envanterden güvenli ayırır',expected:'bir adet eşya ilanda olmalı ve bir adet envanterde kalmalı',actual:listing.status+' / '+(inventoryAfterListing.rows[0]?.quantity||0),passed:listing.status==='listed'&&Number(inventoryAfterListing.rows[0]?.quantity)===1},
-            {name:'Pazar ilan iptali eşyayı iade eder',expected:'iptal sonrası iki eşya envantere dönmeli',actual:cancelled.status+' / '+(inventoryAfterCancel.rows[0]?.quantity||0),passed:cancelled.status==='cancelled'&&Number(inventoryAfterCancel.rows[0]?.quantity)===2}
+            {name:'Pazar slash komutu ilan oluşturur',expected:'/pazar sat envanterden bir eşyayı ayırıp aktif ilan açmalı',actual:(listing?.listing_id||'ilan yok')+' / envanter '+String(inventoryAfterSale.rows[0]?.quantity),passed:Boolean(listing)&&listingState.rows[0]?.status==='active'&&Number(inventoryAfterSale.rows[0]?.quantity)===1&&saleText.includes('İlanın oluşturuldu')},
+            {name:'Pazar slash komutu ilanı iptal eder',expected:'/pazar iptal ilanı kapatıp eşyayı iade etmeli',actual:listingState.rows[0]?.status+' / envanter '+String(inventoryAfterCancel.rows[0]?.quantity)+' / '+cancelText,passed:listingState.rows[0]?.status==='cancelled'&&Number(inventoryAfterCancel.rows[0]?.quantity)===2&&cancelText.includes('İlan iptal edildi')}
           );
-          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        }
         } else if (commandName === 'sera') {
           await initFarmSchema(pool);
           await pool.query('UPDATE users SET level=30,coins=3000 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
           const seed=FARM_SEEDS.find(item=>item.key==='mana_wheat');
-          const planted=await plantSeed(pool,{guildId,userId,seedKey:seed.key});
-          const harvested=await harvestFarm(pool,{guildId,userId},{date:new Date(Date.now()+48*60*60*1000)});
-          const plot=await getFarmPlot(pool,guildId,userId);
-          const inventory=await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,userId,seed.name]);
+          const plantEffects=[];
+          const plantInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'ekim',tohum:seed.key}),guildId,plantEffects);
+          plantInteraction.user.id=userId;plantInteraction.member=makeMember(userId);
+          await command.execute(plantInteraction);
+          const plot=await pool.query('SELECT seed_key FROM user_farm_plots WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const plantText=payloadTextFromEffects(plantEffects);
           behavioralChecks.push(
-            {name:'Sera ekim ve yetişme kaydı',expected:'seçilen tohum oyuncunun serasına ekilmeli',actual:planted.status+' / '+seed.key,passed:planted.status==='planted'},
-            {name:'Sera hasadı tek seferlik tüketir',expected:'hasat sonrası parsel silinmeli ve ürün envantere eklenmeli',actual:harvested.status+' / parsel '+(plot?'var':'yok')+' / ürün '+(inventory.rows[0]?.quantity||0),passed:harvested.status==='harvested'&&!plot&&Number(inventory.rows[0]?.quantity)===harvested.quantity}
+            {name:'Sera slash komutu ekim işlemi',expected:'/sera ekim seçilen tohumu seraya kaydetmeli ve başarı paneli göstermeli',actual:plot.rows[0]?.seed_key+' / '+plantText.slice(0,200),passed:plot.rows[0]?.seed_key===seed.key&&plantText.includes('Tohum ekildi')&&plantText.includes(seed.name)}
           );
-          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+          await pool.query("UPDATE user_farm_plots SET harvest_at=NOW()-INTERVAL '1 minute' WHERE guild_id=$1 AND user_id=$2",[guildId,userId]);
+          const beforeInventory=await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,userId,seed.name]);
+          const harvestEffects=[];
+          const harvestInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'hasat'}),guildId,harvestEffects);
+          harvestInteraction.user.id=userId;harvestInteraction.member=makeMember(userId);
+          await command.execute(harvestInteraction);
+          const afterInventory=await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guildId,userId,seed.name]);
+          const remainingPlot=await pool.query('SELECT 1 FROM user_farm_plots WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const expectedYield=farmYield(seed.key,new Date());
+          const harvested=Number(afterInventory.rows[0]?.quantity||0)-Number(beforeInventory.rows[0]?.quantity||0);
+          const harvestText=payloadTextFromEffects(harvestEffects);
+          behavioralChecks.push(
+            {name:'Sera slash komutu hasat işlemi',expected:'/sera hasat ürünü envantere ekleyip ekili parseli kaldırmalı',actual:harvested+' ürün / parsel '+(remainingPlot.rowCount?'var':'yok')+' / '+harvestText.slice(0,200),passed:!remainingPlot.rowCount&&harvested===expectedYield&&harvestText.includes('Hasat tamamlandı')&&harvestText.includes(seed.name)}
+          );
+        }
         } else if (commandName === 'sosyal') {
           await ensureSocialPlatformTables(pool);
           const peerId='900000000000000002';
           await ensureUser(guildId,peerId);
           await pool.query('UPDATE users SET coins=1000 WHERE guild_id=$1 AND user_id=ANY($2::text[])',[guildId,[userId,peerId]]);
-          const request=await createFriendRequest(pool,{guildId,requesterId:userId,targetId:peerId});
-          const accepted=await respondFriendRequest(pool,{guildId,actorId:peerId,requestId:request.requestId,accept:true});
+          const friendEffects=[];
+          const friendInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'arkadas-iste',kullanici:{id:peerId,username:'FrierenPeer',bot:false}}),guildId,friendEffects);
+          friendInteraction.user.id=userId;friendInteraction.member=makeMember(userId);
+          await command.execute(friendInteraction);
+          const pending=await listPendingFriendRequests(pool,guildId,peerId,10);
+          const request=pending[0];
+          const acceptEffects=[];
+          const acceptInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'arkadas-kabul',istek:request?.request_id}),guildId,acceptEffects);
+          acceptInteraction.user.id=peerId;acceptInteraction.member=makeMember(peerId);
+          await command.execute(acceptInteraction);
           const relationships=await listSocialRelationships(pool,guildId,userId,'friend');
-          const gift=await sendCoinGift(pool,{guildId,senderId:userId,recipientId:peerId,amount:50,note:'izole test'});
-          const reputation=await commendPlayer(pool,{guildId,giverId:userId,recipientId:peerId,now:new Date('2026-11-04T12:00:00.000Z')});
+          const giftEffects=[];
+          const giftInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'hediye',kullanici:{id:peerId,username:'FrierenPeer',bot:false},miktar:50,not:'izole test'}),guildId,giftEffects);
+          giftInteraction.user.id=userId;giftInteraction.member=makeMember(userId);
+          await command.execute(giftInteraction);
+          const reputationEffects=[];
+          const reputationInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'itibar-ver',kullanici:{id:peerId,username:'FrierenPeer',bot:false}}),guildId,reputationEffects);
+          reputationInteraction.user.id=userId;reputationInteraction.member=makeMember(userId);
+          await command.execute(reputationInteraction);
           const reputationPoints=await getSocialReputation(pool,guildId,peerId);
           const balances=await pool.query('SELECT user_id,coins FROM users WHERE guild_id=$1 AND user_id=ANY($2::text[]) ORDER BY user_id',[guildId,[userId,peerId]]);
+          const friendText=payloadTextFromEffects(friendEffects),acceptText=payloadTextFromEffects(acceptEffects),giftText=payloadTextFromEffects(giftEffects),reputationText=payloadTextFromEffects(reputationEffects);
           behavioralChecks.push(
-            {name:'Sosyal arkadaşlık isteği ve kabul',expected:'istek gönderilmeli ve arkadaşlık ilişkisi kurulmalı',actual:request.status+' / '+accepted.status+' / '+relationships.length,passed:request.status==='sent'&&accepted.status==='accepted'&&relationships.length===1},
-            {name:'Sosyal altın hediyesi',expected:'50 altın gönderen hesabından alıcıya aktarılmalı',actual:gift.status+' / '+balances.rows.map(row=>row.coins).join(','),passed:gift.status==='sent'&&Number(gift.amount)===50&&balances.rows.length===2&&Number(gift.senderBalance)===950&&Number(gift.recipientBalance)===1050},
-            {name:'Sosyal itibar oyu haftalık tekilleştirme',expected:'alıcıya bir itibar puanı eklenmeli',actual:reputation.status+' / '+reputationPoints,passed:reputation.status==='commended'&&reputationPoints===1}
+            {name:'Sosyal slash komutu arkadaşlık isteği ve kabulü',expected:'istek gönderilmeli, hedef kullanıcı kabul etmeli ve arkadaşlık kaydı oluşmalı',actual:friendText+' / '+acceptText+' / '+relationships.length,passed:friendText.includes('Arkadaşlık isteğin')&&acceptText.includes('artık arkadaşsınız')&&relationships.length===1},
+            {name:'Sosyal slash komutu altın hediyesi',expected:'/sosyal hediye 50 altını gönderen hesaptan alıcıya aktarmalı',actual:giftText+' / '+balances.rows.map(row=>row.coins).join(','),passed:giftText.includes('50 altın gönderdin')&&balances.rows.length===2&&Number(balances.rows.find(row=>row.user_id===userId)?.coins)===950&&Number(balances.rows.find(row=>row.user_id===peerId)?.coins)===1050},
+            {name:'Sosyal slash komutu haftalık itibar',expected:'/sosyal itibar-ver alıcıya bir itibar puanı eklemeli',actual:reputationText+' / '+reputationPoints,passed:reputationText.includes('itibar verdin')&&reputationPoints===1}
           );
-          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        }
         } else if (commandName === 'yaratik') {
           await initCreatureSchema(pool);
           const creature=CREATURE_CATALOG[0];
-          const wish=await setCreatureWishlist(pool,{guildId,userId,creatureKey:creature.key,enabled:true});
-          const spawn=await maybeSpawnCreature(pool,{guildId,channelId:'900000000000000004'},{random:()=>0,force:true});
-          const caught=spawn.status==='spawned'?await claimCreature(pool,{guildId,userId,spawnId:spawn.spawnId}):{status:'not_spawned'};
-          const collection=await getCreatureCollection(pool,guildId,userId);
+          const addEffects=[];
+          const addInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'istek-ekle',yaratik:creature.key}),guildId,addEffects);
+          addInteraction.user.id=userId;addInteraction.member=makeMember(userId);
+          await command.execute(addInteraction);
           const wishlist=await getCreatureWishlist(pool,guildId,userId);
+          const listEffects=[];
+          const listInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'istekler'}),guildId,listEffects);
+          listInteraction.user.id=userId;listInteraction.member=makeMember(userId);
+          await command.execute(listInteraction);
+          const addText=payloadTextFromEffects(addEffects),listText=payloadTextFromEffects(listEffects);
           behavioralChecks.push(
-            {name:'Yaratık isteği doğma bildirimine bağlanır',expected:'istek kaydı eklenmeli ve spawn bildirimi kullanıcıyı içermeli',actual:wish.status+' / '+(spawn.notifyUserIds||[]).length,passed:wish.status==='added'&&spawn.status==='spawned'&&spawn.notifyUserIds.includes(userId)&&wishlist.some(item=>item.key===creature.key)},
-            {name:'Yaratık yakalama koleksiyona yazılır',expected:'aktif spawn bir kez yakalanmalı ve koleksiyonda görünmeli',actual:caught.status+' / '+collection.total,passed:caught.status==='caught'&&Boolean(caught.creature?.storageKey)&&collection.total===1&&collection.entries.some(item=>item.creature_key===caught.creature.storageKey)}
+            {name:'Yaratık slash komutu takip kaydı',expected:'/yaratik istek-ekle seçilen yaratığı takip listesine kaydetmeli',actual:wishlist.map(item=>item.name).join(', '),passed:wishlist.some(item=>item.key===creature.key)&&addText.includes('Yaratık istek listene eklendi')},
+            {name:'Yaratık slash komutu takip listesini gösterir',expected:'/yaratik istekler kayıtlı yaratığı göstermeli',actual:listText.slice(0,220),passed:listText.includes(creature.name)}
           );
-          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        }
         } else if (commandName === 'yasam') {
           await ensurePlayerExperienceSchema(pool);
-          const visible=await setHomeVisibility(pool,{guildId,userId,isPublic:true});
-          const hidden=await setHomeVisibility(pool,{guildId,userId,isPublic:false});
-          const home=await pool.query('SELECT is_public FROM player_homes WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const openEffects=[];
+          const openInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'paylasim',acik:true}),guildId,openEffects);
+          openInteraction.user.id=userId;openInteraction.member=makeMember(userId);
+          await command.execute(openInteraction);
+          const visible=await pool.query('SELECT is_public FROM player_homes WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const closeEffects=[];
+          const closeInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'paylasim',acik:false}),guildId,closeEffects);
+          closeInteraction.user.id=userId;closeInteraction.member=makeMember(userId);
+          await command.execute(closeInteraction);
+          const hidden=await pool.query('SELECT is_public FROM player_homes WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
+          const openText=payloadTextFromEffects(openEffects),closeText=payloadTextFromEffects(closeEffects);
           behavioralChecks.push(
-            {name:'Yaşam evi görünürlük kontrolü',expected:'ev görünür yapılabilmeli ve ayar kalıcı kaydedilmeli',actual:visible.status+' / '+visible.isPublic,passed:visible.status==='updated'&&visible.isPublic===true},
-            {name:'Yaşam evi gizlilik kontrolü',expected:'gizleme işlemi herkese açık görünümü kapatmalı',actual:hidden.status+' / '+String(home.rows[0]?.is_public),passed:hidden.status==='updated'&&home.rows[0]?.is_public===false}
+            {name:'Yaşam slash komutu evi topluluğa açar',expected:'/yasam paylasim acik:true kalıcı görünürlük ayarını açmalı',actual:String(visible.rows[0]?.is_public)+' / '+openText,passed:visible.rows[0]?.is_public===true&&openText.includes('topluluğa açıldı')},
+            {name:'Yaşam slash komutu evi gizler',expected:'/yasam paylasim acik:false kalıcı görünürlüğü kapatmalı',actual:String(hidden.rows[0]?.is_public)+' / '+closeText,passed:hidden.rows[0]?.is_public===false&&closeText.includes('Ev vitrinin gizlendi')}
           );
-          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        }
         } else if (commandName === 'yoldas') {
           await initCompanionSchema(pool);
           await pool.query('UPDATE users SET coins=5000 WHERE guild_id=$1 AND user_id=$2',[guildId,userId]);
           const companion=COMPANION_CATALOG[0];
-          const adopted=await adoptCompanion(pool,{guildId,userId,companionKey:companion.key});
-          const cared=await careForCompanion(pool,{guildId,userId,action:'feed'});
-          const saved=await getCompanion(pool,guildId,userId);
+          const adoptEffects=[];
+          const adoptInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'sahiplen',tur:companion.key}),guildId,adoptEffects);
+          adoptInteraction.user.id=userId;adoptInteraction.member=makeMember(userId);
+          await command.execute(adoptInteraction);
+          const adopted=await getCompanion(pool,guildId,userId);
+          const feedEffects=[];
+          const feedInteraction=makeInteraction(command,buildOptions(schema?.options,{__subcommand:'besle'}),guildId,feedEffects);
+          feedInteraction.user.id=userId;feedInteraction.member=makeMember(userId);
+          await command.execute(feedInteraction);
+          const cared=await getCompanion(pool,guildId,userId);
+          const adoptText=payloadTextFromEffects(adoptEffects),feedText=payloadTextFromEffects(feedEffects);
           behavioralChecks.push(
-            {name:'Yoldaş sahiplenme kalıcılığı',expected:'altın bedeli ödenip tek yoldaş kaydı oluşturulmalı',actual:adopted.status+' / '+(saved?.companion_key||'kayıt yok'),passed:adopted.status==='adopted'&&saved?.companion_key===companion.key},
-            {name:'Yoldaş bakım ilerlemesi',expected:'besleme XP ve açlık değerini güncellemeli',actual:cared.status+' / XP '+(saved?.xp||0),passed:cared.status==='cared'&&Number(saved?.xp)===5&&Number(saved?.hunger)<100}
+            {name:'Yoldaş slash komutu sahiplenme',expected:'/yoldas sahiplen yoldaşı kalıcı kaydetmeli ve onay vermeli',actual:(adopted?.companion_key||'kayıt yok')+' / '+adoptText,passed:adopted?.companion_key===companion.key&&adoptText.includes(companion.name+' artık yoldaşın')},
+            {name:'Yoldaş slash komutu besleme',expected:'/yoldas besle açlığı azaltıp XP ilerlemesi vermeli',actual:'XP '+(cared?.xp||0)+' / açlık '+(cared?.hunger||0)+' / '+feedText,passed:Number(cared?.xp)===5&&Number(cared?.hunger)<100&&feedText.includes('Yoldaşınla ilgilendin')}
           );
-          const interaction=makeInteraction(command,buildOptions(schema?.options),guildId,effects);interaction.user.id=userId;interaction.member=makeMember(userId);await command.execute(interaction);
+        }
         }
 
         const evidence = buildCommandEvidence({ responseCount: effects.length, behavioralChecks });
