@@ -23,7 +23,7 @@ const LAND_CURVES = [
   [[139,412],[151,339],[206,292]]
 ];
 const LAND_POLYGON = (() => {
-  const points = [LAND_START];
+  const points = [[LAND_START[0] / 18, LAND_START[1] / 12]];
   let start = LAND_START;
   for (const [control1, control2, end] of LAND_CURVES) {
     for (let step = 1; step <= 16; step++) {
