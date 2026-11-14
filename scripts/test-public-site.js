@@ -1623,7 +1623,7 @@ test('dedicated user center pages expose the new account, social and life naviga
  assert.match(source,/inventory-center-page/);
  assert.match(source,/notification-center-page/);
  assert.match(source,/public-assets\/user-center\.js', 'public-assets\/public-chat\.js'].includes/);
- assert.match(source,/site\.css\?v=atlas-379-1/);
+ assert.match(source,/site\.css\?v=mobile-385-1/);
  assert.match(source,/public-chat\.js\?v=chat-282-1/);
  const chatClient=await readFile(new URL('../public-assets/public-chat.js',import.meta.url),'utf8');
  assert.ok(!chatClient.includes('for(const emoji of ["❤️","✨","😂","😍","🥰","😭","👀","🎉","🙌","💜","🍪","🌸"])'));
@@ -1812,12 +1812,9 @@ test('mobile homepage locks the document to the viewport and keeps the accessibi
  const stylesheet=res();
  assert.equal(await handlePublicSiteRequest({method:'GET',url:'/assets/site.css',headers:{}},stylesheet),true);
  const css=String(stylesheet.body);
- assert.match(css,/html\\{[^}]*overflow-x:clip/);
- assert.match(css,/html\\{[^}]*max-width:100%/);
- assert.match(css,/\\.accessibility-panel>summary\\{[^}]*width:max-content/);
- assert.match(css,/\\.accessibility-panel>summary\\{[^}]*min-height:34px/);
+ assert.ok(css.includes('html{scroll-behavior:smooth;width:100%;max-width:100%;overflow-x:clip}'));
+ assert.ok(css.includes('.accessibility-panel>summary{list-style:none;display:flex;align-items:center;justify-content:center;width:max-content;max-width:100%;min-height:34px;'));
 });
-
 test('public pages expose persistent and keyboard-accessible reading controls', async () => {
  const response=res();
  assert.equal(await handlePublicSiteRequest(request('/ansiklopedi'),response,{db:null}),true);
