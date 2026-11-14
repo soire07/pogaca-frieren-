@@ -7,7 +7,7 @@ import {
 } from 'discord.js';
 
 const SITE_URL = 'https://frierenbot.vercel.app';
-const SITE_BANNER_URL = `${SITE_URL}/site-banner.webp`;
+const SITE_BANNER_URL = `${SITE_URL}/assets/site-banner.webp`;
 
 export default {
   data: new SlashCommandBuilder()
