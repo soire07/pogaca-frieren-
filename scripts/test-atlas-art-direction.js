@@ -510,7 +510,7 @@ test('Demon King fortress footprint stays inside the atlas landmass and its visu
   const ende = getAtlasSettlementVisualPosition({ key:'ende', x:88, y:15 });
   assert.deepEqual({ x:ende.x, y:ende.y }, { x:85, y:27 });
   assert.ok(isInsideAtlasLand(ende.x, ende.y), 'Ende visual anchor must sit inside the land silhouette');
-  for (const [key,x,y] of [['orman',27.5,37.25],['merkez',31.25,76.25],['harabeler',49.25,55.25],['kuzey',59,23.75],['yayla',77,71.75],['aus',82,34]]) {
+  for (const [key,x,y] of [['orman',28,37],['merkez',31.25,76.25],['harabeler',49.25,55.25],['kuzey',59,23.75],['yayla',76,71.5],['aus',80.5,34.5]]) {
     assert.ok(isInsideAtlasLand(x,y), key+' biome label anchor must remain on land');
   }
   for (const [dx,dy] of [[-3.65,-6.15],[0,-6.15],[3.65,-6.15],[3.65,0],[3.65,6.15],[0,6.15],[-3.65,6.15],[-3.65,0]]) {
