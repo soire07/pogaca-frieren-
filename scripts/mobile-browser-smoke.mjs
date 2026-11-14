@@ -38,6 +38,37 @@ for (const scenario of scenarios) {
       Math.floor(Date.now() / 1000) + 3600
     );
     await context.addCookies([{ name: 'frieren_site_session', value: siteSession, domain: '127.0.0.1', path: '/', httpOnly: true, secure: false, sameSite: 'Lax' }]);
+    const homepageResponse = await page.goto(baseUrl + '/', { waitUntil: 'domcontentloaded', timeout: 45000 });
+    if (!homepageResponse || homepageResponse.status() !== 200) throw new Error(scenario.name + ' public homepage HTTP ' + (homepageResponse?.status() || 'no response'));
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+    await page.evaluate(() => document.fonts?.ready);
+    const homepageLayout = await page.evaluate(() => {
+      const width = document.documentElement.clientWidth;
+      const panel = document.querySelector('[data-accessibility-panel]');
+      const trigger = panel?.querySelector('summary');
+      const rect = trigger?.getBoundingClientRect();
+      const offenders = [...document.querySelectorAll('body *')].map(node => {
+        const box = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        return { tag: node.tagName, className: typeof node.className === 'string' ? node.className : '', id: node.id,
+          left: Math.round(box.left), right: Math.round(box.right), width: Math.round(box.width), position: style.position };
+      }).filter(item => item.right > width + 1 && item.position !== 'fixed' && item.position !== 'absolute').slice(0, 8);
+      window.scrollTo(9999, 0);
+      return { width, documentWidth: document.documentElement.scrollWidth, scrollX: window.scrollX,
+        htmlOverflowX: getComputedStyle(document.documentElement).overflowX,
+        bodyWidth: Math.round(document.body.getBoundingClientRect().width),
+        trigger: rect ? { width: Math.round(rect.width), height: Math.round(rect.height), right: Math.round(rect.right) } : null,
+        offenders };
+    });
+    if (homepageLayout.documentWidth > homepageLayout.width + 1 || homepageLayout.scrollX !== 0) {
+      throw new Error(scenario.name + ' homepage can scroll horizontally or exceeds the viewport: ' + JSON.stringify(homepageLayout));
+    }
+    if (!homepageLayout.trigger || homepageLayout.trigger.width > Math.min(260, homepageLayout.width * .7) ||
+        homepageLayout.trigger.height > 38 || homepageLayout.trigger.right > homepageLayout.width + 1) {
+      throw new Error(scenario.name + ' accessibility trigger is not compact and viewport-contained: ' + JSON.stringify(homepageLayout));
+    }
+    await page.evaluate(() => window.scrollTo(0, 0));
+    process.stdout.write('PASS ' + scenario.name + ' public homepage: no horizontal page scroll; compact accessibility trigger\\n');
     for (const route of ['/login']) {
       const response = await page.goto(baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
       if (!response || response.status() !== 200) throw new Error(scenario.name + ' ' + route + ' HTTP ' + (response?.status() || 'no response'));
