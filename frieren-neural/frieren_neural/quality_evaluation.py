@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 import torch
 from .chat_format import format_benchmark_prompt
 from .training import LOSS_OBJECTIVE_VERSION, generate_text, load_checkpoint, load_corpus_manifest_metadata
+from .automated_quality import evaluate_outputs
 
 PROMPT_SET_VERSION = "tr-conversation-v1"
 ALLOWED_TRAINING_LICENSES = {"APACHE-2.0", "MIT", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0"}
@@ -305,7 +306,90 @@ def build_report(*,checkpoint_sha256:str,checkpoint_step:int,outputs:list[dict[s
             reasons.append("held_out_objective_mismatch")
 
     if scores is None:
-        report["blocking_reasons"]=reasons+["human_review_missing"]
+        automated = evaluate_outputs(outputs)
+        report["automated_quality"] = automated
+        report["review_template"] = {"reviewers": [], "candidate_binding": None, "mode": "automated"}
+        report["human_review"] = {
+            "completed": False,
+            "reviewers_required": 0,
+            "reviewer_identity_hashes": [],
+            "candidate_binding": None,
+            "mode": "deterministic_contract_checks",
+        }
+        reasons.extend(automated["blocking_reasons"])
+        if establish_baseline:
+            if baseline_report is not None:
+                reasons.append("baseline_establishment_cannot_include_a_comparison_report")
+            if model_backend != "scratch":
+                reasons.append("baseline_establishment_requires_scratch_checkpoint")
+            report["blocking_reasons"] = reasons
+            if not reasons:
+                report["decision"] = "READY TO ESTABLISH BASELINE"
+            return report
+
+        if baseline_report is None:
+            reasons.append("baseline_comparison_missing")
+        else:
+            baseline_auto = baseline_report.get("automated_quality")
+            baseline_outputs = baseline_report.get("outputs")
+            baseline_valid = (
+                isinstance(baseline_auto, dict)
+                and baseline_auto.get("evaluator_version") == automated["evaluator_version"]
+                and baseline_auto.get("prompt_set_version") == PROMPT_SET_VERSION
+                and isinstance(baseline_outputs, list)
+                and [item.get("id") for item in baseline_outputs if isinstance(item, dict)]
+                    == expected_ids
+                and isinstance(baseline_auto.get("case_results"), list)
+                and len(baseline_auto["case_results"]) == len(expected_ids)
+                and isinstance(baseline_auto.get("cases_passed"), int)
+                and not isinstance(baseline_auto.get("cases_passed"), bool)
+                and baseline_report.get("decoding_settings") == DECODING_SETTINGS
+                and baseline_report.get("prompt_set_version") == PROMPT_SET_VERSION
+                and baseline_report.get("baseline_role") == "baseline_candidate"
+            )
+            if not baseline_valid:
+                reasons.append("automated_baseline_missing_or_incompatible")
+            else:
+                baseline_by_id = {
+                    item.get("id"): item
+                    for item in baseline_auto["case_results"]
+                    if isinstance(item, dict)
+                }
+                candidate_by_id = {
+                    item["id"]: item for item in automated["case_results"]
+                }
+                regressions = [
+                    case_id for case_id in expected_ids
+                    if baseline_by_id.get(case_id, {}).get("passed") is True
+                    and candidate_by_id.get(case_id, {}).get("passed") is not True
+                ]
+                improvements = [
+                    case_id for case_id in expected_ids
+                    if baseline_by_id.get(case_id, {}).get("passed") is not True
+                    and candidate_by_id.get(case_id, {}).get("passed") is True
+                ]
+                try:
+                    baseline_binding = build_score_binding(baseline_report.get("checkpoint_sha256"), baseline_outputs)
+                except ValueError:
+                    baseline_binding = None
+                report["baseline_comparison"] = {
+                    "available": True,
+                    "baseline_checkpoint_sha256": baseline_report.get("checkpoint_sha256"),
+                    "baseline_loss_objective_version": (baseline_report.get("checkpoint_metadata") or {}).get("loss_objective_version"),
+                    "baseline_candidate_binding": baseline_binding,
+                    "improved": bool(improvements) and not regressions,
+                    "baseline_cases_passed": baseline_auto.get("cases_passed"),
+                    "candidate_cases_passed": automated.get("cases_passed"),
+                    "improved_cases": improvements,
+                    "regressed_cases": regressions,
+                }
+                if regressions:
+                    reasons.append("automated_quality_regression")
+                if not improvements:
+                    reasons.append("automated_quality_not_improved")
+        report["blocking_reasons"] = reasons
+        if not reasons:
+            report["decision"] = "READY FOR STAGED TEST"
         return report
     validate_scores(scores, checkpoint_sha256=checkpoint_sha256, outputs=outputs)
     metrics=_metrics(scores)
