@@ -2091,3 +2091,25 @@ footer nav a{min-width:0;max-width:100%;overflow-wrap:anywhere}
 @keyframes cosmetic-orbit{to{transform:rotate(348deg)}}
 @media(max-width:560px){.cosmetic-showcase-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.cosmetic-showcase-item{gap:8px;padding:9px;min-height:82px}.cosmetic-preview{width:48px;height:48px;flex-basis:48px}.cosmetic-showcase-copy strong{font-size:12px}.cosmetic-showcase-copy span{font-size:10px}}
 @media(max-width:360px){.cosmetic-showcase-grid{grid-template-columns:1fr}}
+
+/* Apply equipped cosmetics to the actual public character identity, not only inventory tiles. */
+.player-cosmetic-identity{display:flex;align-items:center;gap:18px;min-width:0;margin:22px 0;padding:18px;border:1px solid #c7a9f255;border-radius:20px;background:linear-gradient(125deg,#211a35,#100e1d 72%);box-shadow:0 18px 48px #05040d55}
+.player-cosmetic-avatar{position:relative;display:grid;place-items:center;flex:0 0 86px;width:86px;height:86px;border:2px solid #9c8bb8;border-radius:50%;background:radial-gradient(circle at 50% 38%,#b99be955,transparent 68%),#110e1c;box-shadow:0 0 0 5px #8b6ac622,inset 0 0 24px #c6a6ff33}
+.player-cosmetic-avatar span{color:#f4e8ff;font:42px Georgia,serif;text-shadow:0 0 18px #c7a6ff}
+.player-cosmetic-avatar[data-profile-frame="moon_frame"]{border:4px double #e4d1ff;box-shadow:0 0 0 4px #a98bdc77,0 0 26px #d4baff88,inset 0 0 20px #c6a6ff44}
+.player-cosmetic-avatar[data-profile-frame="fern_frame"]{border:4px double #9fd8b7;box-shadow:0 0 0 4px #5c9b7c77,0 0 24px #79d3a188,inset 0 0 20px #6cb88a44}
+.player-cosmetic-avatar[data-avatar-border="silver_border"]{outline:3px solid #d8deeb;outline-offset:5px}
+.player-cosmetic-avatar[data-avatar-border="gold_border"]{outline:3px solid #e7c77b;outline-offset:5px;box-shadow:0 0 0 9px #b8893a55,0 0 28px #f1d38a99}
+.player-cosmetic-identity-copy{display:grid;gap:7px;min-width:0}
+.player-cosmetic-nameplate{width:max-content;max-width:100%;padding:8px 13px;border:1px solid #b99be944;border-radius:12px;background:#ffffff08}
+.player-cosmetic-nameplate[data-nameplate="star_nameplate"]{border-color:#d9c0ff;background:linear-gradient(110deg,#4a3568,#20172f 70%);box-shadow:0 0 18px #c3a0ff55}
+.player-cosmetic-nameplate[data-nameplate="rune_nameplate"]{border:1px solid #8f7fc0;background:repeating-linear-gradient(135deg,#29213d 0 7px,#34294d 7px 14px);box-shadow:inset 0 0 0 2px #9d8bd522}
+.player-cosmetic-character-name{margin:0;color:#f6edff;font:clamp(23px,4vw,34px) Georgia,serif}
+.player-cosmetic-character-name[data-title-effect="mana_title"]{text-shadow:0 0 8px #bda0ff,0 0 22px #a57bff}
+.player-cosmetic-character-name[data-title-effect="aurora_title"]{background:linear-gradient(90deg,#d6c4ff,#9ce5d2,#b9c7ff);background-clip:text;-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 0 10px #a7d9d288)}
+.player-cosmetic-nameplate p{margin:4px 0 0;color:#c9bbdf;font-size:12px}
+.player-cosmetic-spell-trail{display:flex;align-items:center;gap:8px;color:#d9c6ff;font-size:11px}
+.player-cosmetic-spell-trail span:first-child{color:#f1e5ff;letter-spacing:2px;text-shadow:0 0 12px #c7a6ff}
+.player-cosmetic-spell-trail[data-spell-trail="frost_trail"] span:first-child{color:#bfe7ff;text-shadow:0 0 14px #7bcaff}
+.player-cosmetic-victory-pose{width:max-content;max-width:100%;padding:4px 9px;border:1px solid #d7b56b88;border-radius:999px;background:#c79c3822;color:#f1d89b;font-size:11px}
+@media(max-width:560px){.player-cosmetic-identity{gap:13px;padding:13px}.player-cosmetic-avatar{flex-basis:68px;width:68px;height:68px}.player-cosmetic-avatar span{font-size:34px}.player-cosmetic-nameplate{padding:7px 10px}}
