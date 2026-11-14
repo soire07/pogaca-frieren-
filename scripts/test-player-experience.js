@@ -4,6 +4,11 @@ import {HOME_ROOMS,HOME_DECORATIONS,HOME_DECORATION_CATALOG,HOME_STATIONS,ALCHEM
 import * as playerExperience from '../player-experience.js';
 import yasamCommand from '../yasam.js';
 
+test('home layout preset service exposes a bounded player-scoped preset API',()=>{
+ assert.equal(playerExperience.HOME_LAYOUT_PRESET_LIMIT,6);
+ for(const name of ['listHomeLayoutPresets','saveHomeLayoutPreset','applyHomeLayoutPreset','deleteHomeLayoutPreset'])assert.equal(typeof playerExperience[name],'function');
+});
+
 test('personal home rooms have unique keys and nonnegative progression costs',()=>{
  assert.equal(new Set(HOME_ROOMS.map(x=>x.key)).size,HOME_ROOMS.length);
  assert.equal(HOME_ROOMS[0].key,'starter');
