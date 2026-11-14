@@ -337,3 +337,19 @@ test('atlas settlement silhouettes give all ten catalogued towns distinct, layou
     assert.match(locations, new RegExp("key:'" + key + "'[^\\n]*x:" + x + ", y:" + y), 'canonical settlement coordinate must remain unchanged: ' + key);
   }
 });
+
+
+test('atlas finish pass unifies frame, landmark focus, layer controls and mobile/reduced-motion behavior', async () => {
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const finish = css.slice(css.lastIndexOf('Unified atlas finish'));
+  assert.match(finish, /\.atlas-map-shell::after\{[^}]*pointer-events:none/);
+  assert.match(finish, /\.atlas-map-viewport\{[^}]*inset 0 0 44px/);
+  assert.match(finish, /\.atlas-pin:hover \.atlas-pin-glyph/);
+  assert.match(finish, /\.atlas-pin:focus-visible\{z-index:12\}/);
+  assert.match(finish, /\.atlas-layer-controls button\[aria-pressed="true"\]/);
+  assert.match(finish, /\.atlas-layer-controls button\[aria-pressed="false"\]/);
+  assert.match(finish, /\.atlas-map-tools button:focus-visible/);
+  assert.match(finish, /@media\(max-width:700px\)/);
+  assert.match(finish, /@media\(prefers-reduced-motion:reduce\)/);
+  assert.match(finish, /\.atlas-route-planner\{/);
+});
