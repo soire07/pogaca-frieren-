@@ -70,8 +70,8 @@ test('mention handler loads only this guild and user history, then stores both t
     env: { GEMINI_API_KEY: 'test-key' },
     fetchImpl: async (_url, options) => {
       const body = JSON.parse(options.body);
-      assert.equal(body.messages.at(-2).content, 'Önceki soru');
-      assert.equal(body.messages.at(-1).content, 'Nasılsın?');
+      assert.equal(body.contents.at(-2).parts[0].text, 'Önceki soru');
+      assert.equal(body.contents.at(-1).parts[0].text, 'Nasılsın?');
       return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'İyiyim. Sen nasılsın?' }] } }] }) };
     }
   });
