@@ -18,12 +18,14 @@ const namedTestBody = (content, name) => {
   return content.slice(start, next < 0 ? content.length : next);
 };
 
-test('feature evidence map references current source and named test assertions without promoting inventory status', async () => {
+test('feature evidence map promotes only fully automated evidence and preserves runtime/live verification boundaries', async () => {
   const inventory = await readJson('feature-inventory.json');
   const evidence = await readJson('feature-evidence.json');
   const known = new Map(inventory.features.map(feature => [feature.id, feature]));
   const ids = evidence.entries.map(entry => entry.featureId);
   const errors = [];
+  const fullyVerifiedLevels = new Set(['automated_tested', 'isolated_postgresql_integration']);
+  const mappedIds = new Set(ids);
 
   if (evidence.schemaVersion !== 1) errors.push('unsupported schemaVersion: ' + evidence.schemaVersion);
   if (new Set(ids).size !== ids.length) errors.push('feature evidence IDs must be unique');
@@ -31,8 +33,13 @@ test('feature evidence map references current source and named test assertions w
   for (const entry of evidence.entries) {
     const feature = known.get(entry.featureId);
     if (!feature) errors.push(entry.featureId + ': feature ID is absent from feature-inventory.json');
-    else if (feature.status !== 'implemented_needs_runtime_test') {
-      errors.push(entry.featureId + ': evidence mapping must not silently promote inventory status');
+    else {
+      const expectedStatus = fullyVerifiedLevels.has(entry.evidenceLevel)
+        ? 'automated_verified'
+        : 'implemented_needs_runtime_test';
+      if (feature.status !== expectedStatus) {
+        errors.push(entry.featureId + ': expected status ' + expectedStatus + ' for evidence level ' + entry.evidenceLevel + ', received ' + feature.status);
+      }
     }
     if (!['automated_static_assertion', 'automated_partial', 'automated_tested', 'isolated_postgresql_integration'].includes(entry.evidenceLevel)) {
       errors.push(entry.featureId + ': invalid evidence level ' + entry.evidenceLevel);
