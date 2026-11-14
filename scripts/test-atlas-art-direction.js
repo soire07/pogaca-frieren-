@@ -376,11 +376,11 @@ test('castles and villages use layered architectural facades, openings and roof 
   const templates = atlas.slice(start, end);
   const keys = ['strahl','royal-capital','waal','fabel-village','graf-granat','village-of-sword','weise','ende','demon-kings-castle'];
   for (const key of keys) {
-    const next = templates.indexOf("\\n  ", templates.indexOf(key + ':') + key.length + 1);
+    const next = templates.indexOf("\n  ", templates.indexOf(key + ':') + key.length + 1);
     const block = templates.slice(templates.indexOf(key + ':'), next < 0 ? templates.length : next);
-    const paths = (block.match(/<path\\b/g) || []).length;
+    const paths = (block.match(/<path\b/g) || []).length;
     assert.ok(paths >= 6, key + ' should have layered architectural detail, not a few crude strokes');
-    assert.match(block, /<rect\\b/, key + ' should include distinct facade/window geometry');
+    assert.match(block, /<rect\b/, key + ' should include distinct facade/window geometry');
   }
   assert.match(templates, /castle-wall/);
   assert.match(templates, /battlement/);
