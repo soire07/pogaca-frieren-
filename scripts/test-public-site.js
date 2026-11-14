@@ -1971,7 +1971,7 @@ test('public player showcase renders equipped cosmetics as visible slot previews
   profile:{character_name:'Fern',class_name:'Büyücü',level:12,xp:1440,boss_defeats:0,dungeon_wins:0},
   rooms:[],trophies:[],loadout:[
    {cosmetic_key:'moon_frame'},{cosmetic_key:'star_nameplate'},{cosmetic_key:'mana_title'},
-   {cosmetic_key:'arcane_trail'},{cosmetic_key:'silver_border'},{cosmetic_key:'winter_theme'},
+   {cosmetic_key:'arcane_trail'},{cosmetic_key:'victory_bloom'},{cosmetic_key:'silver_border'},{cosmetic_key:'winter_theme'},
    {cosmetic_key:'relic_display'}
   ],home:{layout:[]},companion:null,cardVariants:[],activity:[]
  });
