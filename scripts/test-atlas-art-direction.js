@@ -534,9 +534,10 @@ test('biome overlays use broad connected shapes and the Demon King wasteland sta
 
 test('six biome art direction keeps every regional signature distinct and the demon frontier legible', async () => {
   const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const artwork = await readFile(new URL('../public-assets/frieren-world-map.svg', import.meta.url), 'utf8');
   const artDirection = css.slice(css.lastIndexOf('Six-biome art-direction pass'));
-  for (const biome of ['central-meadow','great-forest','ancient-ruins','northern-ice','schwer-highlands','ausserst-arcana']) {
-    assert.match(artDirection, new RegExp('\\.biome-' + biome + '\\{'), 'missing visual treatment for ' + biome);
+  for (const [biome,opacity] of [['central-meadow','.9'],['great-forest','.84'],['ancient-ruins','.82'],['northern-ice','.86'],['schwer-highlands','.82'],['ausserst-arcana','.78']]) {
+    assert.ok(artwork.includes('class="biome-'+biome+'" opacity="'+opacity+'"'), 'missing rendered SVG visual treatment for ' + biome);
   }
   assert.match(artDirection, /atlas-ashen-ground[\s\S]*?opacity:\.34/);
   assert.match(artDirection, /atlas-demon-fog[\s\S]*?opacity:\.3/);
