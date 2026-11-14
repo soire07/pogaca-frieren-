@@ -85,8 +85,11 @@ function escapeMarkdown(value='') {
 
 function cleanNewsSummary(value='') {
   return String(value)
-    .replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/gi, '$1')
-    .replace(/https?:\/\/[^\s<>()]+/gi, '')
+    .replace(/\[[^\]]+\]\(https?:\/\/[^)]+\)/gi, ' ')
+    .replace(/https?:\/\/[^\s<>()]+/gi, ' ')
+    .replace(/\b(?:read more|read the full story|source|link|haberin devamı|devamını oku|daha fazla|kaynak)\s*:?\s*$/i, '')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/([,;:])(?:\s*[,;:])+/g, '$1')
     .replace(/\s+/g, ' ')
     .trim();
 }
