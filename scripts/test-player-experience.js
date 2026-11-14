@@ -1,13 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {HOME_ROOMS,HOME_DECORATIONS,HOME_STATIONS,ALCHEMY_RECIPES,PLAYER_COSMETICS,EVENT_MILESTONES,validateHomeLayout} from '../player-experience.js';
+import {HOME_ROOMS,HOME_DECORATIONS,HOME_DECORATION_CATALOG,HOME_STATIONS,ALCHEMY_RECIPES,PLAYER_COSMETICS,EVENT_MILESTONES,validateHomeLayout} from '../player-experience.js';
 import * as playerExperience from '../player-experience.js';
+import yasamCommand from '../yasam.js';
 
 test('personal home rooms have unique keys and nonnegative progression costs',()=>{
  assert.equal(new Set(HOME_ROOMS.map(x=>x.key)).size,HOME_ROOMS.length);
  assert.equal(HOME_ROOMS[0].key,'starter');
  assert.ok(HOME_ROOMS.every(x=>Number.isInteger(x.level)&&x.level>=1&&Number.isInteger(x.cost)&&x.cost>=0));
 });
+test('home decoration catalog gives every placeable key a unique player-facing name and icon',()=>{
+ assert.deepEqual(HOME_DECORATIONS,HOME_DECORATION_CATALOG.map(item=>item.key));
+ assert.equal(new Set(HOME_DECORATION_CATALOG.map(item=>item.key)).size,HOME_DECORATION_CATALOG.length);
+ assert.ok(HOME_DECORATION_CATALOG.every(item=>item.name.trim()&&item.emoji.trim()));
+});
+
+test('/yasam dekorasyonlar displays readable names instead of raw internal keys',async()=>{
+ let reply='';
+ await yasamCommand.execute({
+  guildId:'1539562273197260860',
+  user:{id:'123456789012345678'},
+  options:{getSubcommand:()=> 'dekorasyonlar'},
+  async reply(payload){reply=payload.content;}
+ });
+ for(const item of HOME_DECORATION_CATALOG){
+  assert.ok(reply.includes(item.name),item.name);
+  assert.ok(reply.includes(item.key),item.key);
+ }
+});
+
 test('general cosmetics cover distinct player-facing slots without duplicate keys',()=>{
  assert.equal(new Set(PLAYER_COSMETICS.map(x=>x.key)).size,PLAYER_COSMETICS.length);
  for(const slot of ['profile_frame','nameplate','title_effect','spell_trail','victory_pose','avatar_border','guild_banner','seasonal_theme','collection_display']){
@@ -15,13 +36,37 @@ test('general cosmetics cover distinct player-facing slots without duplicate key
  }
  assert.ok(PLAYER_COSMETICS.every(x=>x.cost>=0&&x.level>=1));
 });
-test('home layout rejects duplicate positions, malformed keys and more than twelve decorations',()=>{
+test('home layout accepts only known rooms, catalog decorations and integer positions',()=>{
  assert.ok(HOME_DECORATIONS.includes('book_shelf'));
  assert.deepEqual(validateHomeLayout([{roomKey:'starter',decorationKey:'book_shelf',position:0}]),[{roomKey:'starter',decorationKey:'book_shelf',position:0}]);
+ assert.throws(()=>validateHomeLayout([{roomKey:'unknown_room',decorationKey:'book_shelf',position:0}]),/HOME_LAYOUT_INVALID/);
+ assert.throws(()=>validateHomeLayout([{roomKey:'../users',decorationKey:'book_shelf',position:0}]),/HOME_LAYOUT_INVALID/);
  assert.throws(()=>validateHomeLayout([{roomKey:'starter',decorationKey:'unknown_item',position:0}]),/HOME_LAYOUT_INVALID/);
- assert.throws(()=>validateHomeLayout([{roomKey:'starter',decorationKey:'book_shelf',position:0},{roomKey:'starter',decorationKey:'lamp',position:0}]),/HOME_LAYOUT_INVALID/);
- assert.throws(()=>validateHomeLayout([{roomKey:'../users',decorationKey:'lamp',position:0}]),/HOME_LAYOUT_INVALID/);
- assert.throws(()=>validateHomeLayout(Array.from({length:13},(_,i)=>({roomKey:'starter',decorationKey:'lamp_'+i,position:i}))),/HOME_LAYOUT_INVALID/);
+ assert.throws(()=>validateHomeLayout([{roomKey:'starter',decorationKey:'book_shelf',position:'0'}]),/HOME_LAYOUT_INVALID/);
+});
+
+test('home layout prevents duplicate positions within one room but allows the same position in another room',()=>{
+ assert.deepEqual(validateHomeLayout([
+  {roomKey:'starter',decorationKey:'book_shelf',position:0},
+  {roomKey:'library',decorationKey:'star_map',position:0}
+ ]),[
+  {roomKey:'starter',decorationKey:'book_shelf',position:0},
+  {roomKey:'library',decorationKey:'star_map',position:0}
+ ]);
+ assert.throws(()=>validateHomeLayout([
+  {roomKey:'starter',decorationKey:'book_shelf',position:0},
+  {roomKey:'starter',decorationKey:'mana_lamp',position:0}
+ ]),/HOME_LAYOUT_INVALID/);
+});
+
+test('home layout enforces the twelve-decoration limit using otherwise valid placements',()=>{
+ const rooms=HOME_ROOMS.map(room=>room.key);
+ const placements=Array.from({length:13},(_,i)=>({
+  roomKey:rooms[i%rooms.length],
+  decorationKey:HOME_DECORATIONS[i%HOME_DECORATIONS.length],
+  position:Math.floor(i/rooms.length)
+ }));
+ assert.throws(()=>validateHomeLayout(placements),/HOME_LAYOUT_INVALID/);
 });
 test('event rewards use only attainable one-time registration and check-in milestones',()=>{
  assert.deepEqual(EVENT_MILESTONES.map(x=>x.key),['participant','checkin']);
