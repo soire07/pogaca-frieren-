@@ -1916,3 +1916,23 @@ body.atlas-modal-open{overflow:hidden}
 @media(prefers-reduced-motion:reduce){
  .atlas-map-tools button,.atlas-layer-controls button{transition:none}
 }
+
+
+/* Biome labels are HTML overlays so names and progress remain readable on phones. */
+.atlas-map-art{overflow:hidden}
+.atlas-biome-label-layer{position:absolute;inset:0;z-index:2.6;overflow:hidden;pointer-events:none}
+.atlas-biome-label{position:absolute;display:grid;justify-items:center;gap:2px;max-width:min(190px,28vw);padding:6px 10px;transform:translate(-50%,-50%);border:1px solid #e1cfaa9c;border-radius:8px;background:linear-gradient(145deg,#17272bdc,#101a22e8);box-shadow:0 4px 14px #07101588,inset 0 1px 0 #f7e9c544;color:#f4e9d0;text-align:center;white-space:normal;backdrop-filter:blur(3px)}
+.atlas-biome-label strong{font:700 clamp(8px,.95vw,12px)/1.15 Georgia,serif;letter-spacing:.045em;text-shadow:0 1px 2px #000}
+.atlas-biome-label small{color:#e0c58d;font:700 clamp(7px,.78vw,10px)/1.1 system-ui,sans-serif;letter-spacing:.035em}
+.atlas-biome-label[data-atlas-biome-label="aus"]{border-color:#9c858c;background:linear-gradient(145deg,#211d28e8,#11151fef);color:#f0d9d7}
+.atlas-biome-label[data-atlas-biome-label="aus"] small{color:#d9a5a3}
+.atlas-settlement-silhouette .castle-architecture{filter:drop-shadow(0 6px 5px #10191dcc)}
+.atlas-settlement-demon-kings-castle .demon-fortress{filter:drop-shadow(0 9px 7px #090b12e8) drop-shadow(0 0 8px #7d353a66)}
+.atlas-settlement-demon-kings-castle .castle-wall{stroke:#d49a92;stroke-width:4}
+.atlas-settlement-demon-kings-castle .battlement{stroke:#e1aaa0;stroke-width:3}
+@media(max-width:700px){
+ .atlas-biome-label{max-width:min(132px,35vw);padding:4px 6px;border-radius:6px;gap:2px;backdrop-filter:blur(2px)}
+ .atlas-biome-label strong{font-size:8px;letter-spacing:0}
+ .atlas-biome-label small{font-size:7px}
+}
+@media(prefers-reduced-motion:reduce){.atlas-biome-label{backdrop-filter:none}}
