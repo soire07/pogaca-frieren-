@@ -14,7 +14,7 @@
  const paint=()=>{camera.style.transform='translate3d('+x+'px,'+y+'px,0) scale('+scale+')';const output=root.querySelector('[data-atlas-zoom-value]');if(output)output.value=Math.round(scale*100)+'%';const mapArt=root.querySelector('.atlas-map-art');if(mapArt){const regional=Number(mapArt.dataset.atlasZoomRegional)||1.35,local=Number(mapArt.dataset.atlasZoomLocal)||2.2;mapArt.dataset.atlasZoomDetail=scale>=local?'local':scale>=regional?'regional':'overview';}};
  const bounds=()=>{const rect=viewport.getBoundingClientRect();return {x:Math.max(0,(rect.width*(scale-1))/2),y:Math.max(0,(rect.height*(scale-1))/2)};};
  const constrain=()=>{const limit=bounds();x=clamp(x,-limit.x,limit.x);y=clamp(y,-limit.y,limit.y);};
- const zoom=delta=>{scale=clamp(scale*delta,.85,3.2);constrain();paint();};
+ const zoom=delta=>{scale=clamp(scale*delta,1,3.2);constrain();paint();};
  const reset=()=>{scale=1;x=0;y=0;paint();};
  const close=()=>{modal.hidden=true;document.body.classList.remove('atlas-modal-open');if(last)last.focus();};
  const open=(key,focus,targetKey,trigger)=>{const active=panels.find(item=>item.dataset.atlasPanel===key);if(!active)return;panels.forEach(item=>{item.hidden=item!==active;item.querySelectorAll('.is-highlighted').forEach(node=>node.classList.remove('is-highlighted'));});modal.hidden=false;document.body.classList.add('atlas-modal-open');last=trigger;const heading=active.querySelector('h3');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}if(focus!=='region'){const target=[...active.querySelectorAll('[data-atlas-focus-target="'+focus+'"]')].find(node=>node.dataset.atlasTargetKey===targetKey);if(target)target.classList.add('is-highlighted');}};
@@ -53,7 +53,7 @@
  viewport.addEventListener('pointermove',event=>{
   if(!pointers.has(event.pointerId))return;
   pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
-  if(pointers.size===2){const points=[...pointers.values()],distance=Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y);if(pinchDistance>0&&distance>0){scale=clamp(scale*(distance/pinchDistance),.85,3.2);pinchDistance=distance;constrain();paint();}return;}
+  if(pointers.size===2){const points=[...pointers.values()],distance=Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y);if(pinchDistance>0&&distance>0){scale=clamp(scale*(distance/pinchDistance),1,3.2);pinchDistance=distance;constrain();paint();}return;}
   if(drag){x=drag.originX+(event.clientX-drag.x);y=drag.originY+(event.clientY-drag.y);constrain();paint();}
  });
  const release=event=>{pointers.delete(event.pointerId);if(pointers.size<2)pinchDistance=0;if(!pointers.size)drag=null;};
