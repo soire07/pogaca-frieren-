@@ -2,7 +2,8 @@ import { withIsolatedTestSchema, ensureUser, pool } from '../database/db.js';
 import { buildCommandEvidence } from './command-test-evidence.js';
 import { ensureCardVariantSchema } from '../card-variants.js';
 import { equipmentItems, equipmentBonus } from '../equipment-data.js';
-import { applyEquipmentSetBonus } from '../rpg-mechanics.js';
+import { applyEquipmentSetBonus, RAID_BOSSES } from '../rpg-mechanics.js';
+import { ensureNewsBirdSchema, setNewsGuildChannel } from '../news-birds.js';
 import { buildCoopTestUserIds } from './coop-test-users.js';
 import { handleCharacterPanelInteraction } from '../karakter.js';
 import { createIsolatedTestRunContext } from './isolated-test-run-context.js';
@@ -46,6 +47,7 @@ function fakeChannel() {
     name: 'test-channel',
     isTextBased: () => true,
     send: async () => ({ id: 'test-message' }),
+    permissionsFor: () => ({ has: () => true }),
     // Simulate the Discord.js message collector API without creating a real collector.
     awaitMessageComponent: async () => { throw new Error('simulated invitation timeout'); },
     createMessageCollector: () => {
@@ -114,6 +116,7 @@ function makeInteraction(command, options, guildId, effects, simulation = null) 
     members: {
       cache: new Map([[user.id, member]]),
       fetch: async (id) => makeMember(typeof id === 'string' ? id : user.id),
+      me: { id: '900000000000000099' },
     },
     roles: { cache: new Map(), fetch: async (id) => ({ id, name: 'test-role', members: new Map() }) },
     channels: { cache: new Map([[channel.id, channel]]), fetch: async () => channel },
@@ -283,6 +286,88 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           await pool.query('UPDATE users SET coins=100, mana=100 WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
         }
         const behavioralChecks = [];
+        if (commandName === 'site') {
+          let rawPayload = null;
+          await command.execute({
+            reply: async payload => {
+              rawPayload = payload;
+              effects.push({ type: 'reply', payload: normalizePayload(payload) });
+            }
+          });
+          const embed = rawPayload?.embeds?.[0]?.toJSON?.() || {};
+          const linkButtons = (rawPayload?.components || [])
+            .flatMap(row => row.components || [])
+            .map(button => button.toJSON())
+            .filter(button => button.style === 5);
+          behavioralChecks.push(
+            { name: 'Portal tanıtım bağlantısı', expected: 'Frieren Portalı resmi site URL’sine bağlanmalı', actual: String(embed.url || 'URL yok'), passed: embed.url === 'https://frierenbot.vercel.app' },
+            { name: 'Resmî banner görseli', expected: 'site-banner.webp embed görselinde bulunmalı', actual: String(embed.image?.url || 'görsel yok'), passed: embed.image?.url === 'https://frierenbot.vercel.app/assets/site-banner.webp' },
+            { name: 'Tek ziyaret düğmesi', expected: 'tek bağlantı düğmesi doğru siteye yönlenmeli', actual: linkButtons.length + ' bağlantı düğmesi', passed: linkButtons.length === 1 && linkButtons[0].url === 'https://frierenbot.vercel.app' && linkButtons[0].label === 'Siteyi Ziyaret Et' }
+          );
+        } else if (commandName === 'raidbossbilgi') {
+          const bossOption = schema?.options?.find(option => option.name === 'boss');
+          const bossId = bossOption?.choices?.[0]?.value;
+          const expectedBoss = RAID_BOSSES.find(boss => boss.id === bossId);
+          const before = await pool.query(
+            'SELECT coins,xp,level,class_name,character_name FROM users WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const interaction = makeInteraction(command, buildOptions(schema?.options, { boss: bossId, gorunum: 'detay' }), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const after = await pool.query(
+            'SELECT coins,xp,level,class_name,character_name FROM users WHERE guild_id=$1 AND user_id=$2',
+            [guildId, userId]
+          );
+          const embed = effects[0]?.payload?.embeds?.[0] || {};
+          const fieldNames = (embed.fields || []).map(field => field.name);
+          behavioralChecks.push(
+            { name: 'Raid boss kataloğu seçimi', expected: expectedBoss?.name || 'Seçilen boss katalogda bulunmalı', actual: String(embed.title || 'başlık yok'), passed: Boolean(expectedBoss) && embed.title === expectedBoss.name },
+            { name: 'Boss savaş istatistikleri', expected: 'HP, saldırı, ödül, zayıflık ve ganimet alanları gösterilmeli', actual: fieldNames.join(' · '), passed: ['❤️ Boss HP','⚔️ Temel saldırı','✨ Zafer ödülü','🎯 Zayıflık','💎 Eşya ganimeti'].every(name => fieldNames.includes(name)) },
+            { name: 'Ayrıntılı savaş kuralları', expected: 'detay görünümünde savaş kuralları alanı bulunmalı', actual: fieldNames.includes('🧭 Savaş kuralları') ? 'detay alanı mevcut' : 'detay alanı yok', passed: fieldNames.includes('🧭 Savaş kuralları') },
+            { name: 'Bilgi komutu oyuncu verisini değiştirmez', expected: 'altın, XP, seviye ve sınıf bilgileri aynı kalmalı', actual: JSON.stringify(after.rows[0]), passed: JSON.stringify(before.rows[0]) === JSON.stringify(after.rows[0]) }
+          );
+        } else if (commandName === 'haberleri-ayarla') {
+          await ensureNewsBirdSchema(pool);
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const first = await pool.query(
+            'SELECT channel_id,enabled FROM frieren_news_guild_settings WHERE guild_id=$1',
+            [guildId]
+          );
+          interaction.channel.id = '900000000000000005';
+          await command.execute(interaction);
+          const saved = await pool.query(
+            'SELECT channel_id,enabled,COUNT(*) OVER()::int AS row_count FROM frieren_news_guild_settings WHERE guild_id=$1',
+            [guildId]
+          );
+          behavioralChecks.push(
+            { name: 'Haber kanalı ilk kurulumu', expected: 'kanal ayarı etkin olarak kaydedilmeli', actual: first.rows[0] ? first.rows[0].channel_id + ' / ' + first.rows[0].enabled : 'kayıt yok', passed: first.rows[0]?.channel_id === '900000000000000004' && first.rows[0]?.enabled === true },
+            { name: 'Haber kanalını taşıma', expected: 'ikinci kanal aynı sunucu ayarını güncellemeli; yinelenen satır oluşmamalı', actual: saved.rows[0] ? saved.rows[0].channel_id + ' / ' + saved.rows[0].enabled + ' / ' + saved.rows[0].row_count : 'kayıt yok', passed: saved.rows[0]?.channel_id === '900000000000000005' && saved.rows[0]?.enabled === true && Number(saved.rows[0]?.row_count) === 1 }
+          );
+        } else if (commandName === 'haberleri-kapat') {
+          await ensureNewsBirdSchema(pool);
+          const otherGuildId = buildIsolatedTestGuildId(999);
+          await setNewsGuildChannel(pool, { guildId, channelId: '900000000000000004' });
+          await setNewsGuildChannel(pool, { guildId: otherGuildId, channelId: '900000000000000006' });
+          const interaction = makeInteraction(command, buildOptions(schema?.options), guildId, effects);
+          interaction.user.id = userId;
+          interaction.member = makeMember(userId);
+          await command.execute(interaction);
+          const states = await pool.query(
+            'SELECT guild_id,enabled FROM frieren_news_guild_settings WHERE guild_id=ANY($1::text[]) ORDER BY guild_id',
+            [[guildId, otherGuildId]]
+          );
+          const own = states.rows.find(row => row.guild_id === guildId);
+          const other = states.rows.find(row => row.guild_id === otherGuildId);
+          behavioralChecks.push(
+            { name: 'Haberleri kapatma kalıcılığı', expected: 'seçili sunucunun haber akışı kapatılmalı', actual: String(own?.enabled), passed: own?.enabled === false },
+            { name: 'Sunucular arası ayar izolasyonu', expected: 'diğer sunucunun haber ayarı etkin kalmalı', actual: String(other?.enabled), passed: other?.enabled === true }
+          );
+        }
         if (commandName === 'gunlukgorev') {
           await pool.query('UPDATE users SET coins=100,last_adventure_at=NOW() WHERE guild_id=$1 AND user_id=$2', [guildId, userId]);
           const claimMission = async questKey => {
