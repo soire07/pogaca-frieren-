@@ -1,6 +1,15 @@
 # Frieren Platform — Birleşik Özellik Envanteri
 
-## Güncel ek denetim — 2026-11-04
+## Güncel denetim — 2026-11-14
+
+- Güncel envanter: **2.028 kayıt = 353 kanıt bağlantılı mevcut özellik + 1.675 planlı kayıt**. `auditComplete=false` korunur.
+- 1.675 planlı kayıt, 1.675 bağımsız yetenek değildir: normalize edildiğinde 325 temel yetenek grubu vardır; 225 grupta tekrarlanan eylem varyantları bulunur. Bunlar otomatik olarak silinmedi ve uygulanmış sayılmadı.
+- Yeni eşleştirmeler ENT-043–ENT-049: anime kart baskı varyantları, lonca embed şablonları, güvenli özel komut/büyü otomasyonu, lonca ligleri, opt-in anime haber özetleri, etkileşimli dünya atlası ve oyuncu pazarı fiyat uyarıları.
+- Bu yedi kayıt kaynak ve adlandırılmış otomatik testlerle desteklenir; testler canlı Discord kullanıcı akışı, gerçek DM teslimi veya üretim oyuncu verisi kanıtı değildir.
+- Ev/kozmetik/etkinlik ve Frieren Guard entegrasyonları için 2026-11-14 release baseline bilgisi `docs/PRODUCTION_RELEASE_RUNBOOK.md` içinde tutulur.
+
+
+## Tarihsel ek denetim — 2026-11-04
 
 Bu bölüm, 2026-11-01 tarihli başlangıç notunu PR #217 üzerindeki güncel bütünleşik onarım dalı `fix/solo-boss-reward-idempotency-mainline` için günceller; PR hâlâ taslaktır ve ana dala merge edilmemiştir.
 
