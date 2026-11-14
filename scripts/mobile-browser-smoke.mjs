@@ -79,19 +79,48 @@ for (const scenario of scenarios) {
     for (const route of categoryRoutes) {
       const response = await page.goto(baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
       if (!response || response.status() !== 200) throw new Error(scenario.name + ' category ' + route + ' HTTP ' + (response?.status() || 'no response'));
-      await page.waitForLoadState('networkidle', { timeout: 15000 });
-      await page.evaluate(() => document.fonts?.ready);
+      await page.waitForTimeout(250);
       const layout = await page.evaluate(() => {
         const width = document.documentElement.clientWidth;
-        const offenders = [...document.querySelectorAll('body *')].map(node => {
+        const describe = node => {
           const rect = node.getBoundingClientRect();
           const style = getComputedStyle(node);
-          return { tag: node.tagName, className: typeof node.className === 'string' ? node.className : '', id: node.id,
-            left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width), position: style.position };
-        }).filter(item => item.right > width + 1 && item.position !== 'fixed' && item.position !== 'absolute').slice(0, 10);
+          const chain = [];
+          let parent = node.parentElement;
+          while (parent && chain.length < 5) {
+            const parentStyle = getComputedStyle(parent);
+            chain.push({ tag: parent.tagName, id: parent.id, className: typeof parent.className === 'string' ? parent.className : '',
+              overflowX: parentStyle.overflowX, width: Math.round(parent.getBoundingClientRect().width) });
+            parent = parent.parentElement;
+          }
+          return { tag: node.tagName, id: node.id, className: typeof node.className === 'string' ? node.className : '',
+            left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width),
+            position: style.position, transform: style.transform, overflowX: style.overflowX, parentChain: chain };
+        };
+        const isContained = node => {
+          let parent = node.parentElement;
+          while (parent && parent !== document.body && parent !== document.documentElement) {
+            const overflow = getComputedStyle(parent).overflowX;
+            if (['auto','scroll','hidden','clip'].includes(overflow)) return true;
+            parent = parent.parentElement;
+          }
+          return false;
+        };
+        const offenders = [...document.querySelectorAll('body *')].filter(node => {
+          if (isContained(node) || node.getClientRects().length === 0) return false;
+          const rect = node.getBoundingClientRect();
+          return rect.right > width + 1 || rect.left < -1;
+        }).map(describe).slice(0, 16);
+        const wideScrollers = [...document.querySelectorAll('body *')].filter(node => {
+          if (node.getClientRects().length === 0) return false;
+          return node.scrollWidth > node.clientWidth + 2;
+        }).map(node => ({tag:node.tagName,id:node.id,className:typeof node.className==='string'?node.className:'',
+          clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,overflowX:getComputedStyle(node).overflowX})).slice(0,12);
         window.scrollTo(9999, 0);
-        return { width, documentWidth: document.documentElement.scrollWidth, bodyWidth: document.body.scrollWidth,
-          scrollX: window.scrollX, offenders };
+        return { viewport: width, innerWidth: window.innerWidth, documentWidth: document.documentElement.scrollWidth,
+          bodyWidth: document.body.scrollWidth, scrollX: window.scrollX,
+          htmlOverflowX:getComputedStyle(document.documentElement).overflowX,
+          bodyOverflowX:getComputedStyle(document.body).overflowX, offenders, wideScrollers };
       });
       if (layout.documentWidth > layout.width + 1 || layout.bodyWidth > layout.width + 1 || layout.scrollX !== 0) {
         throw new Error(scenario.name + ' category ' + route + ' has horizontal page overflow: ' + JSON.stringify(layout));
@@ -105,7 +134,7 @@ for (const scenario of scenarios) {
       // The auth page loads the shared stylesheet as a separate request. Safari
       // can report its pre-style native control geometry immediately after
       // DOMContentLoaded; wait for stylesheets and fonts before measuring.
-      await page.waitForLoadState('networkidle', { timeout: 15000 });
+      await page.waitForTimeout(250);
       await page.evaluate(() => document.fonts?.ready);
       const layout = await page.evaluate(() => ({
         width: window.innerWidth,
