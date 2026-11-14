@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {HOME_ROOMS,HOME_DECORATIONS,HOME_DECORATION_CATALOG,HOME_STATIONS,ALCHEMY_RECIPES,PLAYER_COSMETICS,EVENT_MILESTONES,validateHomeLayout} from '../player-experience.js';
 import * as playerExperience from '../player-experience.js';
+import yasamCommand from '../yasam.js';
 
 test('personal home rooms have unique keys and nonnegative progression costs',()=>{
  assert.equal(new Set(HOME_ROOMS.map(x=>x.key)).size,HOME_ROOMS.length);
@@ -12,6 +13,20 @@ test('home decoration catalog gives every placeable key a unique player-facing n
  assert.deepEqual(HOME_DECORATIONS,HOME_DECORATION_CATALOG.map(item=>item.key));
  assert.equal(new Set(HOME_DECORATION_CATALOG.map(item=>item.key)).size,HOME_DECORATION_CATALOG.length);
  assert.ok(HOME_DECORATION_CATALOG.every(item=>item.name.trim()&&item.emoji.trim()));
+});
+
+test('/yasam dekorasyonlar displays readable names instead of raw internal keys',async()=>{
+ let reply='';
+ await yasamCommand.execute({
+  guildId:'1539562273197260860',
+  user:{id:'123456789012345678'},
+  options:{getSubcommand:()=> 'dekorasyonlar'},
+  async reply(payload){reply=payload.content;}
+ });
+ for(const item of HOME_DECORATION_CATALOG){
+  assert.ok(reply.includes(item.name),item.name);
+  assert.ok(reply.includes(item.key),item.key);
+ }
 });
 
 test('general cosmetics cover distinct player-facing slots without duplicate keys',()=>{
