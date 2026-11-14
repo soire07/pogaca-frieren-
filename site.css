@@ -1808,3 +1808,46 @@ body.atlas-modal-open{overflow:hidden}
 .atlas-pin-label-top .atlas-pin-label{top:auto;bottom:calc(100% + 5px);transform:translateX(-50%)}
 .atlas-pin-label-left.atlas-pin-label-top .atlas-pin-label,
 .atlas-pin-label-right.atlas-pin-label-top .atlas-pin-label{top:auto;bottom:calc(100% + 5px);transform:none}
+
+
+/* Unified atlas finish: restrained cartographic framing, tactile controls and clearer landmark hierarchy. */
+.atlas-map-shell{position:relative;overflow:hidden;border:1px solid #cbb17f;background:linear-gradient(145deg,#24383a 0%,#17282f 55%,#101d25 100%);box-shadow:0 24px 58px #02080db8,inset 0 1px 0 #f4e5c455}
+.atlas-map-shell::after{content:"";position:absolute;inset:4px;z-index:8;border:1px solid #d8c18a33;border-radius:12px;pointer-events:none}
+.atlas-map-viewport{aspect-ratio:3/2;min-height:0;max-width:1100px;margin-inline:auto;background:radial-gradient(ellipse at 50% 42%,#42656a 0%,#284852 58%,#142c36 100%);box-shadow:inset 0 0 0 1px #e5d8b544,inset 0 0 44px #07151c66,0 8px 24px #02090d66}
+.atlas-map-art{background:#294750}
+.atlas-map-image{transform:translateZ(0);backface-visibility:hidden}
+.atlas-pin{z-index:1}
+.atlas-pin-glyph{transition:transform .16s ease,filter .16s ease,box-shadow .16s ease}
+.atlas-pin:hover,.atlas-pin:focus-visible{z-index:12}
+.atlas-pin:hover .atlas-pin-glyph,.atlas-pin:focus-visible .atlas-pin-glyph{transform:translateY(-2px) scale(1.12);filter:brightness(1.12);box-shadow:0 4px 12px #02090dcc,0 0 0 3px #f1d99b66}
+.atlas-pin-region:hover .atlas-pin-glyph,.atlas-pin-region:focus-visible .atlas-pin-glyph{box-shadow:0 4px 14px #02090dcc,0 0 0 4px #f2d28c77}
+.atlas-pin-city:hover .atlas-pin-glyph,.atlas-pin-city:focus-visible .atlas-pin-glyph{box-shadow:0 3px 10px #02090dcc,0 0 0 3px #f4e6c477}
+.atlas-pin-label{z-index:2;border-color:#d6bd8b;background:linear-gradient(145deg,#1b3038f5,#101e26f5);color:#f4ead4;text-shadow:0 1px 1px #0008;box-shadow:0 5px 16px #02080dcc}
+.atlas-layer-controls{padding:14px 4px 4px;gap:8px 9px}
+.atlas-layer-controls>span{align-self:center;padding:5px 8px;border:1px solid #bda77b55;border-radius:5px;background:#0d1d25aa;color:#d7c59d}
+.atlas-layer-controls button{min-height:32px;padding:7px 12px;border:1px solid #aeb9a355;border-radius:7px;background:linear-gradient(180deg,#ffffff0d,#ffffff04);color:#e0ddce;transition:background .16s ease,border-color .16s ease,transform .16s ease}
+.atlas-layer-controls button:hover{border-color:#e4c98e;background:#d6b77b22;transform:translateY(-1px)}
+.atlas-layer-controls button:focus-visible,.atlas-map-tools button:focus-visible,.atlas-route-actions button:focus-visible{outline:2px solid #f2d99e;outline-offset:3px}
+.atlas-layer-controls button[aria-pressed="true"]{border-color:#d9bd82;background:linear-gradient(145deg,#d7b77b38,#9d835329);color:#fff0cb;box-shadow:inset 0 1px 0 #f6e4bd22}
+.atlas-layer-controls button[aria-pressed="false"]{background:#0d192080;color:#a9a99f;opacity:.68;text-decoration:none}
+.atlas-map-tools{border-color:#d0b77f99;background:linear-gradient(145deg,#1d3038f5,#101d25f5);box-shadow:0 6px 20px #02080dbb}
+.atlas-map-tools button{border-color:#c8b17e66;background:linear-gradient(145deg,#40514e,#26383b);transition:transform .16s ease,background .16s ease}
+.atlas-map-tools button:hover{transform:translateY(-1px);background:linear-gradient(145deg,#58634f,#30464a)}
+.atlas-legend{padding:15px 6px 5px;gap:10px 20px}
+.atlas-legend span{color:#e0d6bf}
+.atlas-legend i{box-shadow:0 1px 4px #0008}
+.atlas-route-planner{border-color:#c7ad7866;background:linear-gradient(145deg,#1a2c33f2,#101d25f2);box-shadow:inset 0 1px 0 #f4e5c411,0 8px 22px #02080d44}
+@media(max-width:700px){
+ .atlas-map-shell{padding:5px;border-radius:12px;box-shadow:0 16px 36px #02080db0}
+ .atlas-map-shell::after{inset:3px;border-radius:9px}
+ .atlas-layer-controls{gap:6px;padding:10px 2px 3px}
+ .atlas-layer-controls>span{flex-basis:100%;width:max-content}
+ .atlas-layer-controls button{min-height:34px;padding:7px 9px;font-size:10px}
+ .atlas-legend{gap:8px 12px;padding:12px 3px 4px}
+ .atlas-map-tools{backdrop-filter:blur(6px)}
+ .atlas-pin:hover .atlas-pin-glyph,.atlas-pin:focus-visible .atlas-pin-glyph{transform:scale(1.08)}
+}
+@media(prefers-reduced-motion:reduce){
+ .atlas-pin-glyph,.atlas-layer-controls button,.atlas-map-tools button{transition:none}
+ .atlas-layer-controls button:hover,.atlas-map-tools button:hover{transform:none}
+}
