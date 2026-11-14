@@ -4,17 +4,19 @@ Generated from `feature-inventory.json` on 2026-11-04. This derived index preser
 
 ## Summary
 
-- Planned records: **1,675**
-- Normalized capability groups: **325**
+- Existing feature records (non-ROADMAP IDs): **354** (all currently labeled `implemented_needs_runtime_test`; this is not a claim of live end-to-end verification)
+- Planned roadmap action records (ROADMAP IDs): **1,675**
+- Normalized planned capability groups: **325**
+- Total inventory records: **2,029** (354 existing records + 1,675 planned records)
 - Repeated groups with all seven operation verbs: **225 groups / 1,575 records**
 - Single-operation groups: **50 groups / 50 records**
 - Standalone groups without an operation prefix: **50 groups / 50 records**
 - Arithmetic: **1,575 + 50 + 50 = 1,675**
-- The existing inventory contains 325 base implemented records plus 10 competitor-derived records, 5 social platform/web evidence records, 1 guild mini-game record and 1 fishing progression record and 1 arena duel/elemental combat record (343 total). Equal counts do not prove semantic equivalence.
+- Important: **325 is the normalized count of planned capability groups, not the current-feature count.** The current inventory has 354 non-ROADMAP feature records. Earlier documents reused 325 for a historical base count, which caused the conflicting totals. Use the exact ID-based counts above as the current source of truth.
 
 ## Method and limits
 
-Groups are keyed by category and lower-cased base name after removing only these leading verbs: `Preview`, `Unlock`, `Track`, `Compare`, `Customize`, `Earn milestones for`, and `Review history for`. Records without one of these prefixes remain standalone.
+Planned records are grouped by category and lower-cased base name after removing only these leading verbs: `Preview`, `Unlock`, `Track`, `Compare`, `Customize`, `Earn milestones for`, and `Review history for`. Records without one of these prefixes remain standalone.
 
 This is lexical normalization, not semantic deduplication. It does not prove that a capability is already implemented or that two similarly named capabilities behave the same. Each group still requires source-code, behavior-test and competitor-evidence comparison. Do not create seven separate game mechanics merely because seven operation records exist. Preserve all original roadmap IDs.
 
