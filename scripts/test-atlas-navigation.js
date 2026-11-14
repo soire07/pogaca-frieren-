@@ -149,7 +149,7 @@ test('local zoom plans are anchored to existing settlements and explicitly schem
   assert.match(layer, /data-atlas-local-detail-layer/);
   assert.match(layer, /data-atlas-local-settlement="Strahl"/);
   assert.match(layer, /data-atlas-local-settlement="Äußerst"/);
-  assert.equal((layer.match(/class="atlas-local-settlement-plan"/g)||[]).length, FRIEREN_WORLD_SETTLEMENTS.length);
+  assert.equal((layer.match(/class="atlas-local-settlement-plan(?: |--)/g)||[]).length, FRIEREN_WORLD_SETTLEMENTS.length);
   assert.doesNotMatch(layer, /undefined|NaN/);
   for (const archetype of ['walled','market','hamlet']) assert.match(layer, new RegExp('atlas-local-settlement-plan--' + archetype), 'the catalog should exercise every settlement layout archetype');
   assert.match(layer, /atlas-local-street/);
