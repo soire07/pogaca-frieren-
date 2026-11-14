@@ -74,10 +74,10 @@ test('mention handler loads only this guild and user history, then stores both t
       assert.equal(options.headers['x-goog-api-key'], 'test-key');
       assert.match(body.systemInstruction.parts[0].text, /Frieren/i);
       assert.equal(body.generationConfig.maxOutputTokens, 700);
-      assert.equal(body.contents.at(-2).role, 'user');
-      assert.equal(body.contents.at(-2).parts[0].text, 'Önceki soru');
-      assert.equal(body.contents.at(-1).role, 'user');
-      assert.equal(body.contents.at(-1).parts[0].text, 'Nasılsın?');
+      assert.equal(body.contents.length, 1);
+      assert.equal(body.contents[0].role, 'user');
+      assert.equal(body.contents[0].parts[0].text, 'Önceki soru');
+      assert.equal(body.contents[0].parts[1].text, 'Nasılsın?');
       return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'İyiyim. Sen nasılsın?' }] } }] }) };
     }
   });
