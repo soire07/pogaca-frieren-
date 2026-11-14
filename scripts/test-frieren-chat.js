@@ -68,9 +68,15 @@ test('mention handler loads only this guild and user history, then stores both t
     botUserId: 'bot-1',
     db,
     env: { GEMINI_API_KEY: 'test-key' },
-    fetchImpl: async (_url, options) => {
+    fetchImpl: async (url, options) => {
       const body = JSON.parse(options.body);
+      assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent');
+      assert.equal(options.headers['x-goog-api-key'], 'test-key');
+      assert.match(body.systemInstruction.parts[0].text, /Frieren/i);
+      assert.equal(body.generationConfig.maxOutputTokens, 700);
+      assert.equal(body.contents.at(-2).role, 'user');
       assert.equal(body.contents.at(-2).parts[0].text, 'Önceki soru');
+      assert.equal(body.contents.at(-1).role, 'user');
       assert.equal(body.contents.at(-1).parts[0].text, 'Nasılsın?');
       return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'İyiyim. Sen nasılsın?' }] } }] }) };
     }
