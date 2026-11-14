@@ -1975,13 +1975,19 @@ test('public player showcase renders equipped cosmetics as visible slot previews
    {cosmetic_key:'relic_display'}
   ],home:{layout:[]},companion:null,cardVariants:[],activity:[]
  });
- for(const key of ['moon_frame','star_nameplate','mana_title','arcane_trail','silver_border','winter_theme','relic_display']){
+ for(const key of ['moon_frame','star_nameplate','mana_title','arcane_trail','victory_bloom','silver_border','winter_theme','relic_display']){
   assert.ok(html.includes('data-cosmetic-key="'+key+'"'),key+' should be rendered in the equipped cosmetics showcase');
  }
  for(const slot of ['profile_frame','nameplate','title_effect','spell_trail','avatar_border','seasonal_theme','collection_display']){
   assert.ok(html.includes('cosmetic-slot--'+slot),slot+' should have a visual treatment');
  }
  assert.match(html,/data-cosmetic-theme="winter"/);
+ assert.match(html,/data-profile-frame="moon_frame"/);
+ assert.match(html,/data-avatar-border="silver_border"/);
+ assert.match(html,/data-nameplate="star_nameplate"/);
+ assert.match(html,/data-title-effect="mana_title"/);
+ assert.match(html,/data-spell-trail="arcane_trail"/);
+ assert.match(html,/data-victory-pose="victory_bloom"/);
  assert.match(html,/Kuşanılan Kozmetikler/);
 });
 
