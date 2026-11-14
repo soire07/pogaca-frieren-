@@ -248,7 +248,7 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.ok(response.body.includes('href="/maceraci/profil#privacy"'));
   assert.match(response.body, /data-nav-group="dunya"/);
   assert.ok(response.body.includes('data-nav-path="/maceraci" href="/maceraci"'));
-  assert.ok(response.body.includes('<strong>Kullanıcı Paneli</strong>'));
+  assert.ok(response.body.includes('<strong>Maceracı Panelim</strong>'));
   assert.ok(response.body.includes('data-nav-path="/maceraci" href="/maceraci"'));
   assert.match(response.body, /site-navigation.js/);
   assert.match(response.body, /data-nav-group="oyuncu"/);
