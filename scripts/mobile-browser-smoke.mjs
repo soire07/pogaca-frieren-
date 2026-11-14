@@ -1,6 +1,7 @@
 import { chromium, webkit, request } from 'playwright';
 import { createPublicSiteSession } from '../owner-dashboard.js';
 import { renderExplorationAtlas } from '../exploration-atlas.js';
+import { isInsideAtlasLand } from '../atlas-pin-layout.js';
 
 const configuredBaseUrl = String(process.env.MOBILE_SMOKE_BASE_URL || '').trim();
 const allowLocal = process.env.MOBILE_SMOKE_ALLOW_LOCAL === '1';
@@ -126,15 +127,29 @@ for (const scenario of scenarios) {
         return {
           key: node.getAttribute('data-atlas-biome-label'),
           text: node.textContent || '',
+          landBox: (() => {
+            const art = document.querySelector('.atlas-map-art').getBoundingClientRect();
+            return { left:(rect.left-art.left)/art.width*100, right:(rect.right-art.left)/art.width*100,
+              top:(rect.top-art.top)/art.height*100, bottom:(rect.bottom-art.top)/art.height*100 };
+          })(),
           insideViewport: rect.width > 0 && rect.height > 0 &&
             rect.left >= viewport.left - 1 && rect.top >= viewport.top - 1 &&
             rect.right <= viewport.right + 1 && rect.bottom <= viewport.bottom + 1
         };
       });
     });
-    if (biomeLabelArt.length !== 6 ||
+    const biomeLabelLandFailures = biomeLabelArt.filter(label => {
+      const box = label.landBox;
+      for (let x = 0; x <= 4; x++) for (let y = 0; y <= 2; y++) {
+        const px = box.left + (box.right - box.left) * x / 4;
+        const py = box.top + (box.bottom - box.top) * y / 2;
+        if (!isInsideAtlasLand(px, py, 0.15)) return true;
+      }
+      return false;
+    });
+    if (biomeLabelArt.length !== 6 || biomeLabelLandFailures.length ||
         biomeLabelArt.some(label => !label.text.includes('Tamamlanma') || !/[0-9]+%/.test(label.text) || !label.insideViewport)) {
-      throw new Error(scenario.name + ' biome labels/progress are missing or outside the map viewport: ' + JSON.stringify(biomeLabelArt));
+      throw new Error(scenario.name + ' biome labels/progress are missing or outside the map viewport: ' + JSON.stringify({ labels:biomeLabelArt, landFailures:biomeLabelLandFailures }));
     }
     const expectedSettlementKeys = [
       'strahl', 'royal-capital', 'waal', 'fabel-village', 'graf-granat',
