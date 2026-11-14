@@ -112,14 +112,19 @@ const settlementSilhouetteTemplates = Object.freeze({
   'graf-granat': `<path d="M-48 21v-28h96v28h-11V1h-74v20Z" fill="#77766a" stroke="#e4d9bf" stroke-width="2.8"/><path d="M-53-7v-25h18v25m70 0v-25h18v25M-13 21V-13h26v34Z" fill="#9c8a70" stroke="#eee1c6" stroke-width="2.4"/><path d="m-53-32 9-13 9 13m52 0 9-13 9 13M-16-13 0-29 16-13" fill="#c1aa82" stroke="#f2e6ce" stroke-width="2"/><path d="M-5 21V4h10v17M-39 21V6h8v15m62 0V6h8v15" fill="#354a4a"/>`,
   aeusserst: `<circle cx="0" cy="0" r="38" fill="none" stroke="#b6a6ca" stroke-opacity=".62" stroke-width="2.5" stroke-dasharray="3 7"/><path d="M-35 20-27-21-17 20Z M-13 20-5-39 4 20Z M13 20 23-29 33 20Z" fill="#786b91" stroke="#e3d6ee" stroke-width="2.4"/><path d="m-27-21 0 15m22-33 0 17m28-7 0 17" stroke="#f5e9ff" stroke-width="3"/><path d="M-43 22h86M-18 22V9h36v13" fill="none" stroke="#d4c2df" stroke-width="2.4"/><circle cx="0" cy="-8" r="5" fill="#e8d6a9" stroke="#fff0d0" stroke-width="1.5"/>`,
   'village-of-sword': `<path d="M-34 10-20-3-6 10v18h-28Z M2 13 15 1 28 13v15H2Z M-3-12 7-21 17-12v10H-3Z" fill="#88735b" stroke="#e9d8b7" stroke-width="2.4"/><path d="m-20-3 14 13M15 1l13 12M7-21l10 9" fill="none" stroke="#f2e3c5" stroke-width="2.2"/><path d="M-25 28V15h7v13m25 0V17h7v11" fill="#40514c"/><path d="M-44 31h88" stroke="#d8c6a4" stroke-width="2" stroke-dasharray="3 5"/>`,
-  weise: `<path d="M-48 22v-30h96v30h-10V0h-76v22Z" fill="#777e7c" stroke="#e5e4d6" stroke-width="2.8"/><path d="M-54-8v-28h18v28m72 0v-28h18v28M-15 22V-18h30v40Z" fill="#a3aaa0" stroke="#f0eee1" stroke-width="2.4"/><path d="m-54-36 9-14 9 14m54 0 9-14 9 14M-18-18 0-39 18-18" fill="#d1d8cb" stroke="#f8f5e9" stroke-width="2"/><path d="M-5 22V1h10v21M-39 22V5h8v17m62 0V5h8v17" fill="#34484b"/>`
+  weise: `<path d="M-48 22v-30h96v30h-10V0h-76v22Z" fill="#777e7c" stroke="#e5e4d6" stroke-width="2.8"/><path d="M-54-8v-28h18v28m72 0v-28h18v28M-15 22V-18h30v40Z" fill="#a3aaa0" stroke="#f0eee1" stroke-width="2.4"/><path d="m-54-36 9-14 9 14m54 0 9-14 9 14M-18-18 0-39 18-18" fill="#d1d8cb" stroke="#f8f5e9" stroke-width="2"/><path d="M-5 22V1h10v21M-39 22V5h8v17m62 0V5h8v17" fill="#34484b"/>`,
+  ende: `<path d="M-48 24v-28h96v28h-12V2h-72v22Z" fill="#8e9f9d" stroke="#e8f0e9" stroke-width="2.8"/><path d="M-40-4v-30h13v30m54 0v-30h13v30M-12 24V-23h24v47Z" fill="#c0cfca" stroke="#f3f5eb" stroke-width="2.5"/><path d="m-40-34 6-16 7 16m54 0 6-16 7 16M-14-23 0-43 14-23" fill="#e8eee8" stroke="#fff" stroke-width="2"/><path d="M-5 24V1h10v23M-33 24V7h7v17m52 0V7h7v17" fill="#435b60"/>`,
+  'demon-kings-castle': `<path d="M-48 22v-28h96v28h-10V0h-76v22Z" fill="#493d48" stroke="#c58d8c" stroke-width="3"/><path d="M-54-6v-32h17v32m74 0v-32h17v32M-15 22V-21h30v43Z" fill="#71515c" stroke="#d8a2a0" stroke-width="2.5"/><path d="m-54-38 8-20 9 20m54 0 8-20 9 20M-18-21 0-47 18-21" fill="#9b5960" stroke="#e5b2a5" stroke-width="2.4"/><path d="M-5 22V-1h10v23M-39 22V4h8v18m62 0V4h8v18" fill="#202d3a"/><path d="M-1-7v-15m-7 7h14" stroke="#f0c7a2" stroke-width="2.5"/>`
 });
 
-function buildAtlasSettlementSilhouettes(settlements=FRIEREN_WORLD_SETTLEMENTS) {
+function buildAtlasSettlementSilhouettes(settlements=FRIEREN_WORLD_SETTLEMENTS,markerPositions=[]) {
+  const positions=new Map(markerPositions.map(marker=>[marker.key,marker]));
   const groups=settlements.filter(place=>settlementSilhouetteTemplates[place.key]).map(place=>{
-    const x=Math.round(Number(place.x)*18);
-    const y=Math.round(Number(place.y)*12);
-    return `<g class="atlas-settlement-silhouette atlas-settlement-${place.key}" data-settlement="${place.key}" transform="translate(${x} ${y})">${settlementSilhouetteTemplates[place.key]}</g>`;
+    const position=positions.get(place.key)||place;
+    const x=Math.round(Number(position.x)*18);
+    const y=Math.round(Number(position.y)*12);
+    const scale=place.key==='ende' ? 0.62 : place.key==='demon-kings-castle' ? 0.54 : 1;
+    return `<g class="atlas-settlement-silhouette atlas-settlement-${place.key}" data-settlement="${place.key}" transform="translate(${x} ${y}) scale(${scale})">${settlementSilhouetteTemplates[place.key]}</g>`;
   }).join('');
   return `<g class="atlas-settlement-architecture atlas-settlement-silhouettes" aria-hidden="true" pointer-events="none">${groups}</g>`;
 }
@@ -160,7 +165,8 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
     })),
     ...ATLAS_HISTORICAL_EVENTS.map(event=>({id:'event:'+event.id,key:event.regionKey,targetKey:event.id,label:event.title,type:'event',icon:'◷',x:event.x,y:event.y,focus:'event',subtitle:event.episodeLabel}))
   ];
-  const markerPins=declutterAtlasPins(markerConfigs).map(marker=>pin(marker)).join('');
+  const arrangedMarkers=declutterAtlasPins(markerConfigs);
+  const markerPins=arrangedMarkers.map(marker=>pin(marker)).join('');
   const fogPaths=points.filter(point=>!point.item.discovered).map(point=>{
     const path=FOG_PATHS[point.item.region.key];
     return path?'<path d="'+path+'" fill="#243647" opacity=".18" stroke="#d4c4a1" stroke-opacity=".16" stroke-width=".35"/>':'';
@@ -168,7 +174,7 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
   const fog='<svg class="atlas-fog-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><filter id="atlas-fog-soft"><feGaussianBlur stdDeviation="1.2"/></filter></defs><g filter="url(#atlas-fog-soft)">'+fogPaths+'</g></svg>';
   const panels=points.map(point=>panel(point.item,point.index,FRIEREN_WORLD_SETTLEMENTS,ATLAS_HISTORICAL_EVENTS,esc)).join('');
   const localDetailOverlay = buildAtlasLocalDetailLayer(FRIEREN_WORLD_SETTLEMENTS);
-  const settlementSilhouettes = buildAtlasSettlementSilhouettes(FRIEREN_WORLD_SETTLEMENTS);
+  const settlementSilhouettes = buildAtlasSettlementSilhouettes(FRIEREN_WORLD_SETTLEMENTS,arrangedMarkers.filter(marker=>marker.type==='city'));
   const geographyOverlay = `<svg class="atlas-geography-overlay" viewBox="0 0 1800 1200" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="atlas-inline-land-clip"><path d="M206 292C259 221 371 179 492 198 585 133 718 129 832 163 940 100 1075 119 1170 157 1304 107 1442 167 1524 248 1632 309 1665 412 1618 516 1677 625 1634 741 1582 826 1631 929 1521 1033 1390 1038 1284 1104 1160 1073 1073 1043 948 1118 825 1086 739 1032 624 1092 505 1057 414 1000 300 989 220 901 233 793 159 708 160 590 192 501 139 412 151 339 206 292Z"/></clipPath></defs><g clip-path="url(#atlas-inline-land-clip)" pointer-events="none"><g data-atlas-geography-layer="waterways" class="atlas-waterways">
   <path d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="#385d67" stroke-opacity=".48" stroke-width="18" stroke-linecap="round"/>
   <path class="atlas-river-main" d="M1010 190C995 255 965 300 925 345S870 430 850 495 790 590 735 645 665 730 620 785 535 850 480 900" fill="none" stroke="url(#river)" stroke-width="8" stroke-linecap="round"/>

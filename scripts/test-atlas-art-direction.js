@@ -313,21 +313,25 @@ test('atlas decluttering keeps bosses, settlements and dungeons inside the illus
 });
 
 
-test('atlas settlement silhouettes give each established town a distinct, coordinate-anchored skyline', async () => {
+test('atlas settlement silhouettes give all ten catalogued towns distinct, layout-anchored skylines', async () => {
   const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
   const locations = await readFile(new URL('../exploration-world-locations.js', import.meta.url), 'utf8');
   const expected = [
     ['strahl', 39, 79], ['royal-capital', 49, 88], ['waal', 51, 63],
     ['fabel-village', 51, 48], ['graf-granat', 55, 58], ['aeusserst', 68, 42],
-    ['village-of-sword', 75, 62], ['weise', 82, 46]
+    ['village-of-sword', 75, 62], ['weise', 82, 46], ['ende', 88, 15],
+    ['demon-kings-castle', 94, 24]
   ];
   assert.match(atlas, /const settlementSilhouetteTemplates = Object\.freeze\(\{/);
-  assert.match(atlas, /function buildAtlasSettlementSilhouettes\(settlements=FRIEREN_WORLD_SETTLEMENTS\)/);
-  assert.match(atlas, /Math\.round\(Number\(place\.x\)\*18\)/);
-  assert.match(atlas, /Math\.round\(Number\(place\.y\)\*12\)/);
-  assert.match(atlas, /class="atlas-settlement-silhouette atlas-settlement-\$\{place\.key\}" data-settlement="\$\{place\.key\}" transform="translate\(\$\{x\} \$\{y\}\)"/);
+  assert.match(atlas, /function buildAtlasSettlementSilhouettes\(settlements=FRIEREN_WORLD_SETTLEMENTS,markerPositions=\[\]\)/);
+  assert.match(atlas, /const positions=new Map\(markerPositions\.map\(marker=>\[marker\.key,marker\]\)\)/);
+  assert.match(atlas, /const position=positions\.get\(place\.key\)\|\|place/);
+  assert.match(atlas, /Math\.round\(Number\(position\.x\)\*18\)/);
+  assert.match(atlas, /Math\.round\(Number\(position\.y\)\*12\)/);
+  assert.match(atlas, /class="atlas-settlement-silhouette atlas-settlement-\$\{place\.key\}" data-settlement="\$\{place\.key\}" transform="translate\(\$\{x\} \$\{y\}\) scale\(\$\{scale\}\)"/);
   assert.match(atlas, /atlas-settlement-architecture atlas-settlement-silhouettes/);
   assert.match(atlas, /pointer-events="none"/);
+  assert.match(atlas, /buildAtlasSettlementSilhouettes\(FRIEREN_WORLD_SETTLEMENTS,arrangedMarkers\.filter\(marker=>marker\.type==='city'\)\)/);
   for (const [key, x, y] of expected) {
     assert.ok(atlas.includes(key + ':') || atlas.includes("'" + key + "':"), 'settlement needs its own skyline geometry: ' + key);
     assert.match(locations, new RegExp("key:'" + key + "'[^\\n]*x:" + x + ", y:" + y), 'canonical settlement coordinate must remain unchanged: ' + key);
