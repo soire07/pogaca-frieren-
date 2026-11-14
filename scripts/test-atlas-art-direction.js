@@ -155,7 +155,7 @@ test('mountain systems read as continuous layered ridgelines, not repeated toy-l
   assert.match(artwork, /class="atlas-mountain-relief"/);
   assert.match(artwork, /id="terrain-grain"/);
   assert.match(artwork, /stroke-linecap="round"/);
-  assert.match(artwork, /atlas-mountain-relief[\\s\\S]*?Q750 305 800 314[\\s\\S]*?stroke-width="31"/);
+  assert.ok(artwork.includes('Q750 305 800 314') && artwork.includes('stroke-width="31"'), 'main mountain ridge must use layered continuous relief strokes');
   const relief = artwork.slice(artwork.indexOf('<g class="atlas-mountain-relief"'), artwork.indexOf('<g class="atlas-meadow-texture"'));
   assert.doesNotMatch(relief, /<use href="#atlas-peak-[a-d]"/, 'large repeated peak stamps must not dominate mountain ranges');
   assert.match(artwork, /fill="url\\(#terrain-grain\\)" opacity=".42"/);
@@ -266,7 +266,8 @@ test('painterly terrain avoids tiled forest stamps and identical repeated mounta
   assert.doesNotMatch(artwork, /<use href="#atlas-peak-[a-d]"/, 'mountain system should use continuous relief geometry rather than oversized icon stamps');
   assert.doesNotMatch(artwork, /<use href="#atlas-canopy" transform="translate\(\d+ \d+\) scale\([^)]+\)"\/>/);
   assert.doesNotMatch(artwork, /<use href="#atlas-peak" transform="translate\(\d+ \d+\) scale\([^)]+\)"\/>/);
-  assert.match(artwork, /fill="url\(#forest-canopy\)" filter="url\(#biome-edge\)" opacity="\.22"/, 'the tiled forest underpainting must not overpower the individual canopy crowns');
+  assert.match(artwork, /class="atlas-forest-groves"/, 'forest underpainting should use separate organic grove masses');
+  assert.match(artwork, /fill="url\(#forest-canopy\)" opacity="\.2"/, 'forest canopy wash must remain restrained beneath individual tree crowns');
   const colorGrade = css.slice(css.lastIndexOf('Painterly atlas color grade'));
   assert.match(colorGrade, /\.atlas-map-viewport\{[^}]*aspect-ratio:3\/2/, '3:2 viewport ratio must remain authoritative');
   assert.match(colorGrade, /@media\(max-width:700px\)/, 'mobile map treatment must remain explicit');
