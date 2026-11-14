@@ -69,6 +69,36 @@ for (const scenario of scenarios) {
     }
     await page.evaluate(() => window.scrollTo(0, 0));
     process.stdout.write('PASS ' + scenario.name + ' public homepage: no horizontal page scroll; compact accessibility trigger\\n');
+    const categoryRoutes = [
+      '/kesfet', '/pogaca', '/komutlar', '/ansiklopedi', '/ara',
+      '/frieren-ai', '/pazar', '/lonca', '/destek',
+      '/profil', '/hesap-merkezi', '/maceraci', '/maceraci/profil',
+      '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal',
+      '/maceraci/merkez', '/maceraci/yasam', '/maceraci/bildirimler', '/maceraci/atolye'
+    ];
+    for (const route of categoryRoutes) {
+      const response = await page.goto(baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      if (!response || response.status() !== 200) throw new Error(scenario.name + ' category ' + route + ' HTTP ' + (response?.status() || 'no response'));
+      await page.waitForLoadState('networkidle', { timeout: 15000 });
+      await page.evaluate(() => document.fonts?.ready);
+      const layout = await page.evaluate(() => {
+        const width = document.documentElement.clientWidth;
+        const offenders = [...document.querySelectorAll('body *')].map(node => {
+          const rect = node.getBoundingClientRect();
+          const style = getComputedStyle(node);
+          return { tag: node.tagName, className: typeof node.className === 'string' ? node.className : '', id: node.id,
+            left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width), position: style.position };
+        }).filter(item => item.right > width + 1 && item.position !== 'fixed' && item.position !== 'absolute').slice(0, 10);
+        window.scrollTo(9999, 0);
+        return { width, documentWidth: document.documentElement.scrollWidth, bodyWidth: document.body.scrollWidth,
+          scrollX: window.scrollX, offenders };
+      });
+      if (layout.documentWidth > layout.width + 1 || layout.bodyWidth > layout.width + 1 || layout.scrollX !== 0) {
+        throw new Error(scenario.name + ' category ' + route + ' has horizontal page overflow: ' + JSON.stringify(layout));
+      }
+      await page.evaluate(() => window.scrollTo(0, 0));
+    }
+    process.stdout.write('PASS ' + scenario.name + ' all public and player category pages: no horizontal page scroll\\n');
     for (const route of ['/login']) {
       const response = await page.goto(baseUrl + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
       if (!response || response.status() !== 200) throw new Error(scenario.name + ' ' + route + ' HTTP ' + (response?.status() || 'no response'));
