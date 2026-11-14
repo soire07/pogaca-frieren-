@@ -79,11 +79,13 @@ export async function setPlayerProfileSettings(db,{guildId,userId,settings}){
 }
 export function validateHomeLayout(layout){
  if(!Array.isArray(layout)||layout.length>12)throw new Error('HOME_LAYOUT_INVALID');
+ const roomKeys=new Set(HOME_ROOMS.map(room=>room.key));
  const positions=new Set();
  return layout.map(x=>{
-  const roomKey=String(x?.roomKey||''),decorationKey=String(x?.decorationKey||''),position=Number(x?.position);
-  if(!/^[a-z0-9_]{2,32}$/.test(roomKey)||!HOME_DECORATIONS.includes(decorationKey)||!Number.isInteger(position)||position<0||position>11||positions.has(position))throw new Error('HOME_LAYOUT_INVALID');
-  positions.add(position);return {roomKey,decorationKey,position};
+  const roomKey=String(x?.roomKey||''),decorationKey=String(x?.decorationKey||''),position=x?.position;
+  const positionKey=roomKey+':'+position;
+  if(!roomKeys.has(roomKey)||!HOME_DECORATIONS.includes(decorationKey)||!Number.isInteger(position)||position<0||position>11||positions.has(positionKey))throw new Error('HOME_LAYOUT_INVALID');
+  positions.add(positionKey);return {roomKey,decorationKey,position};
  });
 }
 export async function ensurePlayerExperienceSchema(db){
