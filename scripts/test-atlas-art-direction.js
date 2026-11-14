@@ -140,12 +140,12 @@ test('Frieren atlas adds subtle northern snowfall and forest mist without changi
   const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
   const site = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
   assert.match(atlas, /<div class="atlas-atmosphere-layer" aria-hidden="true"><\/div>/);
-  assert.match(atlas, /frieren-world-map\.svg\?v=atlas-377-1/);
+  assert.match(atlas, /frieren-world-map\.svg\?v=atlas-379-1/);
   assert.match(css, /\.atlas-atmosphere-layer::before/);
   assert.match(css, /atlas-northfall/);
   assert.match(css, /atlas-forest-mist/);
   assert.match(css, /prefers-reduced-motion:reduce\)\{\.atlas-atmosphere-layer::before/);
-  assert.match(site, /site\.css\?v=atlas-378-1/);
+  assert.match(site, /site\.css\?v=atlas-379-1/);
 });
 
 
@@ -220,8 +220,8 @@ test('atlas geography layers are cohesive, optional and do not alter canonical e
   assert.match(client, /data-atlas-geography/);
   assert.ok(client.includes("querySelectorAll('[data-atlas-geography-layer="), 'client must locate the SVG layer rendered by the server module');
   assert.match(client, /toggleAttribute\('hidden',!enabled\)/, 'SVG layer visibility must use a real hidden attribute');
-  assert.match(atlas, /atlas-377-1/);
-  assert.match(site, /exploration-atlas\.js\?v=atlas-377-1/);
+  assert.match(atlas, /atlas-379-1/);
+  assert.match(site, /exploration-atlas\.js\?v=atlas-379-1/);
   assert.match(locations, /x:39, y:79/);
   assert.match(locations, /level_1: Object\.freeze\(\{ regionKey:'merkez', x:43, y:72/);
 });
@@ -447,6 +447,7 @@ test('map overlays show each biome name and its live completion percentage at st
   const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
   assert.ok(atlas.includes('function buildAtlasBiomeLabels(points)'));
   assert.ok(atlas.includes('data-atlas-biome-label='));
+  assert.match(atlas, /orman:\{x:29\.5,y:39\}, merkez:\{x:31\.5,y:74\}/, 'forest and central labels must use their geographic anchors');
   assert.ok(atlas.includes("Tamamlanma '+progress+'%"));
   for (const key of ['orman','merkez','harabeler','kuzey','yayla','aus']) {
     assert.ok(atlas.includes(key+':{x:'), 'missing biome label anchor: '+key);
@@ -458,8 +459,8 @@ test('map overlays show each biome name and its live completion percentage at st
 test('Ende and Demon King castle use inward display anchors and zoom never shrinks below map bounds', async () => {
   const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
   const client = await readFile(new URL('../public-assets/exploration-atlas.js', import.meta.url), 'utf8');
-  assert.ok(atlas.includes("place.key==='ende'?86:place.key==='demon-kings-castle'?82"));
-  assert.ok(atlas.includes("place.key==='ende'?17:place.key==='demon-kings-castle'?30"));
+  assert.ok(atlas.includes("place.key==='ende'?85:place.key==='demon-kings-castle'?82"));
+  assert.ok(atlas.includes("place.key==='ende'?27:place.key==='demon-kings-castle'?30"));
   assert.ok(atlas.includes("place.key==='ende' ? 0.84 : place.key==='demon-kings-castle' ? 0.9 : 1"));
   assert.ok(client.includes('clamp(scale*delta,1,3.2)'));
   assert.ok(client.includes('clamp(scale*(distance/pinchDistance),1,3.2)'));
@@ -503,10 +504,17 @@ test('Demon King fortress footprint stays inside the atlas landmass and its visu
   assert.ok(atlas.includes('export function getAtlasSettlementVisualPosition(place,markerPositions=[])'));
   assert.ok(atlas.includes("'demon-kings-castle':{x:82,y:30}"));
   assert.match(atlas, /atlas-settlement-architecture atlas-settlement-silhouettes/);
-  assert.ok(atlas.includes("place.key==='ende'?86:place.key==='demon-kings-castle'?82"));
+  assert.ok(atlas.includes("place.key==='ende'?85:place.key==='demon-kings-castle'?82"));
   assert.ok(locations.includes("key:'demon-kings-castle', name:'İblis Kralı’nın Şatosu', subtitle:'Ende', regionKey:'aus', x:94, y:24"));
   const fortress = getAtlasSettlementVisualPosition({ key:'demon-kings-castle', x:94, y:24 });
   assert.deepEqual({ x:fortress.x, y:fortress.y }, { x:82, y:30 });
+  const ende = getAtlasSettlementVisualPosition({ key:'ende', x:88, y:15 });
+  assert.deepEqual({ x:ende.x, y:ende.y }, { x:85, y:27 });
+  assert.ok(isInsideAtlasLand(ende.x, ende.y), 'Ende visual anchor must sit inside the land silhouette');
+  // Ende's inset anchor leaves room for the full mobile label box inside the northern coastline.
+  for (const [key,x,y] of [['orman',29.5,39],['merkez',31.5,74],['harabeler',49.25,55.25],['kuzey',59,23.75],['yayla',74,69],['aus',77,34.5]]) {
+    assert.ok(isInsideAtlasLand(x,y), key+' biome label anchor must remain on land');
+  }
   for (const [dx,dy] of [[-3.65,-6.15],[0,-6.15],[3.65,-6.15],[3.65,0],[3.65,6.15],[0,6.15],[-3.65,6.15],[-3.65,0]]) {
     assert.ok(isInsideAtlasLand(fortress.x+dx,fortress.y+dy,0.25), 'fortress footprint must stay on land');
   }
@@ -523,4 +531,19 @@ test('biome overlays use broad connected shapes and the Demon King wasteland sta
   assert.match(atlas, /atlas-ashen-ground/);
   assert.match(atlas, /atlas-demon-wastes/);
   assert.match(atlas, /atlas-demon-fortress-safe-inset/);
+});
+
+
+test('six biome art direction keeps every regional signature distinct and the demon frontier legible', async () => {
+  const css = await readFile(new URL('../site.css', import.meta.url), 'utf8');
+  const artwork = await readFile(new URL('../public-assets/frieren-world-map.svg', import.meta.url), 'utf8');
+  const artDirection = css.slice(css.lastIndexOf('Six-biome art-direction pass'));
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  for (const [biome,opacity] of [['central-meadow','.9'],['great-forest','.84'],['ancient-ruins','.82'],['northern-ice','.86'],['schwer-highlands','.82'],['ausserst-arcana','.78']]) {
+    assert.ok(artwork.includes('class="biome-'+biome+'" opacity="'+opacity+'"'), 'missing rendered SVG visual treatment for ' + biome);
+  }
+  assert.match(artDirection, /atlas-ashen-ground[\s\S]*?opacity:\.34/);
+  assert.match(artDirection, /atlas-demon-fog[\s\S]*?opacity:\.3/);
+  assert.match(artDirection, /atlas-biome-transition[\s\S]*?opacity:\.24/);
+  assert.match(artDirection, /@media\(max-width:700px\)/);
 });

@@ -1,6 +1,7 @@
 import { chromium, webkit, request } from 'playwright';
 import { createPublicSiteSession } from '../owner-dashboard.js';
 import { renderExplorationAtlas } from '../exploration-atlas.js';
+import { isInsideAtlasLand } from '../atlas-pin-layout.js';
 
 const configuredBaseUrl = String(process.env.MOBILE_SMOKE_BASE_URL || '').trim();
 const allowLocal = process.env.MOBILE_SMOKE_ALLOW_LOCAL === '1';
@@ -93,7 +94,7 @@ for (const scenario of scenarios) {
       },
       stats: {}
     });
-    await page.setContent('<!doctype html><html lang="tr"><head><link rel="stylesheet" href="' + baseUrl + '/assets/site.css?v=atlas-377-1"></head><body>' + atlasMarkup + '</body></html>');
+    await page.setContent('<!doctype html><html lang="tr"><head><link rel="stylesheet" href="' + baseUrl + '/assets/site.css?v=atlas-379-1"></head><body>' + atlasMarkup + '</body></html>');
     await page.waitForLoadState('networkidle', { timeout: 15000 });
     const mapImage = page.locator('.atlas-map-image');
     await mapImage.evaluate(image => image.decode());
@@ -116,7 +117,7 @@ for (const scenario of scenarios) {
     if (Math.abs(mapVisual.viewportRatio - 1.5) > 0.02) {
       throw new Error(scenario.name + ' atlas viewport lost its 3:2 ratio: ' + JSON.stringify(mapVisual));
     }
-    if (!mapVisual.filter.includes('saturate') || !mapVisual.source.includes('atlas-377-1')) {
+    if (!mapVisual.filter.includes('saturate') || !mapVisual.source.includes('atlas-379-1')) {
       throw new Error(scenario.name + ' atlas visual grade or cache-busted image source is missing: ' + JSON.stringify(mapVisual));
     }
     const biomeLabelArt = await page.locator('.atlas-biome-label').evaluateAll(nodes => {
@@ -126,15 +127,30 @@ for (const scenario of scenarios) {
         return {
           key: node.getAttribute('data-atlas-biome-label'),
           text: node.textContent || '',
+          landBox: (() => {
+            const art = document.querySelector('.atlas-map-art').getBoundingClientRect();
+            return { left:(rect.left-art.left)/art.width*100, right:(rect.right-art.left)/art.width*100,
+              top:(rect.top-art.top)/art.height*100, bottom:(rect.bottom-art.top)/art.height*100 };
+          })(),
           insideViewport: rect.width > 0 && rect.height > 0 &&
             rect.left >= viewport.left - 1 && rect.top >= viewport.top - 1 &&
             rect.right <= viewport.right + 1 && rect.bottom <= viewport.bottom + 1
         };
       });
     });
-    if (biomeLabelArt.length !== 6 ||
+    const biomeLabelLandFailures = biomeLabelArt.map(label => {
+      const box = label.landBox;
+      const failedSamples = [];
+      for (let x = 0; x <= 4; x++) for (let y = 0; y <= 2; y++) {
+        const px = box.left + (box.right - box.left) * x / 4;
+        const py = box.top + (box.bottom - box.top) * y / 2;
+        if (!isInsideAtlasLand(px, py, 0.15)) failedSamples.push({ x: Number(px.toFixed(3)), y: Number(py.toFixed(3)) });
+      }
+      return failedSamples.length ? { key: label.key, box, failedSamples } : null;
+    }).filter(Boolean);
+    if (biomeLabelArt.length !== 6 || biomeLabelLandFailures.length ||
         biomeLabelArt.some(label => !label.text.includes('Tamamlanma') || !/[0-9]+%/.test(label.text) || !label.insideViewport)) {
-      throw new Error(scenario.name + ' biome labels/progress are missing or outside the map viewport: ' + JSON.stringify(biomeLabelArt));
+      throw new Error(scenario.name + ' biome labels/progress are missing or outside the map viewport: ' + JSON.stringify({ labels:biomeLabelArt, landFailures:biomeLabelLandFailures }));
     }
     const expectedSettlementKeys = [
       'strahl', 'royal-capital', 'waal', 'fabel-village', 'graf-granat',
@@ -159,13 +175,13 @@ for (const scenario of scenarios) {
         settlementArt.some(item => !(item.transform || '').startsWith('translate(') || !(item.transform || '').includes(') scale(') || item.pointerEvents !== 'none' || !item.insideViewport)) {
       throw new Error(scenario.name + ' settlement silhouettes are missing, misplaced or intercept map input: ' + JSON.stringify(settlementArt));
     }
-    const artworkResponse = await page.request.get(baseUrl + '/assets/frieren-world-map.svg?v=atlas-377-1');
+    const artworkResponse = await page.request.get(baseUrl + '/assets/frieren-world-map.svg?v=atlas-379-1');
     if (!artworkResponse.ok()) throw new Error(scenario.name + ' atlas SVG asset HTTP ' + artworkResponse.status());
     const artwork = await artworkResponse.text();
     for (const layer of ['biome-edge', 'atlas-forest-canopy', 'atlas-mountain-relief', 'atlas-meadow-texture', 'atlas-coastline-detail', 'atlas-tundra-texture']) {
       if (!artwork.includes(layer)) throw new Error(scenario.name + ' atlas SVG is missing visual layer ' + layer);
     }
-    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-377-1' });
+    await page.addScriptTag({ url: baseUrl + '/assets/exploration-atlas.js?v=atlas-379-1' });
     const routeFrom = page.locator('[data-atlas-route-from]');
     const routeTo = page.locator('[data-atlas-route-to]');
     await routeFrom.selectOption('royal-capital');
