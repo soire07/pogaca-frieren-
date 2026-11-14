@@ -392,3 +392,31 @@ test('castles and villages use layered architectural facades, openings and roof 
   assert.match(templates, /timber-frame/);
   assert.match(templates, /roof-tile/);
 });
+
+test('regional biomes form broad connected land-cover zones with gradual transitions', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  assert.match(atlas, /atlas-biome-regions/);
+  for (const biome of ['forest','central-plains','northern-tundra','highlands','eastern-mountains','ashen-north']) {
+    assert.match(atlas, new RegExp('atlas-biome-' + biome));
+  }
+  assert.match(atlas, /atlas-biome-transition/);
+  assert.match(atlas, /atlas-inline-land-clip/);
+});
+
+test('demon king castle sits inside a bleak deadwood and ashland environment', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  assert.match(atlas, /atlas-demon-wastes/);
+  assert.match(atlas, /atlas-dead-tree/);
+  assert.match(atlas, /atlas-ashen-ground/);
+  assert.match(atlas, /atlas-demon-fog/);
+  assert.match(atlas, /demon-kings-castle/);
+});
+
+test('boss markers prefer the dedicated map coordinate catalog over generic runtime location labels', async () => {
+  const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
+  assert.match(atlas, /function resolveAtlasBossLocation\(boss\)/);
+  assert.match(atlas, /FRIEREN_WORLD_BOSS_LOCATIONS\[boss\.key\]/);
+  assert.match(atlas, /Number\.isFinite\(Number\(location\.x\)\)/);
+  assert.match(atlas, /Number\.isFinite\(Number\(location\.y\)\)/);
+  assert.match(atlas, /resolveAtlasBossLocation\(boss\)/);
+});
