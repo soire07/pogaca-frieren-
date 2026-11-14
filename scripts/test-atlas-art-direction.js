@@ -495,18 +495,21 @@ test('biome completion uses only region-scoped objectives and never spreads glob
 });
 
 
-test('Demon King fortress and Ende remain fully inside the atlas landmass with an interior safety margin', async () => {
+test('Demon King fortress footprint stays inside the atlas landmass and its visual marker shares the inset anchor', async () => {
   const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
   const locations = await readFile(new URL('../exploration-world-locations.js', import.meta.url), 'utf8');
-  const layout = await readFile(new URL('../atlas-pin-layout.js', import.meta.url), 'utf8');
-  assert.match(atlas, /function getAtlasSettlementVisualPosition\(place,markerPositions=\[\]\)/);
-  assert.match(atlas, /demon-kings-castle':\{x:82,y:30\}/);
+  const { getAtlasSettlementVisualPosition } = await import('../exploration-atlas.js');
+  const { isInsideAtlasLand } = await import('../atlas-pin-layout.js');
+  assert.match(atlas, /export function getAtlasSettlementVisualPosition\\(place,markerPositions=\\[\\]\\)/);
+  assert.match(atlas, /demon-kings-castle':\\{x:82,y:30\\}/);
   assert.match(atlas, /atlas-settlement-architecture atlas-settlement-silhouettes/);
-  assert.match(atlas, /settlementSilhouettes/);
-  assert.match(atlas, /demon-kings-castle\?82/);
-  assert.match(layout, /export function isInsideAtlasLand\(x, y, margin = 0\.85\)/);
-  assert.match(locations, /key:'demon-kings-castle'[^\\n]*x:94, y:24/);
-  assert.match(atlas, /atlas-demon-fortress-safe-inset/);
+  assert.match(atlas, /demon-kings-castle\\?82/);
+  assert.match(locations, /key:'demon-kings-castle'.*x:94, y:24/);
+  const fortress = getAtlasSettlementVisualPosition({ key:'demon-kings-castle', x:94, y:24 });
+  assert.deepEqual({ x:fortress.x, y:fortress.y }, { x:82, y:30 });
+  for (const [dx,dy] of [[-3.65,-6.15],[0,-6.15],[3.65,-6.15],[3.65,0],[3.65,6.15],[0,6.15],[-3.65,6.15],[-3.65,0]]) {
+    assert.ok(isInsideAtlasLand(fortress.x+dx,fortress.y+dy,0.25), 'fortress footprint must stay on land');
+  }
 });
 
 test('biome overlays use broad connected shapes and the Demon King wasteland stays inside the northern land boundary', async () => {
@@ -516,6 +519,7 @@ test('biome overlays use broad connected shapes and the Demon King wasteland sta
   assert.match(atlas, /atlas-biome-northern-tundra[^>]+d=/);
   assert.match(atlas, /atlas-biome-highlands[^>]+d=/);
   assert.match(atlas, /atlas-biome-eastern-mountains[^>]+d=/);
+  assert.match(atlas, /atlas-biome-transition[^]*stroke-width="(?:6[8-9]|7[0-8])"/);
   assert.match(atlas, /atlas-ashen-ground/);
   assert.match(atlas, /atlas-demon-wastes/);
   assert.match(atlas, /atlas-demon-fortress-safe-inset/);
