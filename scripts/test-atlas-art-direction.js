@@ -329,7 +329,7 @@ test('atlas settlement silhouettes give each established town a distinct, coordi
   assert.match(atlas, /atlas-settlement-architecture atlas-settlement-silhouettes/);
   assert.match(atlas, /pointer-events="none"/);
   for (const [key, x, y] of expected) {
-    assert.ok(atlas.includes(key + ':'), 'settlement needs its own skyline geometry: ' + key);
+    assert.ok(atlas.includes(key + ':') || atlas.includes("'" + key + "':"), 'settlement needs its own skyline geometry: ' + key);
     assert.match(locations, new RegExp("key:'" + key + "'[^\\n]*x:" + x + ", y:" + y), 'canonical settlement coordinate must remain unchanged: ' + key);
   }
 });
