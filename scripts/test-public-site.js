@@ -730,6 +730,7 @@ test('player experience web page is scoped to the linked character and shows hom
   if(sql.includes('FROM player_cosmetic_ownership'))return {rows:[],rowCount:0};
   if(sql.includes('FROM player_cosmetic_loadout'))return {rows:[],rowCount:0};
   if(sql.includes('FROM player_cosmetic_presets'))return {rows:[],rowCount:0};
+   if(sql.includes('FROM player_home_layout_presets'))return {rows:[],rowCount:0};
   if(sql.includes('FROM achievement_claims'))return {rows:[{achievement_key:'first_boss',display_slot:null,claimed_at:new Date().toISOString()}],rowCount:1};
   if(sql.includes('FROM guild_events'))return {rows:[{event_id:'123e4567-e89b-42d3-a456-426614174000',title:'Zindan Gecesi',ends_at:new Date(Date.now()+3600000).toISOString(),participation:1,checkin:0}],rowCount:1};
   throw new Error('Unexpected player experience query: '+sql);
@@ -751,6 +752,8 @@ test('player experience web page is scoped to the linked character and shows hom
  assert.match(response.body,/name="layoutDecoration"/);
  assert.match(response.body,/name="layoutPosition"/);
  assert.doesNotMatch(response.body,/Yerleşim JSON/);
+  assert.match(response.body,/Ev Yerleşimi Presetleri/);
+  assert.match(response.body,/name="action" value="save-layout-preset"/);
 });
 
 test('adventurer inventory page is account- and guild-scoped and displays equipped items', async () => {
