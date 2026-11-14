@@ -317,20 +317,19 @@ test('atlas settlement silhouettes give each established town a distinct, coordi
   const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
   const locations = await readFile(new URL('../exploration-world-locations.js', import.meta.url), 'utf8');
   const expected = [
-    ['strahl', 702, 948],
-    ['royal-capital', 882, 1056],
-    ['waal', 918, 756],
-    ['fabel-village', 918, 576],
-    ['graf-granat', 990, 696],
-    ['aeusserst', 1224, 504],
-    ['village-of-sword', 1350, 744],
-    ['weise', 1476, 552]
+    ['strahl', 39, 79], ['royal-capital', 49, 88], ['waal', 51, 63],
+    ['fabel-village', 51, 48], ['graf-granat', 55, 58], ['aeusserst', 68, 42],
+    ['village-of-sword', 75, 62], ['weise', 82, 46]
   ];
+  assert.match(atlas, /const settlementSilhouetteTemplates = Object\.freeze\(\{/);
+  assert.match(atlas, /function buildAtlasSettlementSilhouettes\(settlements=FRIEREN_WORLD_SETTLEMENTS\)/);
+  assert.match(atlas, /Math\.round\(Number\(place\.x\)\*18\)/);
+  assert.match(atlas, /Math\.round\(Number\(place\.y\)\*12\)/);
+  assert.match(atlas, /class="atlas-settlement-silhouette atlas-settlement-\$\{place\.key\}" data-settlement="\$\{place\.key\}" transform="translate\(\$\{x\} \$\{y\}\)"/);
+  assert.match(atlas, /atlas-settlement-architecture atlas-settlement-silhouettes/);
+  assert.match(atlas, /pointer-events="none"/);
   for (const [key, x, y] of expected) {
-    const pattern = new RegExp('<g class="atlas-settlement-silhouette atlas-settlement-' + key + '" data-settlement="' + key + '" transform="translate\\(' + x + ' ' + y + '\\)">');
-    assert.match(atlas, pattern, 'settlement silhouette must be anchored to canonical coordinates: ' + key);
+    assert.ok(atlas.includes(key + ':'), 'settlement needs its own skyline geometry: ' + key);
+    assert.match(locations, new RegExp("key:'" + key + "'[^\\n]*x:" + x + ", y:" + y), 'canonical settlement coordinate must remain unchanged: ' + key);
   }
-  assert.match(atlas, /atlas-settlement-silhouette[^]*pointer-events="none"/);
-  assert.match(locations, /key:'royal-capital', name:'Kraliyet Başkenti'[^]*x:49, y:88/);
-  assert.match(locations, /key:'aeusserst', name:'Äußerst'[^]*x:68, y:42/);
 });
