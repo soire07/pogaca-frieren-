@@ -1804,6 +1804,20 @@ test('universal site search indexes pages, Discord commands, characters and spel
  assert.match(commands.body,/Discord komutu/);
 });
 
+test('mobile homepage locks the document to the viewport and keeps the accessibility trigger compact', async () => {
+ const homepage=res();
+ assert.equal(await handlePublicSiteRequest({method:'GET',url:'/',headers:{}},homepage),true);
+ assert.equal(homepage.status,200);
+ assert.match(homepage.body,/data-accessibility-panel/);
+ const stylesheet=res();
+ assert.equal(await handlePublicSiteRequest({method:'GET',url:'/assets/site.css',headers:{}},stylesheet),true);
+ const css=String(stylesheet.body);
+ assert.match(css,/html\\{[^}]*overflow-x:clip/);
+ assert.match(css,/html\\{[^}]*max-width:100%/);
+ assert.match(css,/\\.accessibility-panel>summary\\{[^}]*width:max-content/);
+ assert.match(css,/\\.accessibility-panel>summary\\{[^}]*min-height:34px/);
+});
+
 test('public pages expose persistent and keyboard-accessible reading controls', async () => {
  const response=res();
  assert.equal(await handlePublicSiteRequest(request('/ansiklopedi'),response,{db:null}),true);
