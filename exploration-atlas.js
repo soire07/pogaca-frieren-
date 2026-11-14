@@ -129,9 +129,9 @@ const settlementSilhouetteTemplates = Object.freeze({
 });
 
 const ATLAS_SETTLEMENT_VISUAL_ANCHORS = Object.freeze({
-  // These inset anchors keep the large fortress silhouette clear of the clipped eastern coastline.
-  'demon-kings-castle':{x:82,y:30},
-  ende:{x:85,y:27}
+  // Keep the two large northern skylines separated while retaining full landmass clearance.
+  'demon-kings-castle':{x:74,y:30},
+  ende:{x:85,y:48}
 });
 export function getAtlasSettlementVisualPosition(place,markerPositions=[]) {
   const safeAnchor=ATLAS_SETTLEMENT_VISUAL_ANCHORS[place.key];
@@ -164,7 +164,7 @@ export function getAtlasBiomeCompletionPercent(item={}) {
 function buildAtlasBiomeLabels(points) {
   const anchors = Object.freeze({
     orman:{x:29.5,y:39}, merkez:{x:31.5,y:74}, harabeler:{x:49.25,y:55.25},
-    kuzey:{x:59,y:23.75}, yayla:{x:74,y:69}, aus:{x:77,y:34.5}
+    kuzey:{x:59,y:23.75}, yayla:{x:74,y:69}, aus:{x:74,y:17}
   });
   return '<div class="atlas-biome-label-layer" aria-label="Biyom adları ve tamamlanma yüzdeleri">'+points.map(({item,geo})=>{
     const anchor=anchors[item.region.key];
@@ -186,10 +186,13 @@ export function renderExplorationAtlas({mapContent,stats={},esc=escapeHtml}={}) 
       id:'region:'+item.region.key,key:item.region.key,label:geo.name,type:'region',icon:'✦',
       x:geo.x,y:geo.y,focus:'region',extraClass:geo.className
     })),
-    ...FRIEREN_WORLD_SETTLEMENTS.map(place=>({
-      id:'city:'+place.key,key:place.key,targetKey:place.key,label:place.name,type:'city',icon:'⌂',
-      x:place.key==='ende'?85:place.key==='demon-kings-castle'?82:place.x,y:place.key==='ende'?27:place.key==='demon-kings-castle'?30:place.y,focus:'city',subtitle:place.subtitle
-    })),
+    ...FRIEREN_WORLD_SETTLEMENTS.map(place=>{
+      const visualPosition=getAtlasSettlementVisualPosition(place);
+      return {
+        id:'city:'+place.key,key:place.key,targetKey:place.key,label:place.name,type:'city',icon:'⌂',
+        x:visualPosition.x,y:visualPosition.y,focus:'city',subtitle:place.subtitle
+      };
+    }),
     ...points.flatMap(({item})=>item.bosses.map(boss=>{
       const location=resolveAtlasBossLocation(boss);
       const anchor=REGION_ANCHORS[item.region.key]||REGION_ANCHORS.merkez;

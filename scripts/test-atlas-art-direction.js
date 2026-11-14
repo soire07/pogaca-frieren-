@@ -459,8 +459,10 @@ test('map overlays show each biome name and its live completion percentage at st
 test('Ende and Demon King castle use inward display anchors and zoom never shrinks below map bounds', async () => {
   const atlas = await readFile(new URL('../exploration-atlas.js', import.meta.url), 'utf8');
   const client = await readFile(new URL('../public-assets/exploration-atlas.js', import.meta.url), 'utf8');
-  assert.ok(atlas.includes("place.key==='ende'?85:place.key==='demon-kings-castle'?82"));
-  assert.ok(atlas.includes("place.key==='ende'?27:place.key==='demon-kings-castle'?30"));
+  assert.ok(atlas.includes("'demon-kings-castle':{x:74,y:30}"));
+  assert.ok(atlas.includes("ende:{x:85,y:48}"));
+  assert.ok(atlas.includes("const visualPosition=getAtlasSettlementVisualPosition(place)"));
+  assert.ok(atlas.includes("x:visualPosition.x,y:visualPosition.y"));
   assert.ok(atlas.includes("place.key==='ende' ? 0.84 : place.key==='demon-kings-castle' ? 0.9 : 1"));
   assert.ok(client.includes('clamp(scale*delta,1,3.2)'));
   assert.ok(client.includes('clamp(scale*(distance/pinchDistance),1,3.2)'));
@@ -507,12 +509,16 @@ test('Demon King fortress footprint stays inside the atlas landmass and its visu
   assert.ok(atlas.includes("place.key==='ende'?85:place.key==='demon-kings-castle'?82"));
   assert.ok(locations.includes("key:'demon-kings-castle', name:'İblis Kralı’nın Şatosu', subtitle:'Ende', regionKey:'aus', x:94, y:24"));
   const fortress = getAtlasSettlementVisualPosition({ key:'demon-kings-castle', x:94, y:24 });
-  assert.deepEqual({ x:fortress.x, y:fortress.y }, { x:82, y:30 });
+  assert.deepEqual({ x:fortress.x, y:fortress.y }, { x:74, y:30 });
   const ende = getAtlasSettlementVisualPosition({ key:'ende', x:88, y:15 });
-  assert.deepEqual({ x:ende.x, y:ende.y }, { x:85, y:27 });
+  assert.deepEqual({ x:ende.x, y:ende.y }, { x:85, y:48 });
   assert.ok(isInsideAtlasLand(ende.x, ende.y), 'Ende visual anchor must sit inside the land silhouette');
+  assert.ok(Math.abs(ende.x-fortress.x) > 3.2+3.65, 'Ende and Demon King castle skylines must not overlap horizontally');
+  for (const [dx,dy] of [[-3.2,-3.9],[0,-3.9],[3.2,-3.9],[3.2,0],[3.2,3.9],[0,3.9],[-3.2,3.9],[-3.2,0]]) {
+    assert.ok(isInsideAtlasLand(ende.x+dx,ende.y+dy,0.25), 'Ende skyline footprint must stay on land');
+  }
   // Ende's inset anchor leaves room for the full mobile label box inside the northern coastline.
-  for (const [key,x,y] of [['orman',29.5,39],['merkez',31.5,74],['harabeler',49.25,55.25],['kuzey',59,23.75],['yayla',74,69],['aus',77,34.5]]) {
+  for (const [key,x,y] of [['orman',29.5,39],['merkez',31.5,74],['harabeler',49.25,55.25],['kuzey',59,23.75],['yayla',74,69],['aus',74,17]]) {
     assert.ok(isInsideAtlasLand(x,y), key+' biome label anchor must remain on land');
   }
   for (const [dx,dy] of [[-3.65,-6.15],[0,-6.15],[3.65,-6.15],[3.65,0],[3.65,6.15],[0,6.15],[-3.65,6.15],[-3.65,0]]) {
