@@ -1936,3 +1936,7 @@ body.atlas-modal-open{overflow:hidden}
  .atlas-biome-label small{font-size:7px}
 }
 @media(prefers-reduced-motion:reduce){.atlas-biome-label{backdrop-filter:none}}
+
+.atlas-settlement-silhouette .castle-masonry-detail{filter:drop-shadow(0 1px 1px #1118)}
+.atlas-settlement-demon-kings-castle .castle-ember-lights{filter:drop-shadow(0 0 5px #e58b5b)}
+.atlas-settlement-ende .castle-architecture{filter:drop-shadow(0 7px 5px #1a2a35cc)}
