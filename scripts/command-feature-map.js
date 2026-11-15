@@ -75,6 +75,24 @@ const COMMAND_FEATURE_MAP = {
     ],
     "Rota ustalığı ve keşif kaydı": [
       "RPG-158"
+    ],
+    "Bölgeye özgü üretim malzemesi: merkez": [
+      "RPG-319"
+    ],
+    "Bölgeye özgü üretim malzemesi: orman": [
+      "RPG-319"
+    ],
+    "Bölgeye özgü üretim malzemesi: harabeler": [
+      "RPG-319"
+    ],
+    "Bölgeye özgü üretim malzemesi: kuzey": [
+      "RPG-319"
+    ],
+    "Bölgeye özgü üretim malzemesi: yayla": [
+      "RPG-319"
+    ],
+    "Bölgeye özgü üretim malzemesi: aus": [
+      "RPG-319"
     ]
   },
   "cantam": {
@@ -207,6 +225,9 @@ const COMMAND_FEATURE_MAP = {
     ],
     "Oyuncu başına 30 dakikalık zindan bekleme süresi": [
       "RPG-047"
+    ],
+    "Gizli kat tuzağı olayı": [
+      "RPG-084"
     ]
   },
   "bakiye": {
@@ -281,6 +302,24 @@ const COMMAND_FEATURE_MAP = {
     "Son beş macera, göreli zaman ve ilk keşif vurgusu": [
       "RPG-206",
       "RPG-207"
+    ],
+    "Macera geçmişi salt okunur": [
+      "SOC-008"
+    ],
+    "Macera geçmişi nadir filtresi": [
+      "SOC-008"
+    ],
+    "Macera geçmişi esya filtresi": [
+      "SOC-008"
+    ],
+    "Başka oyuncunun macera geçmişi": [
+      "SOC-009"
+    ],
+    "Başka oyuncunun istatistik kapsamı": [
+      "SOC-009"
+    ],
+    "Başka oyuncunun verisi salt okunur": [
+      "SOC-009"
     ]
   },
   "rehber": {
@@ -479,6 +518,12 @@ const COMMAND_FEATURE_MAP = {
     "Öğrenilmiş büyü pratiği kaynak ve ustalık kaydı": [
       "RPG-120",
       "RPG-121"
+    ],
+    "Altın bakiyesi": [
+      "RPG-120"
+    ],
+    "Mana bakiyesi": [
+      "RPG-120"
     ]
   },
   "bossrehberi": {
