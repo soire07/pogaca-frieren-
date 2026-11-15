@@ -66,6 +66,6 @@ test('unknown feature IDs and duplicate inventory IDs are rejected', () => {
 
 test('serialized traceability report is valid JSON with a real trailing newline', () => {
   const serialized = serializeFeatureTraceabilityReport(buildFeatureTraceabilityReport({ inventory, commandReport }));
-  assert.equal(serialized.endsWith('\\n'), true);
+  assert.equal(serialized.endsWith('\n'), true);
   assert.doesNotThrow(() => JSON.parse(serialized));
 });
