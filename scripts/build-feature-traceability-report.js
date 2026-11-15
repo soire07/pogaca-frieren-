@@ -1,5 +1,9 @@
 import { readFile, writeFile } from 'node:fs/promises';
 
+export function serializeFeatureTraceabilityReport(report) {
+  return JSON.stringify(report, null, 2) + '\n';
+}
+
 export function buildFeatureTraceabilityReport({ inventory, commandReport }) {
   if (!Array.isArray(inventory?.features)) throw new Error('FEATURE_INVENTORY_INVALID');
   if (!Array.isArray(commandReport?.results)) throw new Error('COMMAND_AUDIT_REPORT_INVALID');
@@ -94,6 +98,6 @@ if (process.argv[1] && import.meta.url === new URL('file://' + process.argv[1]).
   const inventory = JSON.parse(await readFile(new URL('../feature-inventory.json', import.meta.url), 'utf8'));
   const commandReport = JSON.parse(await readFile('command-audit-report.json', 'utf8'));
   const report = buildFeatureTraceabilityReport({ inventory, commandReport });
-  await writeFile('feature-traceability-report.json', JSON.stringify(report, null, 2) + '\\n');
+  await writeFile('feature-traceability-report.json', serializeFeatureTraceabilityReport(report));
   console.log(JSON.stringify(report.summary, null, 2));
 }
