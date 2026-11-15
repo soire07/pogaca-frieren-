@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildFeatureTraceabilityReport } from './build-feature-traceability-report.js';
+import { buildFeatureTraceabilityReport, serializeFeatureTraceabilityReport } from './build-feature-traceability-report.js';
 
 const inventory = {
   targetFeatures: 3,
@@ -62,4 +62,10 @@ test('unknown feature IDs and duplicate inventory IDs are rejected', () => {
     inventory: { features: [inventory.features[0], inventory.features[0]] },
     commandReport: { results: [] }
   }), /DUPLICATE/);
+});
+
+test('serialized traceability report is valid JSON with a real trailing newline', () => {
+  const serialized = serializeFeatureTraceabilityReport(buildFeatureTraceabilityReport({ inventory, commandReport }));
+  assert.equal(serialized.endsWith('\\n'), true);
+  assert.doesNotThrow(() => JSON.parse(serialized));
 });
