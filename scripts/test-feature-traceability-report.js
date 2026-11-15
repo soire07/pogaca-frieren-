@@ -3,11 +3,10 @@ import assert from 'node:assert/strict';
 import { buildFeatureTraceabilityReport, serializeFeatureTraceabilityReport } from './build-feature-traceability-report.js';
 
 const inventory = {
-  targetFeatures: 3,
+  targetFeatures: 2,
   features: [
     { id: 'RPG-001', name: 'Profile', category: 'RPG', status: 'implemented_needs_runtime_test', testEvidence: { tests: ['scripts/live-command-test.js'] } },
     { id: 'RPG-002', name: 'Inventory', category: 'RPG', status: 'implemented_needs_runtime_test', testEvidence: { tests: ['scripts/test-inventory.js'] } },
-    { id: 'PLAN-001', name: 'Future', category: 'RPG', status: 'planned' }
   ]
 };
 const commandReport = {
@@ -68,4 +67,11 @@ test('serialized traceability report is valid JSON with a real trailing newline'
   const serialized = serializeFeatureTraceabilityReport(buildFeatureTraceabilityReport({ inventory, commandReport }));
   assert.equal(serialized.endsWith('\n'), true);
   assert.doesNotThrow(() => JSON.parse(serialized));
+});
+
+test('planned roadmap records are rejected from the active inventory', () => {
+  assert.throws(() => buildFeatureTraceabilityReport({
+    inventory: { features: [{ id: 'ROADMAP-0001', name: 'Future', category: 'RPG', status: 'planned' }] },
+    commandReport: { results: [] }
+  }), /PLANNED_FEATURES_NOT_ALLOWED/);
 });
