@@ -453,22 +453,6 @@ const COMMAND_FEATURE_MAP = {
       "EVENT-001"
     ]
   },
-  "webpanel": {
-    "Web panel bağlantı kodu oluşturma": [
-      "SITE-001"
-    ],
-    "Web panel bağlantı kodu 10 dakika geçerli": [
-      "SITE-001"
-    ]
-  },
-  "koleksiyonliderligi": {
-    "Koleksiyon liderliği farklı karakter sıralaması": [
-      "RPG-039"
-    ],
-    "Koleksiyon liderliği sunucu kapsamı ve yanıtı": [
-      "RPG-039"
-    ]
-  },
   "zindanodulleri": {
     "Zindan kilometre taşı ödülleri": [
       "RPG-050"
@@ -591,6 +575,20 @@ const COMMAND_FEATURE_MAP = {
     ],
     "Yoldaş slash komutu besleme": [
       "ENT-031"
+    ]
+  },
+  "maceraci": {
+    "Web panel bağlantı kodu oluşturma": [
+      "SITE-001"
+    ],
+    "Web panel bağlantı kodu 10 dakika geçerli": [
+      "SITE-001"
+    ],
+    "Koleksiyon liderliği farklı karakter sıralaması": [
+      "RPG-039"
+    ],
+    "Koleksiyon liderliği sunucu kapsamı ve yanıtı": [
+      "RPG-039"
     ]
   }
 };
