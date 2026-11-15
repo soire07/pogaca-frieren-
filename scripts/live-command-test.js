@@ -1,5 +1,6 @@
 import { withIsolatedTestSchema, ensureUser, pool } from '../database/db.js';
 import { buildCommandEvidence } from './command-test-evidence.js';
+import { attachFeatureIdsToBehavioralChecks } from './command-feature-map.js';
 import { ensureCardVariantSchema } from '../card-variants.js';
 import { equipmentItems, equipmentBonus } from '../equipment-data.js';
 import { applyEquipmentSetBonus, RAID_BOSSES } from '../rpg-mechanics.js';
@@ -2054,7 +2055,8 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           effects.push(...adoptEffects, ...feedEffects);
         }
 
-        const evidence = buildCommandEvidence({ responseCount: effects.length, behavioralChecks });
+        const mappedBehavioralChecks = attachFeatureIdsToBehavioralChecks(commandName, behavioralChecks);
+        const evidence = buildCommandEvidence({ responseCount: effects.length, behavioralChecks: mappedBehavioralChecks });
         results.push({
           command: commandName,
           ...evidence,
@@ -2062,7 +2064,7 @@ export async function runCommandTestSuite(commandMap, requestedNames = []) {
           automaticallyObserved: true,
           responseCount: effects.length,
           responses: effects.slice(0, 4),
-          behavioralChecks,
+          behavioralChecks: mappedBehavioralChecks,
           error: evidence.status === 'FAIL' ? evidence.detail : null
         });
       } catch (error) {
