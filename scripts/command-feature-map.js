@@ -220,7 +220,7 @@ const COMMAND_FEATURE_MAP = {
     ],
     "Gizli kat tuzağı olayı": [
       "RPG-084"
-    ]
+    ],
     "Boss alan özel saldırısı": ["RPG-105"],
   },
   "bakiye": {
