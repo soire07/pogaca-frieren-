@@ -206,17 +206,9 @@ const COMMAND_FEATURE_MAP = {
       "RPG-097",
       "RPG-098"
     ],
-    "Tank hedefleme ve şifacı desteği": [
-      "RPG-090",
-      "RPG-091",
-      "RPG-092"
-    ],
-    "Büyücü sınıfının co-op Zoltraak mana verimliliği": [
-      "RPG-143"
-    ],
-    "Beş adlandırılmış zindan katı": [
-      "RPG-068"
-    ],
+    "Tank hedefleme ve şifacı desteği": ["RPG-090","RPG-091","RPG-092","RPG-080","RPG-081"],
+    "Büyücü sınıfının co-op Zoltraak mana verimliliği": ["RPG-143","RPG-144"],
+    "Beş adlandırılmış zindan katı": ["RPG-068","RPG-065"],
     "Katlar arasında HP taşınması": [
       "RPG-070"
     ],
@@ -229,6 +221,7 @@ const COMMAND_FEATURE_MAP = {
     "Gizli kat tuzağı olayı": [
       "RPG-084"
     ]
+    "Boss alan özel saldırısı": ["RPG-105"],
   },
   "bakiye": {
     "Cüzdan bakiyesi ve oyuncu seviyesi": [
@@ -247,9 +240,7 @@ const COMMAND_FEATURE_MAP = {
     ]
   },
   "siralama": {
-    "Liderlik sıralaması": [
-      "SOC-002"
-    ],
+    "Liderlik sıralaması": ["SOC-002","SOC-001"],
     "Oyuncu sıralama konumu": [
       "SOC-007"
     ],
@@ -306,15 +297,9 @@ const COMMAND_FEATURE_MAP = {
     "Macera geçmişi salt okunur": [
       "SOC-008"
     ],
-    "Macera geçmişi nadir filtresi": [
-      "SOC-008"
-    ],
-    "Macera geçmişi esya filtresi": [
-      "SOC-008"
-    ],
-    "Başka oyuncunun macera geçmişi": [
-      "SOC-009"
-    ],
+    "Macera geçmişi nadir filtresi": ["SOC-008","RPG-266"],
+    "Macera geçmişi esya filtresi": ["SOC-008","RPG-267"],
+    "Başka oyuncunun macera geçmişi": ["SOC-009","RPG-268"],
     "Başka oyuncunun istatistik kapsamı": [
       "SOC-009"
     ],
