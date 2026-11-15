@@ -656,10 +656,24 @@ test('equipment salvage command previews every equipment item and its material r
   assert.match(command, /Kuşanılmış eşyalar parçalanmaz/);
 });
 
-test('combined player history displays crafting salvage progress', async () => {
+test('combined player history displays crafting salvage progress and filters found items', async () => {
   const history = await read('maceragecmisi.js');
-  assert.match(history, /salvaged_items/);
+  assert.match(history, /successful_crafts, salvaged_items/);
+  assert.match(history, /craftingResult\.rows\[0\]/);
+  assert.match(history, /Üretilen eşya/);
   assert.match(history, /Parçalanan eşya/);
+  assert.match(history, /filter === 'esya' \? 'AND item_found IS NOT NULL'/);
+});
+
+test('goal audit creates its isolated player before seeding completed progress', async () => {
+  const runner = await read('scripts/live-command-test.js');
+  const start = runner.indexOf("} else if (commandName === 'hedefler') {");
+  const end = runner.indexOf("} else if (commandName === 'hazinegecmisi') {", start);
+  assert.ok(start >= 0 && end > start, 'goal audit scenario must exist');
+  const scenario = runner.slice(start, end);
+  const playerSetup = scenario.indexOf('await ensureUser(guildId, userId);');
+  const progressSeed = scenario.indexOf('UPDATE users SET level=10,boss_defeats=5,dungeon_wins=3,exploration_count=10');
+  assert.ok(playerSetup >= 0 && playerSetup < progressSeed, 'the test player must exist before progress is seeded');
 });
 
 test('adventure streak retains an all-time best streak after a missed day resets the current streak', async () => {
