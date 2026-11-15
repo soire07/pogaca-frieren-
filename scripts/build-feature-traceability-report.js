@@ -8,6 +8,10 @@ export function buildFeatureTraceabilityReport({ inventory, commandReport }) {
   if (!Array.isArray(inventory?.features)) throw new Error('FEATURE_INVENTORY_INVALID');
   if (!Array.isArray(commandReport?.results)) throw new Error('COMMAND_AUDIT_REPORT_INVALID');
 
+  if (inventory.features.some(feature => feature?.status === 'planned' || String(feature?.id || '').startsWith('ROADMAP-'))) {
+    throw new Error('PLANNED_FEATURES_NOT_ALLOWED_IN_ACTIVE_INVENTORY');
+  }
+
   const featureIds = new Set();
   for (const feature of inventory.features) {
     if (!feature?.id || featureIds.has(feature.id)) throw new Error('FEATURE_ID_MISSING_OR_DUPLICATE: ' + feature?.id);
@@ -38,8 +42,8 @@ export function buildFeatureTraceabilityReport({ inventory, commandReport }) {
     const commandNames = [...new Set(checks.map(check => check.command))];
     const allChecksPassed = checks.length > 0
       && checks.every(check => check.passed && check.commandStatus === 'PASS');
-    let evidenceStatus = 'planned';
-    if (feature.status !== 'planned') {
+    let evidenceStatus = 'missing_test_reference';
+    {
       if (checks.length) evidenceStatus = allChecksPassed ? 'verified_by_mapped_command_checks' : 'mapped_command_check_failed_or_inconclusive';
       else if (commandAuditReferenced) evidenceStatus = 'command_association_only_not_feature_proof';
       else if (testPaths.length) evidenceStatus = 'test_file_reference_only_not_execution_proof';
@@ -58,8 +62,7 @@ export function buildFeatureTraceabilityReport({ inventory, commandReport }) {
     };
   });
 
-  const implemented = features.filter(feature => feature.inventoryStatus !== 'planned');
-  const planned = features.filter(feature => feature.inventoryStatus === 'planned');
+  const implemented = features;
   const count = status => implemented.filter(feature => feature.evidenceStatus === status).length;
   return {
     schemaVersion: 1,
@@ -80,7 +83,7 @@ export function buildFeatureTraceabilityReport({ inventory, commandReport }) {
     summary: {
       totalFeatures: features.length,
       implementedFeatures: implemented.length,
-      plannedFeatures: planned.length,
+      plannedFeatures: 0,
       implementedWithTestFileReferences: implemented.filter(feature => feature.testPaths.length > 0).length,
       implementedReferencedByCommandAudit: implemented.filter(feature => feature.commandAuditReferenced).length,
       implementedWithExplicitMappedChecks: implemented.filter(feature => feature.mappedCommandChecks.length > 0).length,
