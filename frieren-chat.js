@@ -157,35 +157,69 @@ export async function handleFrierenMentionMessage({ message, botUserId, db, env 
     return true;
   }
 
+  const requestStartedAt = Date.now();
+  let typingTimer = null;
+  const sendTyping = () => {
+    try {
+      const pending = message.channel?.sendTyping?.();
+      if (pending && typeof pending.catch === 'function') pending.catch(() => {});
+    } catch {}
+  };
+  sendTyping();
+  typingTimer = setInterval(sendTyping, 8000);
+  typingTimer.unref?.();
+
+  let contextMs = null;
+  let modelMs = null;
+  let replyMs = null;
+  let persistenceMs = null;
   try {
-    let chatSettings = DEFAULT_FRIEREN_CHAT_SETTINGS;
-    try { chatSettings = await getFrierenChatSettings(db); } catch (settingsError) {
-      console.warn('Frieren sohbet tercihleri okunamadı; varsayılan ayarlar kullanılacak.', settingsError?.message || 'unknown error');
-    }
-    if (!chatSettings.enabled) {
-      await message.reply({ content: 'Şu anda sohbet özelliğim kapalı. Daha sonra tekrar deneyebilirsin.', allowedMentions: { parse: [] } });
-      return true;
-    }
+    const contextStartedAt = Date.now();
     await saveExplicitMemories(db, { guildId: message.guild.id, userId: message.author.id, message: userMessage });
-    const memories = await getRelevantMemories(db, { guildId: message.guild.id, userId: message.author.id, question: userMessage });
-    const historyResult = await db.query(
-      'SELECT role, content FROM frieren_chat_messages WHERE guild_id=$1 AND user_id=$2 AND channel_id=$3 ORDER BY id DESC LIMIT $4',
-      [message.guild.id, message.author.id, message.channelId, MAX_HISTORY_MESSAGES]
-    );
+    const [chatSettings, memories, historyResult] = await Promise.all([
+      getFrierenChatSettings(db).catch(settingsError => {
+        console.warn('Frieren sohbet tercihleri okunamadı; varsayılan ayarlar kullanılacak.', settingsError?.message || 'unknown error');
+        return DEFAULT_FRIEREN_CHAT_SETTINGS;
+      }),
+      getRelevantMemories(db, { guildId: message.guild.id, userId: message.author.id, question: userMessage }),
+      db.query(
+        'SELECT role, content FROM frieren_chat_messages WHERE guild_id=$1 AND user_id=$2 AND channel_id=$3 ORDER BY id DESC LIMIT $4',
+        [message.guild.id, message.author.id, message.channelId, MAX_HISTORY_MESSAGES]
+      )
+    ]);
+    contextMs = Date.now() - contextStartedAt;
     const history = [...(historyResult.rows || [])].reverse();
     const creatorIdentity = isFrierenCreator(message, env) ? 'Soirəe' : null;
-    const answer = await generateFrierenReply({ history, userMessage, memories, chatSettings, creatorIdentity, env, fetchImpl });
 
-    await db.query(
+    const modelStartedAt = Date.now();
+    const answer = await generateFrierenReply({ history, userMessage, memories, chatSettings, creatorIdentity, env, fetchImpl });
+    modelMs = Date.now() - modelStartedAt;
+
+    const persistenceStartedAt = Date.now();
+    const persistence = db.query(
       `INSERT INTO frieren_chat_messages (guild_id,user_id,channel_id,role,content)
        VALUES ($1,$2,$3,'user',$4),($1,$2,$3,'assistant',$5)`,
       [message.guild.id, message.author.id, message.channelId, userMessage, answer]
-    );
+    ).then(() => Date.now() - persistenceStartedAt).catch(error => {
+      console.error('Frieren sohbet geçmişi kaydedilemedi:', error?.message || error);
+      return null;
+    });
+
+    const replyStartedAt = Date.now();
     await message.reply({
       content: answer,
       allowedMentions: { parse: [] },
       failIfNotExists: false
     });
+    replyMs = Date.now() - replyStartedAt;
+    persistenceMs = await persistence;
+    console.info('[FRIEREN_PERF]', JSON.stringify({
+      contextMs,
+      modelMs,
+      replyMs,
+      persistenceMs,
+      totalMs: Date.now() - requestStartedAt
+    }));
   } catch (error) {
     console.error('Frieren sohbet hatası:', error?.message || error);
     await message.reply({
@@ -193,6 +227,8 @@ export async function handleFrierenMentionMessage({ message, botUserId, db, env 
       allowedMentions: { parse: [] },
       failIfNotExists: false
     }).catch(() => {});
+  } finally {
+    if (typingTimer) clearInterval(typingTimer);
   }
   return true;
 }
