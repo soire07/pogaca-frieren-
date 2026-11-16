@@ -496,6 +496,7 @@ def test_health_runs_one_fixed_generation_smoke_only_when_enabled(api_client, mo
     import frieren_neural.api as api
 
     monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "ufakzeka")
+    monkeypatch.setenv("FRIEREN_ALLOW_EXTERNAL_BACKENDS", "1")
     monkeypatch.setenv("FRIEREN_HEALTH_GENERATION_SMOKE", "1")
     monkeypatch.setattr(api, "_load_active_runtime", lambda: object())
     calls = []
@@ -966,6 +967,7 @@ def test_groq_backend_is_explicit_and_does_not_load_a_local_checkpoint(monkeypat
     import frieren_neural.api as api
 
     monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "groq")
+    monkeypatch.setenv("FRIEREN_ALLOW_EXTERNAL_BACKENDS", "1")
     monkeypatch.setenv("GROQ_API_KEY", "g" * 48)
     monkeypatch.setenv("FRIEREN_CHECKPOINT", str(tmp_path / "missing-local-checkpoint.pt"))
 
@@ -975,6 +977,7 @@ def test_groq_backend_is_explicit_and_does_not_load_a_local_checkpoint(monkeypat
 
 def test_groq_health_reports_the_pinned_model_without_exposing_credentials(api_client, monkeypatch):
     monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "groq")
+    monkeypatch.setenv("FRIEREN_ALLOW_EXTERNAL_BACKENDS", "1")
     monkeypatch.setenv("GROQ_API_KEY", "g" * 48)
 
     response = api_client.get("/health")
@@ -992,6 +995,7 @@ def test_groq_generation_uses_pinned_model_and_hides_reasoning(monkeypatch):
     import frieren_neural.api as api
 
     monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "groq")
+    monkeypatch.setenv("FRIEREN_ALLOW_EXTERNAL_BACKENDS", "1")
     monkeypatch.setenv("GROQ_API_KEY", "g" * 48)
     captured = {}
 
@@ -1041,6 +1045,7 @@ def test_groq_rate_limit_is_returned_as_retryable_429(api_client, monkeypatch):
     import frieren_neural.api as api
 
     monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "groq")
+    monkeypatch.setenv("FRIEREN_ALLOW_EXTERNAL_BACKENDS", "1")
     monkeypatch.setenv("GROQ_API_KEY", "g" * 48)
     monkeypatch.setenv("FRIEREN_API_TOKEN", "a" * 48)
     monkeypatch.setattr(
@@ -1061,6 +1066,7 @@ def test_groq_rate_limit_is_returned_as_retryable_429(api_client, monkeypatch):
 
 def test_groq_health_fails_closed_when_provider_key_is_missing(api_client, monkeypatch):
     monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "groq")
+    monkeypatch.setenv("FRIEREN_ALLOW_EXTERNAL_BACKENDS", "1")
     monkeypatch.delenv("GROQ_API_KEY", raising=False)
 
     response = api_client.get("/health")
@@ -1073,6 +1079,7 @@ def test_groq_health_fails_closed_when_provider_key_is_missing(api_client, monke
 def test_gemini_backend_requires_explicit_free_tier_data_acknowledgement(monkeypatch):
     import frieren_neural.api as api
     monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "gemini")
+    monkeypatch.setenv("FRIEREN_ALLOW_EXTERNAL_BACKENDS", "1")
     monkeypatch.setenv("GEMINI_API_KEY", "k" * 40)
     monkeypatch.delenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", raising=False)
     with pytest.raises(RuntimeError, match="data-use acknowledgement"):
@@ -1082,6 +1089,7 @@ def test_gemini_backend_requires_explicit_free_tier_data_acknowledgement(monkeyp
 def test_gemini_backend_is_explicit_and_does_not_load_local_checkpoint(monkeypatch, tmp_path):
     import frieren_neural.api as api
     monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "gemini")
+    monkeypatch.setenv("FRIEREN_ALLOW_EXTERNAL_BACKENDS", "1")
     monkeypatch.setenv("GEMINI_API_KEY", "k" * 40)
     monkeypatch.setenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", "1")
     monkeypatch.setenv("FRIEREN_CHECKPOINT", str(tmp_path / "missing.pt"))
@@ -1092,6 +1100,7 @@ def test_gemini_backend_is_explicit_and_does_not_load_local_checkpoint(monkeypat
 def test_gemini_generation_uses_pinned_model_and_hides_thought_parts(monkeypatch):
     import frieren_neural.api as api
     monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "gemini")
+    monkeypatch.setenv("FRIEREN_ALLOW_EXTERNAL_BACKENDS", "1")
     monkeypatch.setenv("GEMINI_API_KEY", "k" * 40)
     monkeypatch.setenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", "1")
     captured = {}
@@ -1131,6 +1140,7 @@ def test_gemini_generation_uses_pinned_model_and_hides_thought_parts(monkeypatch
 def test_gemini_rate_limit_is_returned_as_retryable_429(api_client, monkeypatch):
     import frieren_neural.api as api
     monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "gemini")
+    monkeypatch.setenv("FRIEREN_ALLOW_EXTERNAL_BACKENDS", "1")
     monkeypatch.setenv("GEMINI_API_KEY", "k" * 40)
     monkeypatch.setenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", "1")
     monkeypatch.setenv("FRIEREN_API_TOKEN", "a" * 48)
@@ -1145,6 +1155,7 @@ def test_gemini_rate_limit_is_returned_as_retryable_429(api_client, monkeypatch)
 
 def test_gemini_health_fails_closed_when_key_or_data_ack_is_missing(api_client, monkeypatch):
     monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "gemini")
+    monkeypatch.setenv("FRIEREN_ALLOW_EXTERNAL_BACKENDS", "1")
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("FRIEREN_GEMINI_FREE_TIER_DATA_ACK", raising=False)
     response = api_client.get("/health")
