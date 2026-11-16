@@ -48,6 +48,8 @@ jobs:
       - name: Verify command audit exercises real slash handlers
         run: node --test scripts/test-command-audit-integrity.js
       - run: node scripts/run-isolated-command-audit.js
+      - name: Build feature-to-command evidence traceability report
+        run: node scripts/build-feature-traceability-report.js
       - name: Require behavioral evidence for previously inconclusive commands
         run: node scripts/assert-command-audit-evidence.js
       - name: Run real PostgreSQL market concurrency and rollback tests
@@ -70,4 +72,6 @@ jobs:
         if: always()
         with:
           name: frieren-isolated-command-audit
-          path: command-audit-report.json
+          path: |
+            command-audit-report.json
+            feature-traceability-report.json

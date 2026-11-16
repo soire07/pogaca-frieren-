@@ -3,8 +3,7 @@ import { access, readFile } from 'node:fs/promises';
 const inventory = JSON.parse(await readFile(new URL('../feature-inventory.json', import.meta.url), 'utf8'));
 const errors = [];
 const ids = inventory.features.map(feature => feature.id);
-const originalFeatures = inventory.features.filter(feature => !feature.id.startsWith('ROADMAP-'));
-const roadmapFeatures = inventory.features.filter(feature => feature.id.startsWith('ROADMAP-'));
+const originalFeatures = inventory.features;
 
 const normalizeFeatureName = value => String(value || '')
   .replace(/[ıİ]/g, 'i')
@@ -47,12 +46,14 @@ for (const [name, matches] of names) {
 if (inventory.count !== inventory.features.length) {
   errors.push(`count alanı (${inventory.count}) kayıt sayısıyla (${inventory.features.length}) eşleşmeli.`);
 }
-if (!Number.isInteger(inventory.targetFeatures) || inventory.targetFeatures < 1) {
+if (!Number.isInteger(inventory.targetFeatures) || inventory.targetFeatures !== originalFeatures.length) {
   errors.push('targetFeatures pozitif bir tam sayı olmalı.');
 }
 if (new Set(ids).size !== ids.length) errors.push('Özellik kimlikleri benzersiz olmalı.');
-if (inventory.plannedFeatureCount !== roadmapFeatures.length) {
-  errors.push(`plannedFeatureCount (${inventory.plannedFeatureCount}) planlanan kayıt sayısıyla (${roadmapFeatures.length}) eşleşmeli.`);
+if (inventory.plannedFeatureCount !== 0 || originalFeatures.some(feature =>
+  feature.status === 'planned' || String(feature.id || '').startsWith('ROADMAP-')
+)) {
+  errors.push('Aktif özellik envanterinde planlanan/backlog veya ROADMAP kaydı bulunmamalı.');
 }
 if (inventory.originalFeatureEvidenceLinkedCount !== originalFeatures.filter(feature => feature.testEvidence).length) {
   errors.push('originalFeatureEvidenceLinkedCount, kanıt bağlantısı bulunan özgün özellik sayısıyla eşleşmeli.');
@@ -86,17 +87,8 @@ for (const feature of originalFeatures) {
   }
 }
 
-for (const feature of roadmapFeatures) {
-  if (feature.status !== 'planned') {
-    errors.push(`Yeni yol haritası özelliği planned olmalı: ${feature.id} → ${feature.status}`);
-  }
-  if (feature.testEvidence) {
-    errors.push(`Henüz uygulanmamış yol haritası özelliğine test kanıtı yazılamaz: ${feature.id}`);
-  }
-}
-
-if (inventory.auditComplete !== (roadmapFeatures.length === 0 && originalFeatures.every(feature => feature.testEvidence))) {
-  errors.push('auditComplete, özgün özellik kanıtları ve uygulanmamış yol haritası kayıtlarıyla tutarlı olmalı.');
+if (inventory.auditComplete !== originalFeatures.every(feature => feature.status === 'live_verified')) {
+  errors.push('auditComplete yalnızca tüm özellikler canlı çalışma zamanında doğrulandığında true olabilir.');
 }
 
 if (errors.length) {
@@ -107,8 +99,8 @@ if (errors.length) {
     status,
     inventory.features.filter(feature => feature.status === status).length
   ]));
-  console.log(`Özellik envanteri geçerli: ${originalFeatures.length} özgün özellik kanıt bağlantılı; ${roadmapFeatures.length} yeni özellik planned; toplam ${inventory.features.length}/${inventory.targetFeatures}. Durumlar: ${JSON.stringify(byStatus)}.`);
+  console.log(`Özellik envanteri geçerli: ${originalFeatures.length} aktif özellik; ${inventory.plannedFeatureCount} planlanan kayıt; toplam ${inventory.features.length}/${inventory.targetFeatures}. Durumlar: ${JSON.stringify(byStatus)}.`);
   if (!inventory.auditComplete) {
-    console.log('Not: Özgün özelliklerin kanıt bağlantıları mevcut; yol haritasındaki planned özellikler henüz uygulanmadığı için tam denetim tamamlanmadı.');
+    console.log('Not: Envanterdeki özelliklerin canlı çalışma zamanı doğrulaması tamamlanmadığı için auditComplete=false.');
   }
 }

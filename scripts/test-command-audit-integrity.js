@@ -9,7 +9,7 @@ function branchFor(name) {
   const start = source.indexOf(marker);
   assert.notEqual(start, -1, 'missing command audit branch: ' + name);
   const next = source.indexOf("\n        } else if (commandName === '", start + marker.length);
-  const fallback = source.indexOf("\n        }\n\n        const evidence = buildCommandEvidence", start + marker.length);
+  const fallback = source.indexOf("\n        }\n\n        const mappedBehavioralChecks = attachFeatureIdsToBehavioralChecks", start + marker.length);
   const end = next === -1 ? fallback : fallback === -1 ? next : Math.min(next, fallback);
   assert.notEqual(end, -1, 'could not isolate command audit branch: ' + name);
   return source.slice(start, end);
