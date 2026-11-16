@@ -165,37 +165,106 @@ test('personal memories are not injected into fictional character questions', as
 });
 
 
-test('Frieren chat requires every reply to follow the language of the latest user message', () => {
+test('Frieren multilingual policy covers a broad ISO 639 language sample and latest-message precedence', () => {
   const cases = [
-    { language: 'English', message: 'Where are you from and why do you not speak English?' },
-    { language: 'Türkçe', message: 'Nerelisin ve neden Türkçe konuşmuyorsun?' },
-    { language: 'Deutsch', message: 'Woher kommst du und warum sprichst du kein Deutsch?' },
-    { language: '日本語', message: 'どこから来たの？' },
-    { language: 'Français', message: "D'où viens-tu ?" },
-    { language: 'Español', message: '¿De dónde vienes?' },
-    { language: 'العربية', message: 'من أين أنت؟' },
-    { language: 'Русский', message: 'Откуда ты?' },
-    { language: '中文', message: '你来自哪里？' },
-    { language: '한국어', message: '어디에서 왔어요?' },
-    { language: 'Português', message: 'De onde você vem?' },
-    { language: 'Italiano', message: 'Da dove vieni?' },
-    { language: 'Nederlands', message: 'Waar kom je vandaan?' },
-    { language: 'हिन्दी', message: 'तुम कहाँ से हो?' },
-    { language: 'فارسی', message: 'اهل کجا هستی؟' },
-    { language: 'Polski', message: 'Skąd pochodzisz?' },
-    { language: 'Українська', message: 'Звідки ти?' },
-    { language: 'ไทย', message: 'คุณมาจากไหน?' }
+    ['en', 'English', 'Where are you from?'],
+    ['tr', 'Türkçe', 'Nerelisin?'],
+    ['de', 'Deutsch', 'Woher kommst du?'],
+    ['ja', '日本語', 'どこから来たの？'],
+    ['fr', 'Français', "D'où viens-tu ?"],
+    ['es', 'Español', '¿De dónde vienes?'],
+    ['ar', 'العربية', 'من أين أنت؟'],
+    ['ru', 'Русский', 'Откуда ты?'],
+    ['zh', '中文', '你来自哪里？'],
+    ['ko', '한국어', '어디에서 왔어요?'],
+    ['pt', 'Português', 'De onde você vem?'],
+    ['it', 'Italiano', 'Da dove vieni?'],
+    ['nl', 'Nederlands', 'Waar kom je vandaan?'],
+    ['hi', 'हिन्दी', 'तुम कहाँ से हो?'],
+    ['fa', 'فارسی', 'اهل کجا هستی؟'],
+    ['pl', 'Polski', 'Skąd pochodzisz?'],
+    ['uk', 'Українська', 'Звідки ти?'],
+    ['th', 'ไทย', 'คุณมาจากไหน?'],
+    ['bn', 'বাংলা', 'তুমি কোথা থেকে এসেছ?'],
+    ['ur', 'اردو', 'آپ کہاں سے ہیں؟'],
+    ['vi', 'Tiếng Việt', 'Bạn đến từ đâu?'],
+    ['id', 'Bahasa Indonesia', 'Kamu berasal dari mana?'],
+    ['ms', 'Bahasa Melayu', 'Awak berasal dari mana?'],
+    ['sw', 'Kiswahili', 'Unatoka wapi?'],
+    ['el', 'Ελληνικά', 'Από πού είσαι;'],
+    ['he', 'עברית', 'מאיפה את?'],
+    ['ro', 'Română', 'De unde vii?'],
+    ['cs', 'Čeština', 'Odkud pocházíš?'],
+    ['sv', 'Svenska', 'Var kommer du ifrån?'],
+    ['da', 'Dansk', 'Hvor kommer du fra?'],
+    ['no', 'Norsk', 'Hvor kommer du fra?'],
+    ['fi', 'Suomi', 'Mistä tulet?'],
+    ['hu', 'Magyar', 'Honnan jöttél?'],
+    ['bg', 'Български', 'Откъде си?'],
+    ['sr', 'Српски', 'Одакле си?'],
+    ['hr', 'Hrvatski', 'Odakle dolaziš?'],
+    ['sk', 'Slovenčina', 'Odkiaľ pochádzaš?'],
+    ['sl', 'Slovenščina', 'Od kod prihajaš?'],
+    ['lt', 'Lietuvių', 'Iš kur esi?'],
+    ['lv', 'Latviešu', 'No kurienes tu esi?'],
+    ['et', 'Eesti', 'Kust sa pärit oled?'],
+    ['am', 'አማርኛ', 'ከየት ነህ?'],
+    ['yo', 'Yorùbá', 'Níbo lo ti wá?'],
+    ['ha', 'Hausa', 'Daga ina kake?'],
+    ['zu', 'isiZulu', 'Uvelaphi?'],
+    ['af', 'Afrikaans', 'Waar kom jy vandaan?'],
+    ['tl', 'Filipino', 'Saan ka nagmula?'],
+    ['my', 'မြန်မာ', 'မင်းဘယ်ကလာတာလဲ။'],
+    ['km', 'ភាសាខ្មែរ', 'អ្នកមកពីណា?'],
+    ['lo', 'ລາວ', 'ເຈົ້າມາຈາກໃສ?'],
+    ['mn', 'Монгол', 'Чи хаанаас ирсэн бэ?'],
+    ['ne', 'नेपाली', 'तिमी कहाँबाट आएका हौ?'],
+    ['ta', 'தமிழ்', 'நீங்கள் எங்கிருந்து வருகிறீர்கள்?'],
+    ['te', 'తెలుగు', 'మీరు ఎక్కడి నుండి వచ్చారు?'],
+    ['mr', 'मराठी', 'तू कुठून आला आहेस?'],
+    ['gu', 'ગુજરાતી', 'તમે ક્યાંથી છો?'],
+    ['kn', 'ಕನ್ನಡ', 'ನೀವು ಎಲ್ಲಿಂದ ಬಂದಿದ್ದೀರಿ?'],
+    ['ml', 'മലയാളം', 'നിങ്ങൾ എവിടെ നിന്നാണ്?'],
+    ['pa', 'ਪੰਜਾਬੀ', 'ਤੁਸੀਂ ਕਿੱਥੋਂ ਹੋ?'],
+    ['ku', 'Kurdî', 'Tu ji ku derê yî?'],
+    ['ps', 'پښتو', 'ته د کوم ځای یې؟'],
+    ['az', 'Azərbaycanca', 'Sən haradansan?'],
+    ['kk', 'Қазақша', 'Сен қайдансың?'],
+    ['uz', 'Oʻzbekcha', 'Sen qayerdansan?'],
+    ['hy', 'Հայերեն', 'Դու որտեղի՞ց ես։'],
+    ['ka', 'ქართული', 'საიდან ხარ?'],
+    ['sq', 'Shqip', 'Nga je?'],
+    ['is', 'Íslenska', 'Hvaðan ertu?'],
+    ['ga', 'Gaeilge', 'Cad as duit?'],
+    ['cy', 'Cymraeg', 'O ble wyt ti?'],
+    ['eu', 'Euskara', 'Nongoa zara?'],
+    ['ca', 'Català', 'D’on ets?'],
+    ['gl', 'Galego', 'De onde es?']
   ];
 
-  for (const item of cases) {
+  const systemPrompt = buildFrierenMessages({ userMessage: 'Hello.' })[0].content;
+  assert.match(systemPrompt, /ISO 639-1/i);
+  assert.match(systemPrompt, /ISO 639-3/i);
+  assert.match(systemPrompt, /belirsiz/i);
+
+  for (const [code, language, message] of cases) {
+    assert.match(code, /^[a-z]{2,3}$/i, `invalid ISO 639 sample code for ${language}`);
     const messages = buildFrierenMessages({
       history: [{ role: 'assistant', content: 'Önceki yanıt Türkçeydi.' }],
-      userMessage: item.message
+      userMessage: message
     });
-    assert.match(messages[0].content, /EN SON mesajından/i);
-    assert.match(messages[0].content, /aynı dilde yanıt ver/i);
-    assert.equal(messages.at(-1).content, item.message);
+    assert.match(messages[0].content, /EN SON mesajından/i, `latest-message rule missing for ${language}`);
+    assert.match(messages[0].content, /ISO 639-1/i, `ISO 639-1 coverage policy missing for ${language}`);
+    assert.match(messages[0].content, /aynı dilde yanıt ver/i, `same-language rule missing for ${language}`);
+    assert.equal(messages.at(-1).content, message, `latest user message changed for ${language}`);
   }
+});
+
+test('Frieren multilingual policy does not force Turkish for ambiguous or mixed-language messages', () => {
+  const systemPrompt = buildFrierenMessages({ userMessage: '🙂' })[0].content;
+  assert.match(systemPrompt, /birden fazla dil/i);
+  assert.match(systemPrompt, /dil netleştirme sorusu/i);
+  assert.match(systemPrompt, /önceki konuşma dilini otomatik olarak dayatma/i);
 });
 
 test('Frieren persona uses canonical identity and forbids invented appearance or server-based identity', () => {
