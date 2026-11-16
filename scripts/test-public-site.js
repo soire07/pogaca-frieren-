@@ -1555,21 +1555,21 @@ test('all site and panel button markup declares an explicit action type', async 
   }
 });
 
-test('account navigation is global while RPG character features stay inside the adventurer panel', async () => {
-  const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
-  const userCenter=source.slice(source.indexOf("navGroup('kullanici'"),source.indexOf("navGroup('maceraci'"));
-  const adventurer=source.slice(source.indexOf("navGroup('maceraci'"),source.indexOf("navGroup('oyuncu'"));
-  assert.match(userCenter,/navLink\('\/profil',[\s\S]*?'Hesap Profilim'/);
-  assert.match(userCenter,/navLink\('\/hesap-merkezi',[\s\S]*?'Hesap ve Destek Merkezi'/);
-  assert.doesNotMatch(userCenter,/\/maceraci\//);
-  for(const path of ['/maceraci/profil','/maceraci/merkez','/maceraci/envanter','/maceraci/koleksiyon','/maceraci/yasam']) assert.ok(adventurer.includes(path),path);
-  assert.match(adventurer,/MACERACI PANELİ/);
-  assert.match(source,/navLink\('\/destek#account-settings',[\s\S]*?'Hesap Ayarları'/);
-  assert.match(source,/navLink\('\/logout',[\s\S]*?'Çıkış Yap'/);
-  assert.match(source,/id="badges"/);
-  assert.match(source,/id="account-settings"/);
+test('account navigation stays global while RPG features remain grouped inside the adventurer panel', async () => {
+  const source = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
+  const navigation = source.slice(source.indexOf('const navGroup ='), source.indexOf("  return '<!doctype", source.indexOf('const navGroup =')));
+  const account = navigation.slice(navigation.indexOf("navGroup('hesap'"), navigation.indexOf("navGroup('oturum'"));
+  const adventurer = navigation.slice(navigation.indexOf("navGroup('macera'"), navigation.indexOf("navGroup('rehber'"));
+  assert.match(account, /navLink\('\/profil',[\s\S]*?'Hesap Profilim'/);
+  assert.match(account, /navLink\('\/hesap-merkezi#account-settings',[\s\S]*?'Hesap ve Destek Merkezi'/);
+  assert.doesNotMatch(account, /\/maceraci\//);
+  for (const path of ['/maceraci/profil', '/maceraci/merkez', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/yasam']) assert.ok(adventurer.includes(path), path);
+  assert.match(adventurer, /MACERA & RPG/);
+  assert.match(source, /id="badges"/);
+  assert.match(source, /id="account-settings"/);
+  assert.match(navigation, /navGroup\('oturum',[\s\S]*?navLink\('\/logout'/);
+  assert.match(navigation, /navGroup\('yonetim',[\s\S]*?navLink\('\/owner'/);
 });
-
 test('global account profile renders without a guild picker and keeps profile media account-scoped', async () => {
   const accountId='site_123e4567-e89b-12d3-a456-426614174000';
   const db={async query(sql){
