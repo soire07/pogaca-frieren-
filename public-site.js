@@ -1397,6 +1397,17 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
       res.writeHead(303,{Location:'/u/'+encodeURIComponent(target)+'?status='+result.status,'Cache-Control':'no-store'});res.end();return true;
     }catch(error){if(String(error?.message||'').startsWith('ACCOUNT_')||error?.code==='23505'){res.writeHead(400,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'invalid_profile'}));return true;}throw error;}
   }
+  if (req.method === 'HEAD' && ['/hizmet-kosullari', '/gizlilik-politikasi'].includes(url.pathname)) {
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'"
+    });
+    res.end();
+    return true;
+  }
   if (req.method !== 'GET') return false;
   const cookie = cookies(req);
   if (url.pathname === '/owner' || url.pathname.startsWith('/owner/')) return false;
