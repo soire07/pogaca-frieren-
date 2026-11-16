@@ -50,8 +50,10 @@ if (!Number.isInteger(inventory.targetFeatures) || inventory.targetFeatures !== 
   errors.push('targetFeatures pozitif bir tam sayı olmalı.');
 }
 if (new Set(ids).size !== ids.length) errors.push('Özellik kimlikleri benzersiz olmalı.');
-if (inventory.plannedFeatureCount !== 0 || originalFeatures.some(feature => feature.status === 'planned')) {
-  errors.push('Aktif özellik envanterinde planlanan/backlog kaydı bulunmamalı.');
+if (inventory.plannedFeatureCount !== 0 || originalFeatures.some(feature =>
+  feature.status === 'planned' || String(feature.id || '').startsWith('ROADMAP-')
+)) {
+  errors.push('Aktif özellik envanterinde planlanan/backlog veya ROADMAP kaydı bulunmamalı.');
 }
 if (inventory.originalFeatureEvidenceLinkedCount !== originalFeatures.filter(feature => feature.testEvidence).length) {
   errors.push('originalFeatureEvidenceLinkedCount, kanıt bağlantısı bulunan özgün özellik sayısıyla eşleşmeli.');
