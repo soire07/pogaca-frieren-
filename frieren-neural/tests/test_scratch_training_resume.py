@@ -6,7 +6,7 @@ import torch
 from frieren_neural import scratch_training
 
 
-def test_resume_rejects_checkpoint_from_different_corpus(tmp_path, monkeypatch):
+def test_resume_rejects_checkpoint_from_different_corpus(tmp_path):
     checkpoint = tmp_path / "checkpoint.pt"
     torch.save(
         {
