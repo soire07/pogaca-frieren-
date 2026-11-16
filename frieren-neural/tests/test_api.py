@@ -474,3 +474,109 @@ def test_shared_login_rate_limit_fails_closed_when_database_is_unavailable(monke
     with pytest.raises(HTTPException) as error:
         api._login_rate_limit(Request(scope))
     assert error.value.status_code == 503
+
+def test_scratch_backend_is_the_default(monkeypatch):
+    import frieren_neural.api as api
+
+    monkeypatch.delenv("FRIEREN_MODEL_BACKEND", raising=False)
+    monkeypatch.delenv("FRIEREN_ALLOW_PRETRAINED_BACKEND", raising=False)
+    assert api._model_backend() == "scratch"
+
+
+def test_pretrained_backend_requires_explicit_research_opt_in(monkeypatch):
+    import frieren_neural.api as api
+
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "ufakzeka")
+    monkeypatch.delenv("FRIEREN_ALLOW_PRETRAINED_BACKEND", raising=False)
+    with pytest.raises(RuntimeError, match="FRIEREN_ALLOW_PRETRAINED_BACKEND"):
+        api._model_backend()
+
+
+def test_pretrained_backend_is_available_only_after_explicit_opt_in(monkeypatch):
+    import frieren_neural.api as api
+
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "ufakzeka")
+    monkeypatch.setenv("FRIEREN_ALLOW_PRETRAINED_BACKEND", "1")
+    assert api._model_backend() == "ufakzeka"
+
+
+def test_native_v2_checkpoint_loads_and_generates_through_api(api_client, monkeypatch, tmp_path):
+    import json
+    from frieren_neural.scratch_training import run as train_native_model
+
+    corpus_dir = tmp_path / "licensed-native-corpus"
+    corpus_dir.mkdir()
+    dialogues = []
+    for dialogue_index in range(8):
+        assistant_text = " ".join(
+            f"kelime_{dialogue_index}_{token_index}" for token_index in range(600)
+        )
+        dialogues.append(
+            f"Kullanıcı: Soru {dialogue_index}: Bu kelime dizisini açıkla.\n"
+            f"Asistan: {assistant_text}"
+        )
+    (corpus_dir / "dialogues.txt").write_text(
+        "\n\n---\n\n".join(dialogues), encoding="utf-8"
+    )
+    (corpus_dir / "corpus_manifest.json").write_text(
+        json.dumps({
+            "schema_version": 1,
+            "documents": [{
+                "path": "dialogues.txt",
+                "source": "Synthetic automated test fixture",
+                "license": "CC0-1.0",
+                "usage": "Automated native model integration test",
+            }],
+        }),
+        encoding="utf-8",
+    )
+
+    checkpoint = tmp_path / "native-v2-trained.pt"
+    training_result = train_native_model(
+        [str(corpus_dir)], checkpoint, steps=1, seed=20261106, device="cpu"
+    )
+    assert training_result["step"] == 1
+    assert training_result["pretrained_weights"] is False
+    assert checkpoint.is_file()
+
+    monkeypatch.setenv("FRIEREN_API_TOKEN", "a" * 40)
+    monkeypatch.setenv("FRIEREN_CHECKPOINT", str(checkpoint))
+    monkeypatch.setenv("FRIEREN_DEVICE", "cpu")
+    monkeypatch.delenv("FRIEREN_MODEL_BACKEND", raising=False)
+    clear_runtime_cache()
+
+    health = api_client.get("/health")
+    assert health.status_code == 200
+    assert health.json() == {
+        "status": "ready",
+        "model": "frieren-neural-transformer-v2",
+    }
+
+    response = api_client.post(
+        "/generate",
+        json={"prompt": "Merhaba", "max_new_tokens": 8, "top_k": 40},
+        headers={"Authorization": "Bearer " + "a" * 40},
+    )
+    assert response.status_code == 200
+    assert response.json()["model"] == "frieren-neural-transformer-v2"
+    assert response.json()["step"] == 1
+    assert response.json()["completion"].strip()
+    assert response.json()["text"].startswith("Merhaba")
+
+    monkeypatch.setenv("FRIEREN_WEB_PASSWORD", "p" * 24)
+    monkeypatch.setenv("FRIEREN_SESSION_SECRET", "s" * 48)
+    login = api_client.post(
+        "/web/login",
+        json={"password": "p" * 24},
+        headers={"Origin": "https://testserver"},
+    )
+    assert login.status_code == 200
+    web_response = api_client.post(
+        "/web/generate",
+        json={"prompt": "Merhaba", "max_new_tokens": 8, "top_k": 40},
+        headers={"Origin": "https://testserver"},
+    )
+    assert web_response.status_code == 200
+    assert web_response.json()["model"] == "frieren-neural-transformer-v2"
+    assert web_response.json()["step"] == 1
+    assert web_response.json()["completion"].strip()
