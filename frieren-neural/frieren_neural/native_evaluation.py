@@ -21,7 +21,6 @@ from .quality_evaluation import (
     render_markdown,
 )
 from .training import (
-    DIALOGUE_ENCODING_VERSION,
     DIALOGUE_SEPARATOR,
     LOSS_OBJECTIVE_VERSION,
     encode_dialogue_stream_with_loss_mask,
