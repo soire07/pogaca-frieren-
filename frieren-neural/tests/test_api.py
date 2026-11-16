@@ -501,39 +501,43 @@ def test_pretrained_backend_is_available_only_after_explicit_opt_in(monkeypatch)
 
 
 def test_native_v2_checkpoint_loads_and_generates_through_api(api_client, monkeypatch, tmp_path):
-    import torch
-    from frieren_neural.scratch_model import FrierenNeuralConfig, FrierenNeuralModel
-    from frieren_neural.tokenizer import BPETokenizer
+    import json
+    from frieren_neural.scratch_training import run as train_native_model
 
-    tokenizer = BPETokenizer.train(
-        ["Kullanıcı: Merhaba\nAsistan: Selam.\n\n---\n\nKullanıcı: Nasılsın?\nAsistan: İyiyim."],
-        vocab_size=280,
-        min_frequency=1,
+    corpus_dir = tmp_path / "licensed-native-corpus"
+    corpus_dir.mkdir()
+    dialogues = []
+    for dialogue_index in range(8):
+        assistant_text = " ".join(
+            f"kelime_{dialogue_index}_{token_index}" for token_index in range(600)
+        )
+        dialogues.append(
+            f"Kullanıcı: Soru {dialogue_index}: Bu kelime dizisini açıkla.\n"
+            f"Asistan: {assistant_text}"
+        )
+    (corpus_dir / "dialogues.txt").write_text(
+        "\n\n---\n\n".join(dialogues), encoding="utf-8"
     )
-    config = FrierenNeuralConfig(
-        vocab_size=tokenizer.vocab_size,
-        d_model=32,
-        n_layers=1,
-        n_heads=4,
-        n_kv_heads=2,
-        max_seq_len=64,
-        dropout=0.0,
+    (corpus_dir / "corpus_manifest.json").write_text(
+        json.dumps({
+            "schema_version": 1,
+            "documents": [{
+                "path": "dialogues.txt",
+                "source": "Synthetic automated test fixture",
+                "license": "CC0-1.0",
+                "usage": "Automated native model integration test",
+            }],
+        }),
+        encoding="utf-8",
     )
-    model = FrierenNeuralModel(config)
-    checkpoint = tmp_path / "native-v2.pt"
-    torch.save({
-        "format_version": 2,
-        "architecture_id": "frieren-neural-transformer-v2",
-        "pretrained_weights": False,
-        "model_config": config.to_dict(),
-        "model_state": model.state_dict(),
-        "tokenizer": tokenizer.to_dict(),
-        "step": 7,
-        "training_corpus_sha256": "a" * 64,
-        "manifest_sha256": "b" * 64,
-        "licenses": ["CC-BY-4.0"],
-        "training_config": {"steps": 7},
-    }, checkpoint)
+
+    checkpoint = tmp_path / "native-v2-trained.pt"
+    training_result = train_native_model(
+        [str(corpus_dir)], checkpoint, steps=1, seed=20261106, device="cpu"
+    )
+    assert training_result["step"] == 1
+    assert training_result["pretrained_weights"] is False
+    assert checkpoint.is_file()
 
     monkeypatch.setenv("FRIEREN_API_TOKEN", "a" * 40)
     monkeypatch.setenv("FRIEREN_CHECKPOINT", str(checkpoint))
@@ -550,13 +554,12 @@ def test_native_v2_checkpoint_loads_and_generates_through_api(api_client, monkey
 
     response = api_client.post(
         "/generate",
-        json={"prompt": "Merhaba", "max_new_tokens": 3, "top_k": 1},
+        json={"prompt": "Merhaba", "max_new_tokens": 8, "top_k": 40},
         headers={"Authorization": "Bearer " + "a" * 40},
     )
     assert response.status_code == 200
     assert response.json()["model"] == "frieren-neural-transformer-v2"
-    assert response.json()["step"] == 7
-    assert isinstance(response.json()["completion"], str)
+    assert response.json()["step"] == 1
     assert response.json()["completion"].strip()
     assert response.json()["text"].startswith("Merhaba")
 
@@ -570,10 +573,10 @@ def test_native_v2_checkpoint_loads_and_generates_through_api(api_client, monkey
     assert login.status_code == 200
     web_response = api_client.post(
         "/web/generate",
-        json={"prompt": "Merhaba", "max_new_tokens": 3, "top_k": 1},
+        json={"prompt": "Merhaba", "max_new_tokens": 8, "top_k": 40},
         headers={"Origin": "https://testserver"},
     )
     assert web_response.status_code == 200
     assert web_response.json()["model"] == "frieren-neural-transformer-v2"
-    assert web_response.json()["step"] == 7
+    assert web_response.json()["step"] == 1
     assert web_response.json()["completion"].strip()
