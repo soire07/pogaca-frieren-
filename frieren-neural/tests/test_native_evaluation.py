@@ -44,6 +44,8 @@ def _write_checkpoint(path, text):
         "format_version": 2,
         "architecture_id": "frieren-neural-transformer-v2",
         "pretrained_weights": False,
+        "dialogue_encoding_version": 2,
+        "loss_objective_version": 2,
         "model_config": config.to_dict(),
         "model_state": model.state_dict(),
         "tokenizer": tokenizer.to_dict(),
