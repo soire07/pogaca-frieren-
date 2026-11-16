@@ -66,9 +66,11 @@ def test_native_heldout_evaluation_scores_only_assistant_targets(tmp_path):
     model = FrierenNeuralModel(config)
 
     result = native_evaluation.evaluate_native_heldout(model, tokenizer, text)
+    from frieren_neural.training import encode_dialogue_stream_with_loss_mask
+    expected_ids, expected_mask = encode_dialogue_stream_with_loss_mask(text, tokenizer)
 
     assert result["split"] == "heldout"
-    assert result["sample_count"] > 0
+    assert result["sample_count"] == sum(expected_mask[1:])
     assert result["loss"] >= 0
     assert result["perplexity"] >= 1
     assert len(result["dataset_sha256"]) == 64
