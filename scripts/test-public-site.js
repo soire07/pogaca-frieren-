@@ -181,6 +181,56 @@ test('guild workshop embed saves require the linked Discord guild owner',async()
  assert.equal(saved,true);
 });
 
+
+test('shared navigation is grouped, deduplicated, and labels account-required destinations for guests', async () => {
+  const response = res();
+  assert.equal(await handlePublicSiteRequest(request('/kesfet'), response), true);
+  assert.equal(response.status, 200);
+  for (const group of ['kesfet', 'macera', 'rehber', 'neural', 'hesap']) assert.match(response.body, new RegExp('data-nav-group="' + group + '"'));
+  assert.match(response.body, /<details class="site-nav-group"/);
+  assert.match(response.body, /Discord ile giriş yap/);
+  assert.match(response.body, /data-auth-required="true"/);
+  assert.match(response.body, /Frieren Neural/);
+  assert.doesNotMatch(response.body, /href="\/lonca"/);
+  assert.equal((response.body.match(/data-nav-path="\/hesap-merkezi#account-settings"/g) || []).length, 1);
+  assert.doesNotMatch(response.body, /DİĞER BÖLÜMLER/);
+});
+
+test('Poğaça, command catalog, and Neural introduction remain public without Discord login', async () => {
+  const client = { commands: { size: 1, values: () => [{ data: { toJSON: () => ({ name: 'yardim', description: 'Yardım komutu' }) } }] }, isReady: () => true };
+  for (const path of ['/pogaca', '/komutlar', '/frieren-ai']) {
+    const response = res();
+    assert.equal(await handlePublicSiteRequest(request(path), response, { client }), true, path);
+    assert.equal(response.status, 200, path);
+    assert.doesNotMatch(response.body, /Discord ile giriş · Frieren/, path);
+    assert.match(response.body, /<main/, path);
+  }
+  const neural = res();
+  await handlePublicSiteRequest(request('/frieren-ai'), neural, { client });
+  assert.match(neural.body, /Frieren <em>Neural<\/em>/);
+  assert.match(neural.body, /merkezî zekâ katmanıdır/);
+  assert.doesNotMatch(neural.body, /ayrı bir AI servisi/);
+});
+
+test('legacy guild navigation redirects to the current adventurer dashboard', async () => {
+  const response = res();
+  const accountId = 'site_123e4567-e89b-12d3-a456-426614174000';
+  assert.equal(await handlePublicSiteRequest(request('/lonca', { id: accountId, username: 'Gezgin' }), response), true);
+  assert.equal(response.status, 302);
+  assert.equal(response.headers.Location, '/maceraci');
+});
+
+
+test('navigation controller defers focus until visible and closes semantically after its transition', async () => {
+  const source = await readFile(new URL('../public-assets/site-navigation.js', import.meta.url), 'utf8');
+  assert.match(source, /menu\.inert = true/);
+  assert.match(source, /menu\.inert = false/);
+  assert.match(source, /requestAnimationFrame\(\(\) => \{/);
+  assert.match(source, /transitionend/);
+  assert.match(source, /setTimeout\(finishClose, 220\)/);
+  assert.match(source, /summary, a\[href\]/);
+  assert.match(source, /target\.hash === currentHash/);
+});
 test('custom navigation script is served as a public static asset', async () => {
   const response = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-navigation.js', headers: {} }, response), true);
