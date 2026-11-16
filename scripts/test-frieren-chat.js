@@ -5,6 +5,7 @@ import {
   buildFrierenMessages,
   extractFrierenPrompt,
   isCodeOrSourceRequest,
+  isFrierenCreator,
   isFrierenMentionMessage
 } from '../frieren-chat.js';
 
@@ -19,6 +20,21 @@ test('Frieren responds only to a direct mention in a guild by a human user', () 
   assert.equal(isFrierenMentionMessage({ ...base, guild: null }, 'bot-1'), false);
   assert.equal(isFrierenMentionMessage({ ...base, author: { bot: true } }, 'bot-1'), false);
   assert.equal(isFrierenMentionMessage({ ...base, mentions: { users: { has: () => false } } }, 'bot-1'), false);
+});
+
+test('creator recognition requires an exact server-configured Discord user ID match', () => {
+  assert.equal(isFrierenCreator({ author: { id: '123456789012345678' } }, { FRIEREN_CREATOR_USER_ID: '123456789012345678' }), true);
+  assert.equal(isFrierenCreator({ author: { id: '123456789012345679' } }, { FRIEREN_CREATOR_USER_ID: '123456789012345678' }), false);
+  assert.equal(isFrierenCreator({ author: { id: '123456789012345678' } }, {}), false);
+  assert.equal(isFrierenCreator({ author: { id: '123456789012345678' } }, { FRIEREN_CREATOR_USER_ID: '  ' }), false);
+});
+
+test('only verified creator identity is injected into Frieren system context', () => {
+  const creatorPrompt = buildFrierenMessages({ userMessage: 'Merhaba', creatorIdentity: 'Soirəe' })[0].content;
+  const ordinaryPrompt = buildFrierenMessages({ userMessage: 'Merhaba' })[0].content;
+  assert.match(creatorPrompt, /yapımcın ve geliştiricin Soirəe/);
+  assert.match(creatorPrompt, /yönetici yetkisi.*vermez/);
+  assert.doesNotMatch(ordinaryPrompt, /yapımcın ve geliştiricin Soirəe/);
 });
 
 test('mention parser removes both Discord mention formats and rejects empty prompts', () => {
