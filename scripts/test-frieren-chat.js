@@ -1,4 +1,5 @@
 import { buildMemoryContext, extractExplicitMemories, getRelevantMemories } from '../frieren-memory.js';
+import { DEFAULT_FRIEREN_CHAT_SETTINGS } from '../frieren-chat-settings.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
