@@ -1151,3 +1151,20 @@ def test_gemini_health_fails_closed_when_key_or_data_ack_is_missing(api_client, 
     assert response.status_code == 503
     assert response.json() == {"status": "model_unavailable", "reason": "provider_credentials_missing"}
     assert "GEMINI_API_KEY" not in response.text
+
+def test_external_backends_require_global_research_opt_in(monkeypatch):
+    import frieren_neural.api as api
+
+    monkeypatch.delenv("FRIEREN_ALLOW_EXTERNAL_BACKENDS", raising=False)
+    for backend in ("ufakzeka", "groq", "gemini"):
+        monkeypatch.setenv("FRIEREN_MODEL_BACKEND", backend)
+        with pytest.raises(RuntimeError, match="FRIEREN_ALLOW_EXTERNAL_BACKENDS"):
+            api._model_backend()
+
+
+def test_scratch_backend_does_not_require_external_research_opt_in(monkeypatch):
+    import frieren_neural.api as api
+
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "scratch")
+    monkeypatch.delenv("FRIEREN_ALLOW_EXTERNAL_BACKENDS", raising=False)
+    assert api._model_backend() == "scratch"
