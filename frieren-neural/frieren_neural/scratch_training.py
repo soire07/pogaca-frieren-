@@ -12,6 +12,8 @@ from .tokenizer import BPETokenizer
 from .training import (
     _atomic_save,
     _sample_batch,
+    DIALOGUE_ENCODING_VERSION,
+    LOSS_OBJECTIVE_VERSION,
     encode_dialogue_stream_with_loss_mask,
     load_licensed_corpus,
     split_corpus_text,
@@ -146,6 +148,8 @@ def run(data_dirs, checkpoint, steps=6000, seed=20261106, device="cpu", resume=F
                 "format_version": 2,
                 "architecture_id": model.architecture_id,
                 "pretrained_weights": False,
+                "dialogue_encoding_version": DIALOGUE_ENCODING_VERSION,
+                "loss_objective_version": LOSS_OBJECTIVE_VERSION,
                 "model_config": config.to_dict(),
                 "model_state": model.state_dict(),
                 "tokenizer": tokenizer.to_dict(),
