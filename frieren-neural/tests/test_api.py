@@ -474,3 +474,27 @@ def test_shared_login_rate_limit_fails_closed_when_database_is_unavailable(monke
     with pytest.raises(HTTPException) as error:
         api._login_rate_limit(Request(scope))
     assert error.value.status_code == 503
+
+def test_scratch_backend_is_the_default(monkeypatch):
+    import frieren_neural.api as api
+
+    monkeypatch.delenv("FRIEREN_MODEL_BACKEND", raising=False)
+    monkeypatch.delenv("FRIEREN_ALLOW_PRETRAINED_BACKEND", raising=False)
+    assert api._model_backend() == "scratch"
+
+
+def test_pretrained_backend_requires_explicit_research_opt_in(monkeypatch):
+    import frieren_neural.api as api
+
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "ufakzeka")
+    monkeypatch.delenv("FRIEREN_ALLOW_PRETRAINED_BACKEND", raising=False)
+    with pytest.raises(RuntimeError, match="FRIEREN_ALLOW_PRETRAINED_BACKEND"):
+        api._model_backend()
+
+
+def test_pretrained_backend_is_available_only_after_explicit_opt_in(monkeypatch):
+    import frieren_neural.api as api
+
+    monkeypatch.setenv("FRIEREN_MODEL_BACKEND", "ufakzeka")
+    monkeypatch.setenv("FRIEREN_ALLOW_PRETRAINED_BACKEND", "1")
+    assert api._model_backend() == "ufakzeka"
