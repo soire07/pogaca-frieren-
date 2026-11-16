@@ -255,7 +255,7 @@ test('Frieren multilingual policy covers a broad ISO 639 language sample and lat
     });
     assert.match(messages[0].content, /EN SON mesajından/i, `latest-message rule missing for ${language}`);
     assert.match(messages[0].content, /ISO 639-1/i, `ISO 639-1 coverage policy missing for ${language}`);
-    assert.match(messages[0].content, /aynı dilde (?:yanıt|cevap) ver/i, `same-language rule missing for ${language}`);
+    assert.match(messages[0].content, /yanıtının tamamını aynı dilde yaz/i, `same-language rule missing for ${language}`);
     assert.equal(messages.at(-1).content, message, `latest user message changed for ${language}`);
   }
 });
