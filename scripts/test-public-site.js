@@ -302,10 +302,11 @@ test('authenticated homepage keeps the account identity and grouped navigation w
   assert.match(response.body, /MACERA & RPG/);
   assert.match(response.body, /HESAP & TOPLULUK/);
   assert.match(response.body, /Frieren Neural/);
-  assert.match(response.body, /Başarım Vitrini/);
+  assert.doesNotMatch(response.body, /Başarım Vitrini/);
   assert.match(response.body, /Yaşam Alanım/);
-  assert.ok(response.body.includes('href="/maceraci/profil#leaderboards"'));
-  assert.ok(response.body.includes('href="/maceraci/profil#privacy"'));
+  assert.ok(response.body.includes('href="/maceraci/profil"'));
+  assert.ok(!response.body.includes('href="/maceraci/profil#leaderboards"'));
+  assert.ok(!response.body.includes('href="/maceraci/profil#privacy"'));
   assert.match(response.body, /data-nav-path="\/maceraci" data-auth-required="true" href="\/maceraci"/);
   assert.ok(response.body.includes('<strong>Maceracı Panelim</strong>'));
   assert.match(response.body, /site-navigation\.js/);
@@ -1563,7 +1564,7 @@ test('account navigation stays global while RPG features remain grouped inside t
   assert.match(adventurer, /MACERA & RPG/);
   assert.equal((adventurer.match(/navLink\('\/maceraci\/profil/g) || []).length, 1);
   assert.doesNotMatch(adventurer, /\/maceraci\/profil#(?:progress|achievements|badges|battle-stats|leaderboards|privacy)/);
-  const quickNavStart = source.indexOf('const quickNav =');
+  const quickNavStart = source.indexOf('const quickNav=');
   const quickNavEnd = source.indexOf('const content =', quickNavStart);
   const profileQuickNav = source.slice(quickNavStart, quickNavEnd);
   for (const anchor of ['#progress', '#badges', '#achievements', '#battle-stats', '#leaderboards', '#privacy']) {
