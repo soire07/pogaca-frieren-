@@ -1,7 +1,8 @@
 """Pinned, license-checked import for the Turkish Chat Max 25K SFT corpus.
 
 Only visible user/assistant content is retained. Hidden reasoning and tool-call
-payloads are deliberately excluded from the training text.
+payloads are excluded. Conservative quality/privacy filters reject obvious
+secrets, email addresses, malformed turns and exact duplicate dialogues.
 """
 from __future__ import annotations
 
@@ -18,9 +19,20 @@ DATASET_ID = "cisimcik/turkish-chat-max-25k"
 DATASET_URL = f"https://huggingface.co/datasets/{DATASET_ID}"
 DATASET_LICENSE = "apache-2.0"
 EXPECTED_DATASET_ROWS = 24_543
-PREPROCESSING_VERSION = "2"
+PREPROCESSING_VERSION = "3"
 DIALOGUE_SEPARATOR = "\n\n---\n\n"
 REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
+MAX_TURN_CHARS = 20_000
+_SECRET_PATTERNS = (
+    re.compile(r"(?i)\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{20,})\b"),
+    re.compile(r"(?i)\b(?:api[_ -]?key|access[_ -]?token|password|parola)\s*[:=]\s*\S{8,}"),
+    re.compile(r"(?i)\bmfa\.[A-Za-z0-9_-]{30,}\b"),
+)
+_EMAIL_PATTERN = re.compile(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")
+
+
+def _contains_sensitive_content(content: str) -> bool:
+    return bool(_EMAIL_PATTERN.search(content) or any(pattern.search(content) for pattern in _SECRET_PATTERNS))
 
 
 def _escape_training_controls(content: str) -> str:
@@ -30,7 +42,7 @@ def _escape_training_controls(content: str) -> str:
 
 
 def _render_visible_dialogue(row: object) -> tuple[str, str] | None:
-    """Return (row id, dialogue), dropping non-Turkish, tool and malformed rows."""
+    """Return (row id, dialogue), dropping non-Turkish, private, tool and malformed rows."""
     if not isinstance(row, dict):
         return None
     row_id = row.get("id")
@@ -51,6 +63,8 @@ def _render_visible_dialogue(row: object) -> tuple[str, str] | None:
         content = message.get("content")
         if role == "system":
             if isinstance(content, str) and content.strip() and not turns:
+                if len(content) > MAX_TURN_CHARS or _contains_sensitive_content(content):
+                    return None
                 system_parts.append(_escape_training_controls(content.strip()))
             continue
         if role not in {"user", "assistant"}:
@@ -59,7 +73,10 @@ def _render_visible_dialogue(row: object) -> tuple[str, str] | None:
             return None
         if not isinstance(content, str) or not content.strip():
             continue
-        visible = _escape_training_controls(content.strip())
+        normalized = content.strip()
+        if len(normalized) > MAX_TURN_CHARS or _contains_sensitive_content(normalized):
+            return None
+        visible = _escape_training_controls(normalized)
         if role == "user" and not turns and system_parts:
             visible = "Talimat: " + "\n".join(system_parts) + "\nKullanıcı isteği: " + visible
         if turns and turns[-1][0] == role:
@@ -73,6 +90,8 @@ def _render_visible_dialogue(row: object) -> tuple[str, str] | None:
         return None
     if any(turns[index][0] == turns[index - 1][0] for index in range(1, len(turns))):
         return None
+    if any(len(text.strip()) < 2 for _, text in turns):
+        return None
 
     rendered = []
     for role, text in turns:
@@ -85,29 +104,43 @@ def _sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def _dedupe_key(dialogue: str) -> str:
+    normalized = " ".join(dialogue.casefold().split())
+    return _sha256_text(normalized)
+
+
 def build_corpus(rows: Iterable[object]) -> tuple[list[str], list[str], dict[str, int], list[str], list[str]]:
     """Filter and deterministically split conversations by stable row ID."""
     train_dialogues: list[str] = []
     heldout_dialogues: list[str] = []
     train_ids: list[str] = []
     heldout_ids: list[str] = []
-    seen: set[str] = set()
+    seen_ids: set[str] = set()
+    seen_dialogues: set[str] = set()
     stats = {
         "total_rows": 0,
         "non_turkish_or_tool_rows": 0,
         "malformed_or_empty_rows": 0,
         "duplicate_rows": 0,
+        "duplicate_dialogues": 0,
+        "sensitive_rows": 0,
         "accepted_rows": 0,
     }
     for row in rows:
         stats["total_rows"] += 1
         candidate_id = row.get("id") if isinstance(row, dict) else None
-        if isinstance(candidate_id, str) and candidate_id in seen:
+        if isinstance(candidate_id, str) and candidate_id in seen_ids:
             stats["duplicate_rows"] += 1
             continue
         rendered = _render_visible_dialogue(row)
         if rendered is None:
-            if isinstance(row, dict) and (
+            if isinstance(row, dict) and isinstance(row.get("messages"), list) and any(
+                isinstance(message, dict) and isinstance(message.get("content"), str)
+                and _contains_sensitive_content(message["content"])
+                for message in row["messages"]
+            ):
+                stats["sensitive_rows"] += 1
+            elif isinstance(row, dict) and (
                 row.get("language_mode") != "tr_only" or row.get("has_tools") is not False
             ):
                 stats["non_turkish_or_tool_rows"] += 1
@@ -115,7 +148,12 @@ def build_corpus(rows: Iterable[object]) -> tuple[list[str], list[str], dict[str
                 stats["malformed_or_empty_rows"] += 1
             continue
         row_id, dialogue = rendered
-        seen.add(row_id)
+        seen_ids.add(row_id)
+        duplicate_key = _dedupe_key(dialogue)
+        if duplicate_key in seen_dialogues:
+            stats["duplicate_dialogues"] += 1
+            continue
+        seen_dialogues.add(duplicate_key)
         stats["accepted_rows"] += 1
         bucket = int(hashlib.sha256(row_id.encode("utf-8")).hexdigest()[:8], 16) % 10
         if bucket == 0:
@@ -166,6 +204,9 @@ def _write_split(
                 "has_tools": False,
                 "visible_content_only": True,
                 "reasoning_field_included": False,
+                "obvious_secrets_and_emails_excluded": True,
+                "max_turn_characters": MAX_TURN_CHARS,
+                "exact_normalized_dialogue_deduplication": True,
             },
             "source_stats": stats,
         },
@@ -175,7 +216,8 @@ def _write_split(
             "license": "Apache-2.0",
             "usage": (
                 "Apache-2.0 permits model training. Only visible Turkish user/assistant content is included; "
-                "hidden reasoning fields and tool calls are excluded. Retain Apache-2.0 attribution."
+                "hidden reasoning fields, tool calls, obvious secrets and email addresses are excluded. "
+                "Retain Apache-2.0 attribution."
             ),
             "sha256": text_hash,
         }],
@@ -238,7 +280,7 @@ def prepare_turkish_chat_max_25k(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Import the pinned Apache-2.0 Turkish Chat Max 25K dataset, excluding reasoning and tools."
+        description="Import the pinned Apache-2.0 Turkish Chat Max 25K dataset with conservative quality/privacy filters."
     )
     parser.add_argument("--output", default="corpus/turkish-chat-max-25k")
     args = parser.parse_args()
