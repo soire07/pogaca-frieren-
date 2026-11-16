@@ -33,6 +33,8 @@ test('only verified creator identity is injected into Frieren system context', (
   const creatorPrompt = buildFrierenMessages({ userMessage: 'Merhaba', creatorIdentity: 'Soirəe' })[0].content;
   const ordinaryPrompt = buildFrierenMessages({ userMessage: 'Merhaba' })[0].content;
   assert.match(creatorPrompt, /yapımcın ve geliştiricin Soirəe/);
+  assert.match(creatorPrompt, /Fern de Soirəe'nin seni oluşturan.*bildiğini/);
+  assert.match(creatorPrompt, /Soirəe'nin kim olduğunu tekrar tekrar sormaz/);
   assert.match(creatorPrompt, /yönetici yetkisi.*vermez/);
   assert.doesNotMatch(ordinaryPrompt, /yapımcın ve geliştiricin Soirəe/);
 });
@@ -67,7 +69,7 @@ test('mention handler loads only this guild and user history, then stores both t
   const message = {
     guild: { id: 'guild-7' },
     channelId: 'channel-1',
-    author: { id: 'user-9', bot: false },
+    author: { id: '123456789012345678', bot: false },
     mentions: { users: { has: id => id === 'bot-1' } },
     content: '<@bot-1> Nasılsın?',
     reply: async payload => replies.push(payload)
@@ -83,12 +85,14 @@ test('mention handler loads only this guild and user history, then stores both t
     message,
     botUserId: 'bot-1',
     db,
-    env: { GEMINI_API_KEY: 'test-key' },
+    env: { GEMINI_API_KEY: 'test-key', FRIEREN_CREATOR_USER_ID: '123456789012345678' },
     fetchImpl: async (url, options) => {
       const body = JSON.parse(options.body);
       assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent');
       assert.equal(options.headers['x-goog-api-key'], 'test-key');
       assert.match(body.systemInstruction.parts[0].text, /Frieren/i);
+      assert.match(body.systemInstruction.parts[0].text, /yapımcın ve geliştiricin Soirəe/);
+      assert.match(body.systemInstruction.parts[0].text, /Fern de Soirəe'nin seni oluşturan/);
       assert.equal(body.generationConfig.maxOutputTokens, 700);
       assert.equal(body.contents.length, 1);
       assert.equal(body.contents[0].role, 'user');
@@ -101,8 +105,8 @@ test('mention handler loads only this guild and user history, then stores both t
   assert.equal(handled, true);
   const historyCall = calls.find(call => call.sql.includes('SELECT role, content'));
   const insertCall = calls.find(call => call.sql.includes('INSERT INTO frieren_chat_messages'));
-  assert.deepEqual(historyCall.params, ['guild-7', 'user-9', 'channel-1', 16]);
-  assert.deepEqual(insertCall.params, ['guild-7', 'user-9', 'channel-1', 'Nasılsın?', 'İyiyim. Sen nasılsın?']);
+  assert.deepEqual(historyCall.params, ['guild-7', '123456789012345678', 'channel-1', 16]);
+  assert.deepEqual(insertCall.params, ['guild-7', '123456789012345678', 'channel-1', 'Nasılsın?', 'İyiyim. Sen nasılsın?']);
   assert.equal(replies[0].content, 'İyiyim. Sen nasılsın?');
   assert.deepEqual(replies[0].allowedMentions, { parse: [] });
 });
