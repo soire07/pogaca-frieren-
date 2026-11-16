@@ -4,7 +4,9 @@
   "countingRule": "A feature is a distinct player-visible capability or meaningful interaction, not a file, command alias, UI line, or cosmetic wording change.",
   "statuses": [
     "implemented_needs_runtime_test",
-    "in_progress"
+    "in_progress",
+    "automated_verified",
+    "live_verified"
   ],
   "features": [
     {
@@ -39,7 +41,7 @@
       "id": "RPG-003",
       "name": "XP and level progression",
       "category": "Progression",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
@@ -206,7 +208,7 @@
       "id": "RPG-015",
       "name": "Boss loot and permanent bonuses",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "postgresql_integration_and_unit",
         "tests": [
@@ -303,7 +305,7 @@
       "id": "RPG-022",
       "name": "Browse item market",
       "category": "Economy",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "isolated_command_postgresql",
         "tests": [
@@ -413,7 +415,7 @@
       "id": "RPG-030",
       "name": "Daily missions and claimable rewards",
       "category": "Quests",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "isolated_command_postgresql",
         "tests": [
@@ -553,7 +555,7 @@
       "id": "RPG-040",
       "name": "Trade offer flow",
       "category": "Social",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "postgresql_integration",
         "tests": [
@@ -781,7 +783,7 @@
       "id": "RPG-052",
       "name": "Reserve duplicate character copies for pending trades",
       "category": "Social",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "postgresql_integration",
         "tests": [
@@ -1208,7 +1210,7 @@
       "id": "RPG-073",
       "name": "Grant a shared rare loot drop after full dungeon completion",
       "category": "Loot",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "postgresql_integration",
         "tests": [
@@ -1336,7 +1338,7 @@
       "id": "RPG-082",
       "name": "Reward raid victories with XP, coins and rare loot",
       "category": "Progression",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "postgresql_integration",
         "tests": [
@@ -4130,7 +4132,7 @@
       "id": "RPG-303",
       "name": "Increase boss special-attack bonus damage in later phases",
       "category": "Combat",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "unit",
         "tests": [
@@ -4208,7 +4210,7 @@
       "id": "RPG-309",
       "name": "Zoltraak mastery-10 awakening adds 8 damage",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
@@ -4221,7 +4223,7 @@
       "id": "RPG-310",
       "name": "Fireball mastery-10 awakening adds 10 damage",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
@@ -4234,7 +4236,7 @@
       "id": "RPG-311",
       "name": "Ice Lance mastery-10 awakening adds 10 percentage points of freeze chance",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
@@ -4247,7 +4249,7 @@
       "id": "RPG-312",
       "name": "Protective Barrier mastery-10 awakening adds 5 percentage points of damage reduction",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
@@ -4260,7 +4262,7 @@
       "id": "RPG-313",
       "name": "Healing Light mastery-10 awakening adds 10 healing",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
@@ -4273,7 +4275,7 @@
       "id": "RPG-314",
       "name": "Chain Lightning mastery-10 awakening adds 12 damage",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
@@ -4286,7 +4288,7 @@
       "id": "RPG-315",
       "name": "Stone Wall mastery-10 awakening adds 5 percentage points of damage reduction",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
@@ -4299,7 +4301,7 @@
       "id": "RPG-316",
       "name": "Mana Burst mastery-10 awakening adds 15 damage",
       "category": "Magic",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
@@ -4312,7 +4314,7 @@
       "id": "RPG-317",
       "name": "Rare discovery pity system guarantees an undiscovered rare location every 20 adventures",
       "category": "Exploration",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "unit_and_source_contract",
         "tests": [
@@ -4366,7 +4368,7 @@
       "id": "RPG-321",
       "name": "Daily quest chain rewards scale by player level and grant XP with level-up stat points",
       "category": "Progression",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "postgresql_integration_and_unit",
         "tests": [
@@ -4448,7 +4450,7 @@
       "id": "ARENA-004",
       "name": "Idempotent arena victory and participation rewards",
       "category": "Economy",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "postgresql_integration",
         "tests": [
@@ -4474,7 +4476,7 @@
       "id": "EVENT-002",
       "name": "Capacity-limited event registration with concurrency protection",
       "category": "Community",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "postgresql_integration",
         "tests": [
@@ -4487,7 +4489,7 @@
       "id": "SITE-001",
       "name": "One-time secure Discord-to-web character account linking",
       "category": "Web",
-      "status": "implemented_needs_runtime_test",
+      "status": "automated_verified",
       "testEvidence": {
         "level": "postgresql_integration",
         "tests": [
@@ -4913,7 +4915,7 @@
     }
   ],
   "count": 354,
-  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Original feature evidence was preserved. The previous optional 1,675-entry roadmap expansion was removed from the active inventory at the product owner's request; planned backlog items are not part of the feature count. RPG-002 profile evidence was upgraded to a dedicated PostgreSQL integration test because the command is internal-only and is not part of the 67-command public audit. Crafting/salvage evidence upgrade (2026-11-03): added disposable frieren_audit PostgreSQL command integrations for all ten recipe ingredient/output mappings, multi-quantity scaling, persisted rarity-weighted XP/profession/daily progress, advanced recipe level gates, deterministic level-4/5/10 refund boundaries, all ten salvage mappings, multi-copy proportional returns, equipped-item protection, and player-visible lifetime salvage totals. These use synthetic Discord interactions and are not live Discord E2E. Salvage catalog completeness fix (2026-11-03): /ekipmanparcala exposed all equipment catalog entries but lacked yields for the purchasable demon_armor and copper_ring items. Added partial recovery mappings and expanded the real PostgreSQL salvage matrix to exercise all twelve equipment types and multiple copies. Evidence classification refinement (2026-11-03): upgraded only rows with directly relevant existing unit, isolated-command behavioral, or real PostgreSQL assertions. Composite levels preserve source-contract limitations; synthetic Discord command audits are never labeled live Discord E2E. Adventure/treasure evidence upgrade (2026-11-03): added disposable PostgreSQL integration for production /macera and /hazineac commands, covering route selection/repeat rewards, first-discovery and class bonuses, route mastery, daily streak persistence, rare-discovery pity, five-fragment map completion, multi-chest opening, ownership checks, rare loot persistence, per-opening history and transaction rollback. The test uses synthetic Discord interactions and is not live Discord E2E. Dungeon evidence refinement (2026-11-03): added direct unit evidence for dungeon difficulty scaling and route-outcome risk/reward, plus PostgreSQL proof that a completed two-player dungeon distributes chest, rare and crafting loot to every participant. Player marketplace integration (2026-11-04): added ENT-038 for escrow-backed player listings, one-time concurrent purchase settlement, cancellation/refund, equipped-gear protection, and transaction history. Unit and disposable PostgreSQL evidence is linked; live Discord and web marketplace flows remain unverified. Social platform integration evidence (2026-11-04): added four separately scoped original feature records for friend-request consent, friend/rival relationships, atomic coin gifts and weekly reputation. Each references scripts/test-social-platform.integration.js, which runs in the isolated PostgreSQL workflow; all four PostgreSQL scenarios passed. These tests use synthetic identities and do not constitute live Discord E2E. Web social portal evidence (2026-11-04): added SOCIAL-005 for /maceraci/sosyal. scripts/test-public-site.js verifies guild-linked account scoping, friend/rival/pending request/reputation rendering, successful friend-request route execution, CSRF enforcement and the guild social feature toggle. Route tests use mocked database boundaries; they are not live browser/OAuth/Discord E2E. Latest code verification at PR head 0b583ce7bea3d320bbab9103172b66d96f2896c9 (2026-11-04): 795/795 main bot/regression tests passed; isolated command audit covered 77 scenarios (67 PASS, 0 FAIL, 10 inconclusive); 103 disposable PostgreSQL integration test cases passed. These are synthetic Discord interactions and isolated database tests, not live Discord E2E, browser OAuth, production migration or deployment proof. Evidence reconciliation on 2026-11-14: added ENT-041 for the room-scoped housing catalog/editor, ENT-042 for cosmetic loadouts and public showcase effects, and EVENT-003 for linked-player event progress display. Evidence is limited to the named unit/public-route tests; no live Discord, production account, reminder delivery, or reward settlement claim is made. The active inventory intentionally contains implemented feature records only; auditComplete remains false until runtime verification is complete. Inventory reconciliation on 2026-11-14: added ENT-043 through ENT-049 for card variants, guild embed templates, safe custom commands/spell automation, team leagues, opt-in anime news digests, the interactive world atlas and player-market price alerts. These entries are supported by named automated test files with explicit live-verification limits; no feature was promoted to production-verified. Creature variant fairness update on 2026-11-14: added ENT-050 for a per-guild shiny pity counter. The 1% shiny roll remains; after 99 normal spawns the next spawn is shiny, and the guarantee resets only after a successful shiny catch. Unit and isolated PostgreSQL tests cover the threshold and transactional reset; live Discord delivery is not claimed. Inventory scope decision (2026-11-15): removed all 1,675 ROADMAP/planned records from the active inventory at the owner's request. The 354 existing feature records and their evidence links are preserved. No planned feature count or 2,000-feature target remains. auditComplete stays false because the remaining records still require runtime verification.",
+  "auditNotes": "Evidence is attached only where an existing automated test directly supports the stated scope. Source-contract checks prove the tested source wiring/guard clauses, not live runtime behavior. PostgreSQL integration and unit evidence are labeled separately. Partial/helper/database-only evidence is not a claim of full end-to-end verification. Features without testEvidence remain unaudited at the feature-row level; auditComplete remains false until every feature has direct evidence. Additional isolated-command evidence is sourced from scripts/live-command-test.js and the Frieren isolated command audit workflow. It uses synthetic Discord interactions and the isolated frieren_test schema; it is not a live Discord API test. The isolated command runner verifies only the explicit database assertions named in its behavioralChecks; it does not imply that every option or every branch of each command was exercised. Additional evidence pass on 2026-11-03: directly related existing tests were linked to feature rows only with explicit scope limitations; unit/source-contract evidence is not presented as live Discord or exhaustive runtime proof. Evidence links are conservative: tests that cover only catalog/source wiring explicitly say so and are not counted as full player-flow verification. Original feature evidence was preserved. The previous optional 1,675-entry roadmap expansion was removed from the active inventory at the product owner's request; planned backlog items are not part of the feature count. RPG-002 profile evidence was upgraded to a dedicated PostgreSQL integration test because the command is internal-only and is not part of the 67-command public audit. Crafting/salvage evidence upgrade (2026-11-03): added disposable frieren_audit PostgreSQL command integrations for all ten recipe ingredient/output mappings, multi-quantity scaling, persisted rarity-weighted XP/profession/daily progress, advanced recipe level gates, deterministic level-4/5/10 refund boundaries, all ten salvage mappings, multi-copy proportional returns, equipped-item protection, and player-visible lifetime salvage totals. These use synthetic Discord interactions and are not live Discord E2E. Salvage catalog completeness fix (2026-11-03): /ekipmanparcala exposed all equipment catalog entries but lacked yields for the purchasable demon_armor and copper_ring items. Added partial recovery mappings and expanded the real PostgreSQL salvage matrix to exercise all twelve equipment types and multiple copies. Evidence classification refinement (2026-11-03): upgraded only rows with directly relevant existing unit, isolated-command behavioral, or real PostgreSQL assertions. Composite levels preserve source-contract limitations; synthetic Discord command audits are never labeled live Discord E2E. Adventure/treasure evidence upgrade (2026-11-03): added disposable PostgreSQL integration for production /macera and /hazineac commands, covering route selection/repeat rewards, first-discovery and class bonuses, route mastery, daily streak persistence, rare-discovery pity, five-fragment map completion, multi-chest opening, ownership checks, rare loot persistence, per-opening history and transaction rollback. The test uses synthetic Discord interactions and is not live Discord E2E. Dungeon evidence refinement (2026-11-03): added direct unit evidence for dungeon difficulty scaling and route-outcome risk/reward, plus PostgreSQL proof that a completed two-player dungeon distributes chest, rare and crafting loot to every participant. Player marketplace integration (2026-11-04): added ENT-038 for escrow-backed player listings, one-time concurrent purchase settlement, cancellation/refund, equipped-gear protection, and transaction history. Unit and disposable PostgreSQL evidence is linked; live Discord and web marketplace flows remain unverified. Social platform integration evidence (2026-11-04): added four separately scoped original feature records for friend-request consent, friend/rival relationships, atomic coin gifts and weekly reputation. Each references scripts/test-social-platform.integration.js, which runs in the isolated PostgreSQL workflow; all four PostgreSQL scenarios passed. These tests use synthetic identities and do not constitute live Discord E2E. Web social portal evidence (2026-11-04): added SOCIAL-005 for /maceraci/sosyal. scripts/test-public-site.js verifies guild-linked account scoping, friend/rival/pending request/reputation rendering, successful friend-request route execution, CSRF enforcement and the guild social feature toggle. Route tests use mocked database boundaries; they are not live browser/OAuth/Discord E2E. Latest code verification at PR head 0b583ce7bea3d320bbab9103172b66d96f2896c9 (2026-11-04): 795/795 main bot/regression tests passed; isolated command audit covered 77 scenarios (67 PASS, 0 FAIL, 10 inconclusive); 103 disposable PostgreSQL integration test cases passed. These are synthetic Discord interactions and isolated database tests, not live Discord E2E, browser OAuth, production migration or deployment proof. Evidence reconciliation on 2026-11-14: added ENT-041 for the room-scoped housing catalog/editor, ENT-042 for cosmetic loadouts and public showcase effects, and EVENT-003 for linked-player event progress display. Evidence is limited to the named unit/public-route tests; no live Discord, production account, reminder delivery, or reward settlement claim is made. The active inventory intentionally contains implemented feature records only; auditComplete remains false until runtime verification is complete. Inventory reconciliation on 2026-11-14: added ENT-043 through ENT-049 for card variants, guild embed templates, safe custom commands/spell automation, team leagues, opt-in anime news digests, the interactive world atlas and player-market price alerts. These entries are supported by named automated test files with explicit live-verification limits; no feature was promoted to production-verified. Creature variant fairness update on 2026-11-14: added ENT-050 for a per-guild shiny pity counter. The 1% shiny roll remains; after 99 normal spawns the next spawn is shiny, and the guarantee resets only after a successful shiny catch. Unit and isolated PostgreSQL tests cover the threshold and transactional reset; live Discord delivery is not claimed. Inventory scope decision (2026-11-15): removed all 1,675 ROADMAP/planned records from the active inventory at the owner's request. The 354 existing feature records and their evidence links are preserved. No planned feature count or 2,000-feature target remains. auditComplete stays false because the remaining records still require runtime verification. Verification status reconciliation (2026-11-16): 22 of the 354 active features are marked automated_verified only where feature-evidence.json maps a named automated or isolated PostgreSQL integration test with explicit assertions and limitations. The other 332 remain implemented_needs_runtime_test. No feature is live_verified; auditComplete remains false. These are CI-level evidence labels, not production/live Discord verification.",
   "plannedFeatureCount": 0,
   "originalFeatureEvidenceLinkedCount": 354
 }
