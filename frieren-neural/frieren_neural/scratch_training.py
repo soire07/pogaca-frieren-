@@ -47,6 +47,10 @@ def _validate_resume_payload(payload, *, training_corpus_sha256: str, manifest_s
     checkpoint_step = payload.get("step")
     if isinstance(checkpoint_step, bool) or not isinstance(checkpoint_step, int) or checkpoint_step < 0:
         raise ValueError("Resume checkpoint step must be a non-negative integer.")
+    if payload["dialogue_encoding_version"] != DIALOGUE_ENCODING_VERSION:
+        raise ValueError("Resume checkpoint dialogue encoding version is unsupported.")
+    if payload["loss_objective_version"] != LOSS_OBJECTIVE_VERSION:
+        raise ValueError("Resume checkpoint loss objective version is unsupported.")
     if not isinstance(payload["optimizer_state"], dict):
         raise ValueError("Resume checkpoint optimizer state is invalid.")
     if not isinstance(payload["batch_generator_state"], torch.Tensor) or not isinstance(payload["torch_rng_state"], torch.Tensor):
