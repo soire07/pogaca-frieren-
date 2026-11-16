@@ -192,7 +192,7 @@ test('Frieren chat requires every reply to follow the language of the latest use
       history: [{ role: 'assistant', content: 'Önceki yanıt Türkçeydi.' }],
       userMessage: item.message
     });
-    assert.match(messages[0].content, /son kullanıcı mesajından/i);
+    assert.match(messages[0].content, /EN SON mesajından/i);
     assert.match(messages[0].content, /aynı dilde yanıt ver/i);
     assert.equal(messages.at(-1).content, item.message);
   }
