@@ -877,8 +877,9 @@ function publicSeoLandingPage() {
 }
 
 export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
-  if (await handleGuildDashboardRequest(req, res, { client, db })) return true;
   const url = new URL(req.url, 'http://localhost');
+  if (req.method === 'GET' && url.pathname === '/lonca') { res.writeHead(302, { Location: '/maceraci', 'Cache-Control': 'no-store' }); res.end(); return true; }
+  if (await handleGuildDashboardRequest(req, res, { client, db })) return true;
   if(req.method==='POST'&&url.pathname==='/api/chat-media/upload'){
     const session=readPublicSiteSession(cookies(req)[SITE_COOKIE],process.env.ADMIN_SESSION_SECRET);
     if(!requireSiteAccount(res,session?.id))return true;
@@ -1413,7 +1414,6 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  if (req.method === 'GET' && url.pathname === '/lonca') { res.writeHead(302, { Location: '/maceraci', 'Cache-Control': 'no-store' }); res.end(); return true; }
   const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/hizmet-kosullari', '/gizlilik-politikasi', '/destek', '/maceraci/oyuncu', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/profil', '/profil/media', '/profil/media/public', '/hesap-merkezi', '/bildirimler', '/pazar', '/ansiklopedi', '/ara']);
   const isPublicProfilePath=url.pathname.startsWith('/u/');
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname) && !isPublicProfilePath) return false;

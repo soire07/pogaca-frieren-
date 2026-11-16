@@ -306,7 +306,7 @@ test('authenticated homepage keeps the account identity and grouped navigation w
   assert.match(response.body, /Yaşam Alanım/);
   assert.ok(response.body.includes('href="/maceraci/profil#leaderboards"'));
   assert.ok(response.body.includes('href="/maceraci/profil#privacy"'));
-  assert.ok(response.body.includes('data-nav-path="/maceraci" href="/maceraci"'));
+  assert.match(response.body, /data-nav-path="\/maceraci" data-auth-required="true" href="\/maceraci"/);
   assert.ok(response.body.includes('<strong>Maceracı Panelim</strong>'));
   assert.match(response.body, /site-navigation\.js/);
   assert.match(response.body, /gif-gallery/);
@@ -390,15 +390,17 @@ test('adventurer panel fails closed when its database is unavailable for a valid
   assert.match(response.body, /veritabanına/);
 });
 
-test('all public pages require a valid Discord session', async () => {
-  for (const path of ['/pogaca', '/frieren-ai', '/assets/frieren.gif']) {
+test('product information and reference pages are public while player operations remain account-gated', async () => {
+  for (const path of ['/pogaca', '/komutlar', '/frieren-ai']) {
+    const anonymous = res();
+    assert.equal(await handlePublicSiteRequest({ method: 'GET', url: path, headers: {} }, anonymous), true, path);
+    assert.equal(anonymous.status, 200, path);
+  }
+  for (const path of ['/maceraci', '/pazar', '/hesap-merkezi']) {
     const anonymous = res();
     await handlePublicSiteRequest({ method: 'GET', url: path, headers: {} }, anonymous);
     assert.equal(anonymous.status, 302, path);
-    const authenticated = res();
-    const handled = await handlePublicSiteRequest(request(path), authenticated);
-    assert.equal(handled, true, path);
-    if (!path.startsWith('/assets/')) assert.equal(authenticated.status, 200, path);
+    assert.equal(anonymous.headers.Location, '/login', path);
   }
 });
 
@@ -511,7 +513,8 @@ test('homepage renders the signed-in user profile with the completed starry bann
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
   assert.ok(String(stylesheet.body).includes('.profile-banner-art img{display:block'));
   assert.ok(String(stylesheet.body).includes('.profile-label{display:block'));
-  assert.match(String(stylesheet.body), /\.site-menu-toggle\{[^}]*transform:translateY\(-50%\)/);
+  assert.match(String(stylesheet.body), /\.site-menu-toggle\{[^}]*position:fixed/);
+  assert.match(String(stylesheet.body), /\.site-menu-toggle:hover\{[^}]*translateY\(-2px\)/);
   assert.ok(String(stylesheet.body).includes('.hero{position:relative;isolation:isolate'));
 });
 test('shared stylesheet is publicly cacheable for authenticated and auth pages', async () => {
@@ -643,7 +646,7 @@ test('homepage declares the existing Frieren brand favicon and serves the SVG as
   const homepage = res();
   await handlePublicSiteRequest(request('/kesfet'), homepage);
   assert.match(homepage.body, /<link rel="icon" type="image\/svg\+xml" href="\/assets\/site-avatar\.svg">/);
-  assert.match(homepage.body, /href="\/lonca">Maceracı Loncası/);
+  assert.match(homepage.body, /href="\/maceraci">Maceracı Panelim/);
   assert.match(homepage.body, /Frieren modüllerini düzenle/);
   const favicon = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-avatar.svg', headers: {} }, favicon), true);
