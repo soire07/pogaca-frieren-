@@ -238,6 +238,11 @@ def _model_backend() -> str:
     backend = os.environ.get("FRIEREN_MODEL_BACKEND", "scratch").strip().lower()
     if backend not in {"scratch", "ufakzeka", "groq", "gemini"}:
         raise RuntimeError("FRIEREN_MODEL_BACKEND must be 'scratch', 'ufakzeka', 'groq', or 'gemini'.")
+    if backend != "scratch" and os.environ.get("FRIEREN_ALLOW_EXTERNAL_BACKENDS") != "1":
+        raise RuntimeError(
+            "External model backends are disabled by default; set FRIEREN_ALLOW_EXTERNAL_BACKENDS=1 "
+            "only for isolated research. Production must use the native scratch-trained Neural model."
+        )
     return backend
 
 
