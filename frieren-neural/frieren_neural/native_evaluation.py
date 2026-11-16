@@ -81,7 +81,7 @@ def evaluate_native_heldout(
         stride = max(1, context_size // 2)
         for target_start in range(1, len(ids), stride):
             target_stop = min(target_start + stride, len(ids))
-            input_start = max(0, target_start - context_size + 1)
+            input_start = max(0, target_start - stride)
             x = ids[input_start:target_stop - 1].unsqueeze(0).to(target_device)
             target_ids = ids[input_start + 1:target_stop]
             target_mask = mask[input_start + 1:target_stop].clone()
