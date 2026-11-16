@@ -125,6 +125,7 @@ def evaluate_native_checkpoint(
     model, tokenizer, metadata = loaded
     heldout_text, manifests, provenance_values = _load_split(heldout_dirs)
     heldout = evaluate_native_heldout(model, tokenizer, heldout_text, device=device)
+    heldout["manifest_sha256"] = provenance_values[0]
     heldout["checkpoint_training_loss_objective_version"] = 2
 
     outputs = []
