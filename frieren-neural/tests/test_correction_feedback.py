@@ -68,6 +68,29 @@ def test_approval_requires_two_distinct_reviewers_and_evidence():
         )
 
 
+def test_approval_rejects_candidate_content_tampering():
+    candidate = _candidate()
+    candidate["corrected_answer"] = "Değiştirilmiş cevap"
+
+    with pytest.raises(ValueError, match="integrity"):
+        approve_correction(
+            candidate,
+            reviewer_identity_hashes=["a" * 64, "b" * 64],
+            evidence_checked=True,
+            decision="approve",
+        )
+
+
+def test_approval_requires_well_formed_reviewer_identity_hashes():
+    with pytest.raises(ValueError, match="reviewer"):
+        approve_correction(
+            _candidate(),
+            reviewer_identity_hashes=["reviewer-one", "reviewer-two"],
+            evidence_checked=True,
+            decision="approve",
+        )
+
+
 def test_only_approved_evidence_checked_corrections_can_be_exported():
     candidate = _candidate()
     approved = approve_correction(
@@ -83,6 +106,32 @@ def test_only_approved_evidence_checked_corrections_can_be_exported():
     assert exported[0]["prompt"] == candidate["prompt"]
     assert exported[0]["corrected_answer"] == candidate["corrected_answer"]
     assert exported[0]["source_record_id"] == candidate["record_id"]
+
+
+def test_export_rejects_tampered_approved_record():
+    candidate = _candidate()
+    approved = approve_correction(
+        candidate,
+        reviewer_identity_hashes=["a" * 64, "b" * 64],
+        evidence_checked=True,
+        decision="approve",
+    )
+    approved["corrected_answer"] = "Değiştirilmiş cevap"
+
+    assert export_approved_corrections([approved]) == []
+
+
+def test_export_rejects_malformed_reviewer_identity_hashes():
+    candidate = _candidate()
+    approved = approve_correction(
+        candidate,
+        reviewer_identity_hashes=["a" * 64, "b" * 64],
+        evidence_checked=True,
+        decision="approve",
+    )
+    approved["review"]["reviewer_identity_hashes"] = ["reviewer-one", "reviewer-two"]
+
+    assert export_approved_corrections([approved]) == []
 
 
 def test_rejected_correction_never_enters_training_export():
