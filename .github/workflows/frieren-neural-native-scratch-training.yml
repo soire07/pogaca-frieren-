@@ -50,6 +50,27 @@ jobs:
           print("NATIVE_MODEL_PROVENANCE=VERIFIED")
           print("PARAMETERS=" + str(sum(t.numel() for t in p["model_state"].values())))
           PY
+      - name: Evaluate independent heldout splits and fixed Turkish benchmark
+        run: |
+          frieren-neural-evaluate-native --checkpoint ./checkpoints/frieren-neural-v2.pt \
+            --heldout ./corpus/turkish-chat-max-25k/heldout \
+            --heldout ./corpus/turkish-reasoning-v1/heldout \
+            --output-dir ./quality-reports/native-v2 --device cpu
+      - name: Assert evaluation evidence remains blocked pending human review
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path("./quality-reports/native-v2/quality-report.json").read_text(encoding="utf-8"))
+          assert report["decision"] == "NOT READY"
+          assert report["human_review"]["completed"] is False
+          assert len(report["outputs"]) == 24
+          heldout=report["heldout_metrics"]
+          assert heldout["split"] == "heldout" and heldout["sample_count"] > 0
+          assert heldout["loss_objective_version"] == 2
+          assert heldout["checkpoint_training_loss_objective_version"] == 2
+          print("NATIVE_HELDOUT_AND_24_PROMPT_EVIDENCE=VERIFIED")
+          PY
       - name: Upload checkpoint and evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -60,5 +81,10 @@ jobs:
             frieren-neural/native-training-metrics.json
             frieren-neural/corpus/turkish-chat-max-25k/train/corpus_manifest.json
             frieren-neural/corpus/turkish-reasoning-v1/train/corpus_manifest.json
+            frieren-neural/corpus/turkish-chat-max-25k/heldout/corpus_manifest.json
+            frieren-neural/corpus/turkish-reasoning-v1/heldout/corpus_manifest.json
+            frieren-neural/quality-reports/native-v2/quality-report.json
+            frieren-neural/quality-reports/native-v2/quality-report.md
+            frieren-neural/quality-reports/native-v2/human-scores.template.json
           if-no-files-found: warn
           retention-days: 30
