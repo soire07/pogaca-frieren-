@@ -173,14 +173,15 @@ print(generate_text(model, tokenizer, "Frieren ", max_new_tokens=80))
 
 The FastAPI service exposes health, authenticated server-to-server generation, and a same-origin browser chat. Poğaça Frieren is the only Discord client and calls this inference core; Neural itself does not run a separate Discord bot.
 
-### Recommended higher-quality test backend: Gemini 3.8 Flash (Free tier)
+### Temporary research-only provider comparison: Gemini 3.8 Flash (Free tier)
 
-The API supports an explicitly selected `FRIEREN_MODEL_BACKEND=gemini` backend using Google's stable `gemini-3.8-flash` model. It uses the REST API and Python standard library only; no SDK dependency or paid plan is required. The default reasoning level is high. The backend is opt-in and never becomes active automatically.
+The API supports a temporary `gemini` comparison backend using Google's stable `gemini-3.8-flash` model. It is disabled unless `FRIEREN_ALLOW_EXTERNAL_BACKENDS=1` is explicitly set; do not enable it for production traffic. It uses the REST API and Python standard library only; no SDK dependency or paid plan is required. The default reasoning level is high. The backend is opt-in and never becomes active automatically.
 
 Configure these variables on the **isolated Neural test service only**:
 
 ```bash
 FRIEREN_MODEL_BACKEND=gemini
+FRIEREN_ALLOW_EXTERNAL_BACKENDS=1
 GEMINI_API_KEY=<Google AI Studio key stored as a Render secret>
 FRIEREN_GEMINI_FREE_TIER_DATA_ACK=1
 FRIEREN_GEMINI_THINKING_LEVEL=high
@@ -190,10 +191,10 @@ FRIEREN_GEMINI_THINKING_LEVEL=high
 
 Gemini Free tier has limited model access and quotas; check the account's current Google AI Studio limits before testing. See [Gemini models](https://ai.google.dev/gemini-api/docs/models), [Gemini 3.8 Flash reasoning](https://ai.google.dev/gemini-api/docs/generate-content/thinking), and [Gemini API pricing and data-use terms](https://ai.google.dev/gemini-api/docs/pricing).
 
-Groq remains available only as a legacy, explicit backend for comparison. It is not the recommended quality candidate. The local `scratch` and `ufakzeka` backends remain unchanged.
+Groq remains available only as a legacy, explicit research backend for comparison and also requires `FRIEREN_ALLOW_EXTERNAL_BACKENDS=1`. It is not the production model. The scratch-trained Neural backend remains the only production target.
 ### Turkish-first model backend
 
-The serving API supports `FRIEREN_MODEL_BACKEND=ufakzeka`. This selects `ufakai/ufakzeka-1`, a Turkish-first 151M-parameter chat model published under Apache-2.0. Its recommended Q8 GGUF is approximately 196 MB. The runtime downloads it on first model load, verifies the published SHA-256 before accepting it, uses memory mapping, and keeps one model instance per process. It uses the model's native user/assistant chat template; do not inject a system-role message because the released chat model was trained without system messages.
+The serving API supports `FRIEREN_MODEL_BACKEND=ufakzeka` only as a research comparison after setting `FRIEREN_ALLOW_EXTERNAL_BACKENDS=1`. This selects `ufakai/ufakzeka-1`, a Turkish-first 151M-parameter chat model published under Apache-2.0. Its recommended Q8 GGUF is approximately 196 MB. The runtime downloads it on first model load, verifies the published SHA-256 before accepting it, uses memory mapping, and keeps one model instance per process. It uses the model's native user/assistant chat template; do not inject a system-role message because the released chat model was trained without system messages.
 
 The model is not perfect: its published evaluation documents limits in factual recall, arithmetic over multiple turns, and some safety edge cases. It is a substantially better Turkish starting point than training the current 128-dimensional scratch model from chat-only data, but it still requires Frieren-specific supervised tuning and measured review before production rollout. No paid API is used.
 
@@ -203,6 +204,7 @@ Install the serving extra and start the service:
 ```bash
 pip install -e ".[serve]"
 export FRIEREN_MODEL_BACKEND=ufakzeka
+export FRIEREN_ALLOW_EXTERNAL_BACKENDS=1  # isolated research only
 # Optional: choose a persistent model-cache path; default is models/ufakzeka-1-q8_0.gguf
 export FRIEREN_GGUF_MODEL_PATH=models/ufakzeka-1-q8_0.gguf
 # Scratch research backend remains available with FRIEREN_MODEL_BACKEND=scratch and FRIEREN_CHECKPOINT=...
