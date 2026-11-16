@@ -29,7 +29,7 @@ def run(data_dirs,checkpoint,steps=6000,seed=20261106,device="cpu"):
    with torch.no_grad():
     xx,yy=_sample_batch(val,batch_size=4,block_size=256,device=torch.device(device),generator=g,target_mask=vm);_,vl=model(xx,yy)
    model.train()
-   print(json.dumps({"step":step,"total_steps":steps,"train_loss":float(loss),"validation_loss":float(vl)},ensure_ascii=False),flush=True)
+   print(json.dumps({"step":step,"total_steps":steps,"train_loss":float(loss.detach().item()),"validation_loss":float(vl.detach().item())},ensure_ascii=False),flush=True)
    payload={"format_version":2,"architecture_id":model.architecture_id,"pretrained_weights":False,"model_config":c.to_dict(),"model_state":model.state_dict(),"tokenizer":tok.to_dict(),"step":step,"seed":seed,"training_corpus_sha256":hashlib.sha256(train_text.encode()).hexdigest(),"manifest_sha256":hashlib.sha256("".join(manifests).encode()).hexdigest(),"licenses":sorted(set(licenses)),"training_config":{"steps":steps,"d_model":256,"n_layers":6,"n_heads":8,"n_kv_heads":4,"context":256}}
    _atomic_save(payload,Path(checkpoint))
  return {"step":steps,"architecture_id":model.architecture_id,"pretrained_weights":False}
