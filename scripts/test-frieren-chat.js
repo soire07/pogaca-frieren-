@@ -1,4 +1,5 @@
 import { buildMemoryContext, extractExplicitMemories, getRelevantMemories } from '../frieren-memory.js';
+import { DEFAULT_FRIEREN_CHAT_SETTINGS } from '../frieren-chat-settings.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -110,6 +111,61 @@ test('mention handler loads only this guild and user history, then stores both t
   assert.deepEqual(insertCall.params, ['guild-7', '123456789012345678', 'channel-1', 'Nasılsın?', 'İyiyim. Sen nasılsın?']);
   assert.equal(replies[0].content, 'İyiyim. Sen nasılsın?');
   assert.deepEqual(replies[0].allowedMentions, { parse: [] });
+});
+
+test('mention handler starts typing, loads independent context concurrently, and does not delay reply for history persistence', async () => {
+  const pendingReads = [];
+  let finishInsert;
+  const replies = [];
+  let typingCalls = 0;
+  const message = {
+    guild: { id: 'guild-fast' },
+    channelId: 'channel-fast',
+    channel: { sendTyping: async () => { typingCalls += 1; } },
+    author: { id: '123456789012345678', bot: false },
+    mentions: { users: { has: id => id === 'bot-fast' } },
+    content: '<@bot-fast> Nasılsın?',
+    reply: async payload => { replies.push(payload); }
+  };
+  const db = {
+    query: async (sql, params) => {
+      if (sql.startsWith('SELECT')) {
+        return new Promise(resolve => pendingReads.push({ sql, params, resolve }));
+      }
+      if (sql.includes('INSERT INTO frieren_chat_messages')) {
+        return new Promise(resolve => { finishInsert = resolve; });
+      }
+      return { rows: [] };
+    }
+  };
+
+  const handling = (await import('../frieren-chat.js')).handleFrierenMentionMessage({
+    message,
+    botUserId: 'bot-fast',
+    db,
+    env: { GEMINI_API_KEY: 'test-key' },
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({ candidates: [{ content: { parts: [{ text: 'İyiyim.' }] } }] })
+    })
+  });
+
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(typingCalls, 1);
+  assert.equal(pendingReads.length, 1, 'chat settings must be checked before reading personal context');
+  assert.match(pendingReads[0].sql, /owner_settings/);
+  pendingReads[0].resolve({ rows: [{ setting_value: DEFAULT_FRIEREN_CHAT_SETTINGS }] });
+
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(pendingReads.length, 3, 'memories and conversation history should load concurrently after chat is enabled');
+  for (const read of pendingReads.slice(1)) read.resolve({ rows: [] });
+
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(replies[0]?.content, 'İyiyim.', 'the user should receive the answer before history persistence finishes');
+  assert.equal(typeof finishInsert, 'function');
+
+  finishInsert({ rows: [] });
+  assert.equal(await handling, true);
 });
 
 test('mention handler ignores messages without the bot mention and gives a safe setup response without an API key', async () => {
