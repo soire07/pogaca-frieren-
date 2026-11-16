@@ -217,7 +217,7 @@ test('public homepage introduces Poğaça Frieren, offers the bot invite and sho
     assert.match(response.body, /data-platform-metric="guilds"/);
     assert.match(response.body, /class="[^"]*\blanding-feature-card\b[^"]*"/);
     assert.match(response.body, /class="landing-command-list"/);
-    assert.match(response.body, /href="\/assets\/site\.css\?v=site-polish-20261116-1"/);
+    assert.match(response.body, /href="\/assets\/site\.css\?v=cosmetics-401-1&site-polish=20261116-1"/);
     assert.match(response.body, /Discord sunucuna ekle/);
     assert.match(response.body, /discord.com\/oauth2\/authorize/);
     assert.match(response.body, /Komutları incele/);
