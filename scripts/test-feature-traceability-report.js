@@ -75,3 +75,10 @@ test('planned roadmap records are rejected from the active inventory', () => {
     commandReport: { results: [] }
   }), /PLANNED_FEATURES_NOT_ALLOWED/);
 });
+
+test('ROADMAP-prefixed IDs are rejected even when their status is not planned', () => {
+  assert.throws(() => buildFeatureTraceabilityReport({
+    inventory: { features: [{ id: 'ROADMAP-0002', name: 'Legacy candidate', category: 'RPG', status: 'implemented_needs_runtime_test' }] },
+    commandReport: { results: [] }
+  }), /PLANNED_FEATURES_NOT_ALLOWED/);
+});
