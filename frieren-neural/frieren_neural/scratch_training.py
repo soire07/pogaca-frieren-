@@ -42,7 +42,9 @@ def _validate_resume_payload(payload, *, training_corpus_sha256: str, manifest_s
     for field in ("optimizer_state", "batch_generator_state", "torch_rng_state", "model_state", "tokenizer", "model_config"):
         if field not in payload:
             raise ValueError(f"Resume checkpoint is missing required {field} state.")
-    checkpoint_step = payload.get("step")\n    if isinstance(checkpoint_step, bool) or not isinstance(checkpoint_step, int) or checkpoint_step < 0:\n        raise ValueError("Resume checkpoint step must be a non-negative integer.")
+    checkpoint_step = payload.get("step")
+    if isinstance(checkpoint_step, bool) or not isinstance(checkpoint_step, int) or checkpoint_step < 0:
+        raise ValueError("Resume checkpoint step must be a non-negative integer.")
     if not isinstance(payload["optimizer_state"], dict):
         raise ValueError("Resume checkpoint optimizer state is invalid.")
     if not isinstance(payload["batch_generator_state"], torch.Tensor) or not isinstance(payload["torch_rng_state"], torch.Tensor):
