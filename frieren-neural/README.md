@@ -171,34 +171,36 @@ print(generate_text(model, tokenizer, "Frieren ", max_new_tokens=80))
 
 The optional FastAPI service exposes health, authenticated server-to-server generation, and a same-origin browser chat. Poğaça Frieren is the only Discord client and will call this authenticated API through its existing backend integration.
 
-### Turkish-first model backend
+### Optional pretrained comparison backend (research only)
 
-The serving API supports `FRIEREN_MODEL_BACKEND=ufakzeka`. This selects `ufakai/ufakzeka-1`, a Turkish-first 151M-parameter chat model published under Apache-2.0. Its recommended Q8 GGUF is approximately 196 MB. The runtime downloads it on first model load, verifies the published SHA-256 before accepting it, uses memory mapping, and keeps one model instance per process. It uses the model's native user/assistant chat template; do not inject a system-role message because the released chat model was trained without system messages.
+The serving API includes `ufakzeka` only as an opt-in comparison backend. The native scratch model remains the production target; `ufakzeka` is rejected unless `FRIEREN_ALLOW_PRETRAINED_BACKEND=1` is explicitly set for a research run. This selects `ufakai/ufakzeka-1`, a Turkish-first 151M-parameter chat model published under Apache-2.0. Its recommended Q8 GGUF is approximately 196 MB. The runtime downloads it on first model load, verifies the published SHA-256 before accepting it, uses memory mapping, and keeps one model instance per process. It uses the model's native user/assistant chat template; do not inject a system-role message because the released chat model was trained without system messages.
 
-The model is not perfect: its published evaluation documents limits in factual recall, arithmetic over multiple turns, and some safety edge cases. It is a substantially better Turkish starting point than training the current 128-dimensional scratch model from chat-only data, but it still requires Frieren-specific supervised tuning and measured review before production rollout. No paid API is used.
+The model is not perfect: its published evaluation documents limits in factual recall, arithmetic over multiple turns, and some safety edge cases. It may be useful for offline quality comparisons, but it is not the target model and must not receive private production conversations. The final Neural runtime must use its own trained weights. No hosted model API is required.
 
 
 Install the serving extra and start the service:
 
 ```bash
 pip install -e ".[serve]"
-export FRIEREN_MODEL_BACKEND=ufakzeka
-# Optional: choose a persistent model-cache path; default is models/ufakzeka-1-q8_0.gguf
-export FRIEREN_GGUF_MODEL_PATH=models/ufakzeka-1-q8_0.gguf
-# Scratch research backend remains available with FRIEREN_MODEL_BACKEND=scratch and FRIEREN_CHECKPOINT=...
+export FRIEREN_MODEL_BACKEND=scratch
+export FRIEREN_CHECKPOINT=checkpoints/frieren-neural-native.pt
+# Optional comparison only; never enable for production user traffic:
+# export FRIEREN_MODEL_BACKEND=ufakzeka
+# export FRIEREN_ALLOW_PRETRAINED_BACKEND=1
+# export FRIEREN_GGUF_MODEL_PATH=models/ufakzeka-1-q8_0.gguf
 export FRIEREN_API_TOKEN="use-a-random-secret-at-least-32-characters-long"
 export FRIEREN_DATABASE_URL="postgresql://.../neondb?sslmode=require"
 export FRIEREN_ALLOWED_ORIGINS="https://your-web-app.example"
 uvicorn frieren_neural.api:app --host 0.0.0.0 --port 8000
 ```
 
-- `GET /health` loads and checks the selected model; for the Turkish backend it downloads the pinned-size, SHA-256-verified Q8 model on first load.
+- `GET /health` loads and checks the selected model; the native scratch checkpoint is the default. The optional comparison backend downloads the pinned-size, SHA-256-verified Q8 model only after explicit research opt-in.
 - `POST /generate` requires `Authorization: Bearer <token>` and has strict prompt/output limits.
 - CORS is disabled unless explicit origins are listed in `FRIEREN_ALLOWED_ORIGINS`; wildcard origins are rejected.
 - If no strong API token or valid model is configured, generation fails closed.
 - Keep the API token in the host's secret/environment settings. Never commit it or place it in the browser bundle.
 
-This API is a single shared service, not a collection of serverless functions. It is not deployed by this change; hosting and the web/Discord clients remain separate milestones.
+This API is a single shared Neural service, not a collection of serverless functions. It is not deployed by this change; hosting and Poğaça's server-to-server integration remain separate milestones.
 
 
 ## Browser chat
