@@ -28,6 +28,12 @@ test('feature evidence map promotes only fully automated evidence and preserves 
   const mappedIds = new Set(ids);
 
   if (evidence.schemaVersion !== 1) errors.push('unsupported schemaVersion: ' + evidence.schemaVersion);
+  if (inventory.count !== inventory.features.length) errors.push('inventory count must match active feature rows');
+  if (inventory.targetFeatures !== 354) errors.push('active inventory target must remain 354');
+  if (inventory.features.some(feature => feature.id.startsWith('ROADMAP-') || feature.status === 'planned')) {
+    errors.push('planned roadmap records must stay outside the active feature inventory');
+  }
+  if (inventory.features.length !== 354) errors.push('active feature inventory must contain exactly 354 records');
   if (new Set(ids).size !== ids.length) errors.push('feature evidence IDs must be unique');
 
   for (const entry of evidence.entries) {
