@@ -8,12 +8,17 @@ export function buildFeatureTraceabilityReport({ inventory, commandReport }) {
   if (!Array.isArray(inventory?.features)) throw new Error('FEATURE_INVENTORY_INVALID');
   if (!Array.isArray(commandReport?.results)) throw new Error('COMMAND_AUDIT_REPORT_INVALID');
 
-  if (inventory.features.some(feature => feature?.status === 'planned' || String(feature?.id || '').startsWith('ROADMAP-'))) {
-    throw new Error('PLANNED_FEATURES_NOT_ALLOWED_IN_ACTIVE_INVENTORY');
+  const plannedFeatures = inventory.features.filter(feature => feature?.status === 'planned' || String(feature?.id || '').startsWith('ROADMAP-'));
+  const implementedInventoryFeatures = inventory.features.filter(feature => feature?.status !== 'planned' && !String(feature?.id || '').startsWith('ROADMAP-'));
+  if (Number(inventory.plannedFeatureCount ?? plannedFeatures.length) !== plannedFeatures.length) {
+    throw new Error('PLANNED_FEATURE_COUNT_MISMATCH');
+  }
+  if (plannedFeatures.some(feature => feature?.status !== 'planned' || !String(feature?.id || '').startsWith('ROADMAP-'))) {
+    throw new Error('INVALID_PLANNED_ROADMAP_RECORD');
   }
 
   const featureIds = new Set();
-  for (const feature of inventory.features) {
+  for (const feature of implementedInventoryFeatures) {
     if (!feature?.id || featureIds.has(feature.id)) throw new Error('FEATURE_ID_MISSING_OR_DUPLICATE: ' + feature?.id);
     featureIds.add(feature.id);
   }
@@ -35,7 +40,7 @@ export function buildFeatureTraceabilityReport({ inventory, commandReport }) {
     }
   }
 
-  const features = inventory.features.map(feature => {
+  const features = implementedInventoryFeatures.map(feature => {
     const testPaths = [...new Set(feature.testEvidence?.tests || [])];
     const commandAuditReferenced = testPaths.includes('scripts/live-command-test.js');
     const checks = mappedChecks.get(feature.id) || [];
@@ -77,13 +82,14 @@ export function buildFeatureTraceabilityReport({ inventory, commandReport }) {
       'A command PASS is not a feature PASS unless a behavioral check explicitly lists that feature ID in featureIds.',
       'A referenced test file is not proof that the feature passed in this run.',
       'Only mapped checks that all pass under a PASS command count as feature-level verified evidence.',
+      'Planned ROADMAP records remain in the inventory as planned and are excluded from implemented feature evidence.',
       'This report does not modify feature-inventory.json or promote inventory statuses.',
       'Synthetic Discord interactions with isolated PostgreSQL are not live Discord user E2E.'
     ],
     summary: {
-      totalFeatures: features.length,
+      totalFeatures: inventory.features.length,
       implementedFeatures: implemented.length,
-      plannedFeatures: 0,
+      plannedFeatures: plannedFeatures.length,
       implementedWithTestFileReferences: implemented.filter(feature => feature.testPaths.length > 0).length,
       implementedReferencedByCommandAudit: implemented.filter(feature => feature.commandAuditReferenced).length,
       implementedWithExplicitMappedChecks: implemented.filter(feature => feature.mappedCommandChecks.length > 0).length,
