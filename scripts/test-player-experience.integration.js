@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { assertIsolatedAuditDatabase } from './isolated-audit-db-guard.js';
 import {pool,initDatabase} from '../database/db.js';
 import {ensureAdventurerPlatformTables,createGuildEvent,joinGuildEvent} from '../adventurer-platform.js';
-import {HOME_ROOMS,ALCHEMY_RECIPES,PLAYER_COSMETICS,ensurePlayerExperienceSchema,brewHomePotion,getPlayerHome,unlockHomeRoom,saveHomeLayout,getHomeTrophies,placeHomeTrophy,getCosmeticAcquisitionHistory,setHomeVisibility,getPublicPlayerHome,purchaseCosmetic,equipCosmetic,saveCosmeticPreset,applyCosmeticPreset,checkInGuildEvent,claimEventMilestone} from '../player-experience.js';
+import {HOME_ROOMS,ALCHEMY_RECIPES,PLAYER_COSMETICS,ensurePlayerExperienceSchema,brewHomePotion,getPlayerHome,unlockHomeRoom,saveHomeLayout,getHomeTrophies,placeHomeTrophy,getCosmeticAcquisitionHistory,setHomeVisibility,getPublicPlayerHome,saveHomeLayoutPreset,listHomeLayoutPresets,applyHomeLayoutPreset,deleteHomeLayoutPreset,purchaseCosmetic,equipCosmetic,saveCosmeticPreset,applyCosmeticPreset,checkInGuildEvent,claimEventMilestone} from '../player-experience.js';
 const guild='1539562273197260860',user='123456789012345678';
 let eventId;
 before(async()=>{
@@ -73,3 +73,23 @@ test('event registration and check-in progress award each milestone once',async(
 });
 
 test('alchemy station requires its home room and consumes materials atomically',async()=>{const recipe=ALCHEMY_RECIPES[0];await pool.query('INSERT INTO inventory(guild_id,user_id,item_key,quantity) VALUES($1,$2,$3,1),($1,$2,$4,1) ON CONFLICT(guild_id,user_id,item_key) DO UPDATE SET quantity=inventory.quantity+EXCLUDED.quantity',[guild,user,recipe.materials[0].item,recipe.materials[1].item]);assert.equal((await brewHomePotion(pool,{guildId:guild,userId:user,recipeKey:recipe.key})).status,'station_locked');await unlockHomeRoom(pool,{guildId:guild,userId:user,roomKey:'alchemy'});assert.equal((await brewHomePotion(pool,{guildId:guild,userId:user,recipeKey:recipe.key})).status,'brewed');const output=await pool.query('SELECT quantity FROM inventory WHERE guild_id=$1 AND user_id=$2 AND item_key=$3',[guild,user,recipe.output]);assert.equal(Number(output.rows[0].quantity),1);});
+
+test('home layout presets save, update, apply, delete and enforce a six-preset player limit',async()=>{
+ await saveHomeLayout(pool,{guildId:guild,userId:user,activeRoom:'starter',layout:[{roomKey:'starter',decorationKey:'book_shelf',position:0}]});
+ assert.equal((await saveHomeLayoutPreset(pool,{guildId:guild,userId:user,presetName:'Kış Bahçesi'})).status,'saved');
+ await saveHomeLayout(pool,{guildId:guild,userId:user,activeRoom:'library',layout:[{roomKey:'library',decorationKey:'star_map',position:0}]});
+ assert.equal((await saveHomeLayoutPreset(pool,{guildId:guild,userId:user,presetName:'Yıldız Odası'})).status,'saved');
+ const presets=await listHomeLayoutPresets(pool,{guildId:guild,userId:user});
+ assert.deepEqual(new Set(presets.map(x=>x.preset_name)),new Set(['Kış Bahçesi','Yıldız Odası']));
+ assert.equal((await applyHomeLayoutPreset(pool,{guildId:guild,userId:user,presetName:'Kış Bahçesi'})).status,'applied');
+ const restored=await getPlayerHome(pool,{guildId:guild,userId:user});
+ assert.equal(restored.home.active_room,'starter');
+ assert.deepEqual(restored.home.layout,[{roomKey:'starter',decorationKey:'book_shelf',position:0}]);
+ for(const name of ['Düzen 3','Düzen 4','Düzen 5','Düzen 6'])assert.equal((await saveHomeLayoutPreset(pool,{guildId:guild,userId:user,presetName:name})).status,'saved');
+ assert.deepEqual((await saveHomeLayoutPreset(pool,{guildId:guild,userId:user,presetName:'Düzen 7'})).status,'preset_limit');
+ assert.equal((await saveHomeLayoutPreset(pool,{guildId:guild,userId:user,presetName:'Kış Bahçesi'})).status,'saved');
+ assert.equal((await deleteHomeLayoutPreset(pool,{guildId:guild,userId:user,presetName:'Düzen 3'})).status,'deleted');
+ assert.equal((await saveHomeLayoutPreset(pool,{guildId:guild,userId:user,presetName:'Düzen 7'})).status,'saved');
+ assert.equal((await applyHomeLayoutPreset(pool,{guildId:guild,userId:user,presetName:'Başkasının'})).status,'preset_missing');
+ assert.equal((await deleteHomeLayoutPreset(pool,{guildId:guild,userId:user,presetName:'Kış Bahçesi'})).status,'deleted');
+});
