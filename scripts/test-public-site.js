@@ -210,12 +210,12 @@ test('public homepage introduces Poğaça Frieren, offers the bot invite and sho
     assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/', headers: {} }, response), true);
     assert.equal(response.status, 200);
     assert.match(response.body, /Poğaça/);
-    assert.match(response.body, /class="landing-hero"/);
+    assert.match(response.body, /class="[^"]*\blanding-hero\b[^"]*"/);
     assert.match(response.body, /class="landing-title"/);
-    assert.match(response.body, /class="landing-metrics"/);
+    assert.match(response.body, /class="[^"]*\blanding-metrics\b[^"]*"/);
     assert.match(response.body, /data-platform-metric="commands"/);
     assert.match(response.body, /data-platform-metric="guilds"/);
-    assert.match(response.body, /class="landing-feature-card"/);
+    assert.match(response.body, /class="[^"]*\blanding-feature-card\b[^"]*"/);
     assert.match(response.body, /class="landing-command-list"/);
     assert.match(response.body, /href="\/assets\/site\.css\?v=site-polish-20261116-1"/);
     assert.match(response.body, /Discord sunucuna ekle/);
