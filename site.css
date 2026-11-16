@@ -2093,3 +2093,17 @@ footer{border-top-color:rgba(220,199,255,.15);background:rgba(9,10,19,.20)}foote
 @media(max-width:850px){.topbar{padding-left:68px}.site-menu-toggle{top:10px;left:12px}}
 @media(max-width:560px){.topbar{padding-left:62px}.site-menu-toggle{top:9px;left:9px;width:42px;height:42px}.site-sidebar{inset:57px auto auto 9px;width:min(310px,calc(100vw - 18px));max-height:calc(100dvh - 70px);padding:11px}.site-nav-group>summary{min-height:44px}.site-nav-link{min-height:44px}}
 @media(prefers-reduced-motion:reduce){.site-sidebar,.site-menu-toggle,.site-nav-group-chevron{transition:none!important}.site-sidebar{transform:none}.site-menu-toggle:hover{transform:none}}
+
+
+/* Accessible interactive player-home layout editor. */
+.home-layout-editor{align-items:stretch}
+.home-layout-slot{min-width:0;cursor:grab;transition:border-color .16s ease,transform .16s ease,opacity .16s ease}
+.home-layout-slot:focus-within{outline:2px solid #b99aff;outline-offset:2px}
+.home-layout-slot.is-dragging{opacity:.42;border:1px dashed #c8a8ff;transform:scale(.985)}
+.home-layout-slot.is-drop-target{border-color:#c8a8ff;box-shadow:0 0 0 2px #c8a8ff33}
+.home-layout-slot-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.home-layout-slot-heading h3{margin:0}
+.home-layout-slot-actions{display:flex;align-items:center;gap:6px}
+.home-layout-slot-actions .btn{min-width:36px;min-height:36px;padding:5px 10px}
+.home-layout-drag-handle{color:#c7b3e5;font-size:1.35rem;cursor:grab;user-select:none}
+@media(prefers-reduced-motion:reduce){.home-layout-slot{transition:none}}
