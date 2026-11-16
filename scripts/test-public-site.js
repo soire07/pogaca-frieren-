@@ -2116,8 +2116,8 @@ test('player home layout editor asset is served and supports pointer and keyboar
  assert.match(site,/data-home-layout-grid/);
  assert.match(site,/data-home-layout-move="up"/);
  assert.match(site,/data-home-layout-status aria-live="polite"/);
- assert.match(site,/home-layout-editor\\.js\\?v=1/);
+ assert.match(site,/home-layout-editor\.js\?v=1/);
  const css=await readFile(new URL('../site.css',import.meta.url),'utf8');
- assert.match(css,/\\.home-layout-slot\\.is-dragging/);
- assert.match(css,/prefers-reduced-motion:reduce\\)\\{\\.home-layout-slot/);
+ assert.match(css,/\.home-layout-slot\.is-dragging/);
+ assert.match(css,/prefers-reduced-motion:reduce\)\{\.home-layout-slot/);
 });
