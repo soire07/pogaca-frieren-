@@ -184,7 +184,7 @@ test('guild workshop embed saves require the linked Discord guild owner',async()
 
 test('shared navigation is grouped, deduplicated, and labels account-required destinations for guests', async () => {
   const response = res();
-  assert.equal(await handlePublicSiteRequest(request('/kesfet'), response), true);
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/kesfet', headers: {} }, response), true);
   assert.equal(response.status, 200);
   for (const group of ['kesfet', 'macera', 'rehber', 'neural', 'hesap']) assert.match(response.body, new RegExp('data-nav-group="' + group + '"'));
   assert.match(response.body, /<details class="site-nav-group"/);
@@ -200,7 +200,7 @@ test('Poğaça, command catalog, and Neural introduction remain public without D
   const client = { commands: { size: 1, values: () => [{ data: { toJSON: () => ({ name: 'yardim', description: 'Yardım komutu' }) } }] }, isReady: () => true };
   for (const path of ['/pogaca', '/komutlar', '/frieren-ai']) {
     const response = res();
-    assert.equal(await handlePublicSiteRequest(request(path), response, { client }), true, path);
+    assert.equal(await handlePublicSiteRequest({ method: 'GET', url: path, headers: {} }, response, { client }), true, path);
     assert.equal(response.status, 200, path);
     assert.doesNotMatch(response.body, /Discord ile giriş · Frieren/, path);
     assert.match(response.body, /<main/, path);
@@ -249,7 +249,7 @@ test('public SEO landing page includes the exact Google site-verification meta t
   const description = response.body.match(/<meta name="description" content="([^"]*)">/);
   assert.ok(description && description[1].length <= 160, 'SEO description must stay within 160 characters');
   assert.match(response.body, /SIK SORULAN SORULAR/);
-  assert.match(response.body, /Frieren AI yetenekleri Poğaça Frieren deneyiminin parçası/);
+  assert.match(response.body, /Frieren Neural yetenekleri Poğaça Frieren deneyiminin parçasıdır/);
 });
 
 test('public homepage introduces Poğaça Frieren, offers the bot invite and shows command discovery without login', async () => {

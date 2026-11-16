@@ -5,7 +5,7 @@
   if (!toggle || !menu || !closeButton) return;
 
   const focusable = () => [...menu.querySelectorAll('summary, a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')]
-    .filter(element => !element.hasAttribute('hidden') && element.getAttribute('aria-hidden') !== 'true');
+    .filter(element => !element.hasAttribute('hidden') && element.getAttribute('aria-hidden') !== 'true' && !element.closest('details:not([open])'));
 
   const finishClose = () => {
     if (toggle.getAttribute('aria-expanded') !== 'true') menu.hidden = true;
