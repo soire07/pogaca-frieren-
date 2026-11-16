@@ -122,6 +122,19 @@ Training automatically uses CUDA when available and otherwise CPU. CPU is suitab
 
 Checkpoints are written atomically and ignored by Git. Keep datasets and model weights in private storage, not Git.
 
+## Native scratch architecture v2 (candidate only)
+
+The separate `frieren-neural-train-native` command trains the v2 decoder-only Transformer in `scratch_model.py` (256-dimensional hidden state, 6 layers, grouped-query attention, RoPE, and SwiGLU). Its training split preserves complete source documents or conversation separators, and candidate checkpoints are written atomically.
+
+```bash
+frieren-neural-train-native \
+  --data ./corpus \
+  --checkpoint checkpoints/frieren-neural-v2-candidate.pt \
+  --steps 6000
+```
+
+**Integration boundary:** this v2 checkpoint format is not yet supported by the serving API's existing `_load_runtime` loader. Do not set it as `FRIEREN_CHECKPOINT` or deploy it to users. The current API's `scratch` backend still loads the earlier checkpoint format from `training.py`. The v2 trainer currently writes candidate snapshots only; optimizer-state resume and a production-compatible loader/generation path remain unfinished. It must pass held-out Turkish quality, safety, and human-review gates before any serving migration.
+
 ## Evaluate on held-out data
 
 Use a separate corpus directory with its own `corpus_manifest.json`; the evaluator rejects the exact training corpus fingerprint.
@@ -183,7 +196,7 @@ Install the serving extra and start the service:
 ```bash
 pip install -e ".[serve]"
 export FRIEREN_MODEL_BACKEND=scratch
-export FRIEREN_CHECKPOINT=checkpoints/frieren-neural-native.pt
+export FRIEREN_CHECKPOINT=checkpoints/frieren-neural.pt
 # Optional comparison only; never enable for production user traffic:
 # export FRIEREN_MODEL_BACKEND=ufakzeka
 # export FRIEREN_ALLOW_PRETRAINED_BACKEND=1
