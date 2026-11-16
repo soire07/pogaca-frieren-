@@ -105,8 +105,8 @@ test('mention handler loads only this guild and user history, then stores both t
   assert.equal(handled, true);
   const historyCall = calls.find(call => call.sql.includes('SELECT role, content'));
   const insertCall = calls.find(call => call.sql.includes('INSERT INTO frieren_chat_messages'));
-  assert.deepEqual(historyCall.params, ['guild-7', 'user-9', 'channel-1', 16]);
-  assert.deepEqual(insertCall.params, ['guild-7', 'user-9', 'channel-1', 'Nasılsın?', 'İyiyim. Sen nasılsın?']);
+  assert.deepEqual(historyCall.params, ['guild-7', '123456789012345678', 'channel-1', 16]);
+  assert.deepEqual(insertCall.params, ['guild-7', '123456789012345678', 'channel-1', 'Nasılsın?', 'İyiyim. Sen nasılsın?']);
   assert.equal(replies[0].content, 'İyiyim. Sen nasılsın?');
   assert.deepEqual(replies[0].allowedMentions, { parse: [] });
 });
