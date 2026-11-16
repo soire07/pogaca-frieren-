@@ -103,7 +103,7 @@ def generate_native_text(
 
     completion_ids = generated[len(token_ids):]
     completion = tokenizer.decode(completion_ids)
-    role_boundary = re.search(r"(?:^|\\n)(?:Kullanıcı|Asistan):(?: |$)", completion)
+    role_boundary = re.search(r"(?:Kullanıcı|Asistan):(?: |$)", completion)
     if role_boundary:
         completion = completion[:role_boundary.start()]
     return completion
