@@ -1,6 +1,12 @@
 name: Frieren Neural Native Scratch Training
 on:
   workflow_dispatch:
+    inputs:
+      confirm_full_training:
+        description: "I confirm this 6,000-step CPU training run may consume substantial GitHub Actions minutes."
+        required: true
+        type: boolean
+        default: false
 permissions:
   actions: read
   contents: read
@@ -9,6 +15,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   train:
+    if: ${{ inputs.confirm_full_training }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
     env:
