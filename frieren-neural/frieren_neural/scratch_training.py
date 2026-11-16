@@ -12,6 +12,8 @@ from .tokenizer import BPETokenizer
 from .training import (
     _atomic_save,
     _sample_batch,
+    DIALOGUE_ENCODING_VERSION,
+    LOSS_OBJECTIVE_VERSION,
     encode_dialogue_stream_with_loss_mask,
     load_licensed_corpus,
     split_corpus_text,
@@ -39,12 +41,16 @@ def _validate_resume_payload(payload, *, training_corpus_sha256: str, manifest_s
         raise ValueError("Resume checkpoint training corpus does not match the current corpus.")
     if payload.get("manifest_sha256") != manifest_sha256:
         raise ValueError("Resume checkpoint license manifest does not match the current corpus.")
-    for field in ("optimizer_state", "batch_generator_state", "torch_rng_state", "model_state", "tokenizer", "model_config"):
+    for field in ("optimizer_state", "batch_generator_state", "torch_rng_state", "model_state", "tokenizer", "model_config", "dialogue_encoding_version", "loss_objective_version"):
         if field not in payload:
             raise ValueError(f"Resume checkpoint is missing required {field} state.")
     checkpoint_step = payload.get("step")
     if isinstance(checkpoint_step, bool) or not isinstance(checkpoint_step, int) or checkpoint_step < 0:
         raise ValueError("Resume checkpoint step must be a non-negative integer.")
+    if payload["dialogue_encoding_version"] != DIALOGUE_ENCODING_VERSION:
+        raise ValueError("Resume checkpoint dialogue encoding version is unsupported.")
+    if payload["loss_objective_version"] != LOSS_OBJECTIVE_VERSION:
+        raise ValueError("Resume checkpoint loss objective version is unsupported.")
     if not isinstance(payload["optimizer_state"], dict):
         raise ValueError("Resume checkpoint optimizer state is invalid.")
     if not isinstance(payload["batch_generator_state"], torch.Tensor) or not isinstance(payload["torch_rng_state"], torch.Tensor):
@@ -146,6 +152,8 @@ def run(data_dirs, checkpoint, steps=6000, seed=20261106, device="cpu", resume=F
                 "format_version": 2,
                 "architecture_id": model.architecture_id,
                 "pretrained_weights": False,
+                "dialogue_encoding_version": DIALOGUE_ENCODING_VERSION,
+                "loss_objective_version": LOSS_OBJECTIVE_VERSION,
                 "model_config": config.to_dict(),
                 "model_state": model.state_dict(),
                 "tokenizer": tokenizer.to_dict(),
