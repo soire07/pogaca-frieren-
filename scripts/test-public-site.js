@@ -58,7 +58,7 @@ test('terms and privacy policy routes answer HEAD with 200 and no response body'
     const response = res();
     assert.equal(await handlePublicSiteRequest({ method: 'HEAD', url: path, headers: {} }, response), true, path);
     assert.equal(response.status, 200, path);
-    assert.match(response.headers['Content-Type'], /text\\/html/);
+    assert.ok(String(response.headers['Content-Type']).includes('text/html'));
     assert.equal(response.body, undefined, path);
   }
 });
