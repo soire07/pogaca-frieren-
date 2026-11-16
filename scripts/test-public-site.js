@@ -1561,6 +1561,14 @@ test('account navigation stays global while RPG features remain grouped inside t
   assert.doesNotMatch(account, /\/maceraci\//);
   for (const path of ['/maceraci/profil', '/maceraci/merkez', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/yasam']) assert.ok(adventurer.includes(path), path);
   assert.match(adventurer, /MACERA & RPG/);
+  assert.equal((adventurer.match(/navLink\('\/maceraci\/profil/g) || []).length, 1);
+  assert.doesNotMatch(adventurer, /\/maceraci\/profil#(?:progress|achievements|badges|battle-stats|leaderboards|privacy)/);
+  const quickNavStart = source.indexOf('const quickNav =');
+  const quickNavEnd = source.indexOf('const content =', quickNavStart);
+  const profileQuickNav = source.slice(quickNavStart, quickNavEnd);
+  for (const anchor of ['#progress', '#badges', '#achievements', '#battle-stats', '#leaderboards', '#privacy']) {
+    assert.ok(profileQuickNav.includes(anchor), 'profile quick navigation must retain ' + anchor);
+  }
   assert.match(source, /id="badges"/);
   assert.match(source, /id="account-settings"/);
   assert.match(navigation, /navGroup\('oturum',[\s\S]*?navLink\('\/logout'/);
