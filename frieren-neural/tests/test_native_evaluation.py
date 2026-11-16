@@ -92,6 +92,7 @@ def test_native_quality_evaluator_loads_v2_generates_all_24_prompts_and_stays_bl
 
     assert len(report["outputs"]) == 24
     assert report["heldout_metrics"]["sample_count"] > 0
+    assert len(report["heldout_metrics"]["manifest_sha256"]) == 64
     assert report["decision"] == "NOT READY"
     assert "human_review_missing" in report["blocking_reasons"]
     assert (output_dir / "human-scores.template.json").is_file()
