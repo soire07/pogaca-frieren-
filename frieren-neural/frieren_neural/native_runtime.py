@@ -9,7 +9,7 @@ import torch
 
 from .scratch_model import FrierenNeuralConfig, FrierenNeuralModel
 from .tokenizer import BPETokenizer
-from .training import encode_generation_prompt
+from .training import DIALOGUE_ENCODING_VERSION, LOSS_OBJECTIVE_VERSION, encode_generation_prompt
 
 ARCHITECTURE_ID = "frieren-neural-transformer-v2"
 
@@ -25,6 +25,7 @@ def load_native_checkpoint(
     required = {
         "format_version", "pretrained_weights", "model_config", "model_state",
         "tokenizer", "step", "training_corpus_sha256", "manifest_sha256",
+        "dialogue_encoding_version", "loss_objective_version",
     }
     if payload.get("format_version") != 2 or not required.issubset(payload):
         raise ValueError("Native v2 checkpoint is missing required format or provenance metadata.")
@@ -43,6 +44,11 @@ def load_native_checkpoint(
         if (not isinstance(digest, str) or len(digest) != 64
                 or any(character not in "0123456789abcdef" for character in digest)):
             raise ValueError(f"Native v2 checkpoint has invalid {field} provenance.")
+    if payload["dialogue_encoding_version"] != DIALOGUE_ENCODING_VERSION:
+        raise ValueError("Native v2 checkpoint dialogue encoding version is unsupported.")
+    if payload["loss_objective_version"] != LOSS_OBJECTIVE_VERSION:
+        raise ValueError("Native v2 checkpoint loss objective version is unsupported.")
+
     licenses = payload.get("licenses")
     if not isinstance(licenses, list) or not licenses or any(not isinstance(item, str) or not item.strip() for item in licenses):
         raise ValueError("Native v2 checkpoint must retain its training licenses.")
@@ -58,6 +64,8 @@ def load_native_checkpoint(
         "format_version": 2,
         "architecture_id": ARCHITECTURE_ID,
         "pretrained_weights": False,
+        "dialogue_encoding_version": DIALOGUE_ENCODING_VERSION,
+        "loss_objective_version": LOSS_OBJECTIVE_VERSION,
         "step": step,
         "model_config": config.to_dict(),
         "training_config": dict(payload.get("training_config", {})),
