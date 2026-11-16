@@ -33,10 +33,6 @@ serve = [
   "psycopg[binary]>=3.2",
   "llama-cpp-python==0.3.36",
 ]
-discord = [
-  "discord.py>=2.4",
-  "aiohttp>=3.9",
-]
 data = [
   "datasets>=3.6,<5",
 ]
