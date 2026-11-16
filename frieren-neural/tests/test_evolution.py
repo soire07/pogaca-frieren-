@@ -47,6 +47,14 @@ def _reviewed_report():
             "loss_objective_version": 2,
             "checkpoint_training_loss_objective_version": 2,
         },
+        "automated_quality": {
+            "evaluator_version": "tr-rule-gate-v1",
+            "prompt_set_version": "tr-conversation-v1",
+            "passed": True,
+            "cases_total": 24,
+            "case_results": [{"id": f"TR-{index:03d}", "passed": True} for index in range(1, 25)],
+            "blocking_reasons": [],
+        },
         "baseline_comparison": {
             "available": True,
             "improved": True,
@@ -58,6 +66,8 @@ def _reviewed_report():
                 "outputs_sha256": "e" * 64,
                 "prompt_set_version": "tr-conversation-v1",
             },
+            "improved_cases": ["TR-004"],
+            "regressed_cases": [],
         },
         "outputs": outputs,
         "metrics": {"dimension_averages": {dimension: 4.0 for dimension in DIMENSIONS}},
