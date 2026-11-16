@@ -6,6 +6,12 @@ import { buildFrierenMessages, generateFrierenReply } from '../frieren-chat.js';
 // latest message reach the inference boundary. They do not claim to measure
 // the model's real-world fluency in each language.
 const languageSamples = [
+  ['ru', 'Russian', 'Как вы?'],
+  ['ar', 'Arabic', 'كيف حالك؟'],
+  ['ja', 'Japanese', 'お元気ですか？'],
+  ['zh', 'Chinese', '你好吗？'],
+  ['nl', 'Dutch', 'Hoe gaat het?'],
+  ['tr', 'Turkish', 'Nasılsın?'],
   ['mi', 'Māori', 'Kia ora, e hoa.'],
   ['qu', 'Quechua', 'Rimaykullayki.'],
   ['gn', 'Guarani', 'Mba’éichapa.'],
