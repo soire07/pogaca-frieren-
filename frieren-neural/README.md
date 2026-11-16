@@ -122,9 +122,9 @@ Training automatically uses CUDA when available and otherwise CPU. CPU is suitab
 
 Checkpoints are written atomically and ignored by Git. Keep datasets and model weights in private storage, not Git.
 
-## Native scratch architecture v2 (candidate only)
+## Native scratch architecture v2 and serving integration
 
-The separate `frieren-neural-train-native` command trains the v2 decoder-only Transformer in `scratch_model.py` (256-dimensional hidden state, 6 layers, grouped-query attention, RoPE, and SwiGLU). Its training split preserves complete source documents or conversation separators, and candidate checkpoints are written atomically.
+The `frieren-neural-train-native` command trains Frieren Neural's own v2 decoder-only Transformer in `scratch_model.py` (256-dimensional hidden state, 6 layers, grouped-query attention, RoPE, and SwiGLU). Its training split preserves complete source documents or conversation separators, and checkpoints are written atomically with architecture identity, tokenizer, corpus digest, manifest digest, license metadata, and training step.
 
 ```bash
 frieren-neural-train-native \
@@ -133,7 +133,9 @@ frieren-neural-train-native \
   --steps 6000
 ```
 
-**Integration boundary:** this v2 checkpoint format is not yet supported by the serving API's existing `_load_runtime` loader. Do not set it as `FRIEREN_CHECKPOINT` or deploy it to users. The current API's `scratch` backend still loads the earlier checkpoint format from `training.py`. The v2 trainer currently writes candidate snapshots only; optimizer-state resume and a production-compatible loader/generation path remain unfinished. It must pass held-out Turkish quality, safety, and human-review gates before any serving migration.
+**Serving integration:** the authenticated API now detects `architecture_id=frieren-neural-transformer-v2`, validates the native checkpoint metadata, loads its own `FrierenNeuralModel` and BPE tokenizer with PyTorch's restricted `weights_only` loader, and generates through both `/generate` and `/web/generate`. Legacy scratch checkpoints remain supported for compatibility. The native model is not a pretrained-provider fallback.
+
+The regression test performs one CPU optimizer step using a synthetic CC0 test corpus, writes a native checkpoint, then loads that exact checkpoint through `/health`, `/generate`, and `/web/generate`. This proves the training-to-checkpoint-to-inference path works; it does **not** prove useful Turkish responses, factual reliability, safety, or production performance. The small test checkpoint is not a release candidate. A full licensed corpus run, held-out Turkish quality gate, safety review, and two independent human reviews remain required before production traffic.
 
 ## Evaluate on held-out data
 
