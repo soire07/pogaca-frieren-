@@ -1,8 +1,8 @@
 # Frieren Neural
 
-Frieren Neural is the Turkish-first inference and model-research track for Frieren AI. The from-scratch GPT remains an isolated research baseline; the serving API can use a pretrained Turkish chat model.
+Frieren Neural is the single central AI for Poğaça Frieren. This package contains experimental model training and the authenticated inference API; Poğaça Frieren remains the only Discord bot and the only Discord interaction layer.
 
-This directory is isolated from the existing Discord bot and its runtime. It does not replace the current Frieren AI agent, call a hosted LLM, or require a paid API.
+This branch is not connected to production. It does not create or log in as a Discord bot. The scratch model is the default backend; alternative backends are research comparisons only and must not become the production model.
 
 ## Current scope
 
@@ -169,7 +169,7 @@ print(generate_text(model, tokenizer, "Frieren ", max_new_tokens=80))
 
 ## Shared inference API
 
-The optional FastAPI service exposes health, authenticated server-to-server generation, and a same-origin browser chat. The Discord adapter calls the same inference core; neither client loads a separate model copy.
+The optional FastAPI service exposes health, authenticated server-to-server generation, and a same-origin browser chat. Poğaça Frieren is the only Discord client and will call this authenticated API through its existing backend integration.
 
 ### Turkish-first model backend
 
@@ -222,23 +222,6 @@ Configure these additional host secrets:
 
 Login and generation POST requests must be same-origin. The service rejects cross-origin browser requests, limits login attempts, and requires HTTPS outside localhost. The web interface displays generated text with `textContent`, not HTML.
 
-## Discord adapter
-
-The optional Discord client exposes one `/ask` slash command and forwards requests to the same authenticated inference API. It does not load a second model or request privileged Discord intents.
-
-```bash
-pip install -e ".[discord]"
-export FRIEREN_DISCORD_TOKEN="your-discord-bot-token"
-export FRIEREN_API_TOKEN="the-same-strong-server-to-server-token"
-export FRIEREN_API_URL="https://your-inference-host.example"
-# Optional: sync the slash command to one test server immediately
-export FRIEREN_DISCORD_GUILD_ID="your-test-server-id"
-python -m frieren_neural.discord_adapter
-```
-
-The bot token and API token must be stored as host secrets, never in Git or client-side code. The adapter sends only the prompt to the model API, limits output to Discord-safe chunks, and disables mention parsing on generated replies. Conversation memory is not implemented yet.
-
-
 ## Engineering constraints
 
 1. Never put credentials, Discord tokens, database URLs, or private user data in this directory.
@@ -253,7 +236,7 @@ The bot token and API token must be stored as host secrets, never in Git or clie
 2. **Training:** BPE, provenance checks, leakage-free split, training, evaluation, and deterministic resume are implemented.
 3. **Evaluation:** held-out perplexity, Turkish/English quality sets, and regression benchmarks.
 4. **Memory and tools:** separate retrieval/memory and tool execution from model weights.
-5. **Serving:** authenticated FastAPI inference API and Discord `/ask` adapter are implemented; a browser chat UI, hosting, and deployment remain.
+5. **Serving:** authenticated FastAPI inference API and browser chat are implemented; production hosting/integration remains separate. No Discord adapter is shipped here; Discord traffic stays in Poğaça Frieren.
 6. **Scaling:** improve data, tokenizer, model size, and training only when suitable compute is available.
 
 A genuinely capable model requires substantial clean data and compute. This is a small research model, not a ChatGPT-equivalent system.
