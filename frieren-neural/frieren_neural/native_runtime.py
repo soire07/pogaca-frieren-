@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +37,15 @@ def load_native_checkpoint(
     step = payload["step"]
     if isinstance(step, bool) or not isinstance(step, int) or step < 0:
         raise ValueError("Native v2 checkpoint step must be a non-negative integer.")
+
+    for field in ("training_corpus_sha256", "manifest_sha256"):
+        digest = payload[field]
+        if (not isinstance(digest, str) or len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest)):
+            raise ValueError(f"Native v2 checkpoint has invalid {field} provenance.")
+    licenses = payload.get("licenses")
+    if not isinstance(licenses, list) or not licenses or any(not isinstance(item, str) or not item.strip() for item in licenses):
+        raise ValueError("Native v2 checkpoint must retain its training licenses.")
 
     tokenizer = BPETokenizer.from_dict(payload["tokenizer"])
     config = FrierenNeuralConfig(**payload["model_config"])
@@ -103,7 +111,13 @@ def generate_native_text(
 
     completion_ids = generated[len(token_ids):]
     completion = tokenizer.decode(completion_ids)
-    role_boundary = re.search(r"(?:Kullanıcı|Asistan):(?: |$)", completion)
-    if role_boundary:
-        completion = completion[:role_boundary.start()]
+    if completion.startswith(("Kullanıcı:", "Asistan:")):
+        completion = ""
+    else:
+        boundaries = [
+            position for marker in ("\\nKullanıcı:", "\\nAsistan:")
+            if (position := completion.find(marker)) >= 0
+        ]
+        if boundaries:
+            completion = completion[:min(boundaries)]
     return completion
