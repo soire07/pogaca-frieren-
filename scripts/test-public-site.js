@@ -210,6 +210,14 @@ test('public homepage introduces Poğaça Frieren, offers the bot invite and sho
     assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/', headers: {} }, response), true);
     assert.equal(response.status, 200);
     assert.match(response.body, /Poğaça/);
+    assert.match(response.body, /class="[^"]*\blanding-hero\b[^"]*"/);
+    assert.match(response.body, /class="landing-title"/);
+    assert.match(response.body, /class="[^"]*\blanding-metrics\b[^"]*"/);
+    assert.match(response.body, /data-platform-metric="commands"/);
+    assert.match(response.body, /data-platform-metric="guilds"/);
+    assert.match(response.body, /class="[^"]*\blanding-feature-card\b[^"]*"/);
+    assert.match(response.body, /class="landing-command-list"/);
+    assert.match(response.body, /href="\/assets\/site\.css\?v=cosmetics-401-1&site-polish=20261116-1"/);
     assert.match(response.body, /Discord sunucuna ekle/);
     assert.match(response.body, /discord.com\/oauth2\/authorize/);
     assert.match(response.body, /Komutları incele/);
@@ -472,6 +480,9 @@ test('shared stylesheet is publicly cacheable for authenticated and auth pages',
   assert.match(response.headers['Cache-Control'], /public,max-age=86400/);
   assert.match(String(response.body), /@media\(max-width:560px\)/);
   assert.match(String(response.body), /\.hero-art/);
+  assert.match(String(response.body), /\.landing-hero\{/);
+  assert.match(String(response.body), /\.landing-metrics\{/);
+  assert.match(String(response.body), /\.site-menu-toggle\{/);
 });
 
 test('Owner Panel stylesheet is served as a cacheable static asset', async () => {
