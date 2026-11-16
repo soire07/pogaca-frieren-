@@ -186,13 +186,13 @@ def evaluate_native_checkpoint(
     )
     markdown = render_markdown(report)
     markdown += (
-        "\\n\\n## Independent held-out evaluation\\n\\n"
-        f"- Split: {heldout['split']}\\n"
-        f"- Evaluation: {heldout['evaluation_version']}\\n"
-        f"- Dataset SHA-256: {heldout['dataset_sha256']}\\n"
-        f"- Supervised assistant tokens: {heldout['sample_count']}\\n"
-        f"- Loss: {heldout['loss']:.6f}\\n"
-        f"- Perplexity: {heldout['perplexity']:.6f}\\n"
+        "\n\n## Independent held-out evaluation\n\n"
+        f"- Split: {heldout['split']}\n"
+        f"- Evaluation: {heldout['evaluation_version']}\n"
+        f"- Dataset SHA-256: {heldout['dataset_sha256']}\n"
+        f"- Supervised assistant tokens: {heldout['sample_count']}\n"
+        f"- Loss: {heldout['loss']:.6f}\n"
+        f"- Perplexity: {heldout['perplexity']:.6f}\n"
     )
     (destination / "quality-report.md").write_text(markdown, encoding="utf-8")
     (destination / "human-scores.template.json").write_text(
