@@ -135,7 +135,7 @@ def _model_backend() -> str:
     if backend == "ufakzeka" and os.environ.get("FRIEREN_ALLOW_PRETRAINED_BACKEND") != "1":
         raise RuntimeError(
             "ufakzeka is a comparison-only backend; set FRIEREN_ALLOW_PRETRAINED_BACKEND=1 "
-            "for an explicit research run. The default serving backend is the existing scratch checkpoint format; the separate v2 native trainer is not wired into serving yet."
+            "for an explicit research run. The default serving backend is Frieren Neural's own scratch model; native v2 and legacy scratch checkpoints are supported."
         )
     return backend
 
