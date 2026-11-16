@@ -1,9 +1,11 @@
 import hashlib
 import json
 
+import pytest
 import torch
 
 from frieren_neural import native_evaluation
+from frieren_neural.native_runtime import load_native_checkpoint
 from frieren_neural.scratch_model import FrierenNeuralConfig, FrierenNeuralModel
 from frieren_neural.tokenizer import BPETokenizer
 
@@ -99,3 +101,24 @@ def test_native_quality_evaluator_loads_v2_generates_all_24_prompts_and_stays_bl
     assert "human_review_missing" in report["blocking_reasons"]
     assert (output_dir / "human-scores.template.json").is_file()
     assert (output_dir / "quality-report.json").is_file()
+
+
+def test_native_checkpoint_rejects_missing_or_mismatched_objective_metadata(tmp_path):
+    text = "Kullanıcı: Merhaba.\\nAsistan: Merhaba."
+    checkpoint = tmp_path / "native-v2.pt"
+    _write_checkpoint(checkpoint, text)
+    payload = torch.load(checkpoint, map_location="cpu", weights_only=True)
+
+    missing = dict(payload)
+    missing.pop("loss_objective_version")
+    missing_path = tmp_path / "missing-objective.pt"
+    torch.save(missing, missing_path)
+    with pytest.raises(ValueError, match="required format or provenance"):
+        load_native_checkpoint(missing_path)
+
+    unsupported = dict(payload)
+    unsupported["loss_objective_version"] = 999
+    unsupported_path = tmp_path / "unsupported-objective.pt"
+    torch.save(unsupported, unsupported_path)
+    with pytest.raises(ValueError, match="loss objective version"):
+        load_native_checkpoint(unsupported_path)
