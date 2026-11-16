@@ -41,7 +41,7 @@ def _validate_resume_payload(payload, *, training_corpus_sha256: str, manifest_s
         raise ValueError("Resume checkpoint training corpus does not match the current corpus.")
     if payload.get("manifest_sha256") != manifest_sha256:
         raise ValueError("Resume checkpoint license manifest does not match the current corpus.")
-    for field in ("optimizer_state", "batch_generator_state", "torch_rng_state", "model_state", "tokenizer", "model_config"):
+    for field in ("optimizer_state", "batch_generator_state", "torch_rng_state", "model_state", "tokenizer", "model_config", "dialogue_encoding_version", "loss_objective_version"):
         if field not in payload:
             raise ValueError(f"Resume checkpoint is missing required {field} state.")
     checkpoint_step = payload.get("step")
