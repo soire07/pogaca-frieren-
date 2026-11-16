@@ -121,9 +121,18 @@ def load_licensed_corpus(path: str | Path) -> list[str]:
         if canonical_path in declared:
             raise ValueError(f"Duplicate corpus manifest path: {canonical_path}")
         declared.add(canonical_path)
-        content = file_path.read_text(encoding="utf-8").strip()
+        raw_content = file_path.read_text(encoding="utf-8")
+        content = raw_content.strip()
         if not content:
             raise ValueError(f"Corpus file is empty: {canonical_path}")
+        expected_sha256 = entry.get("sha256")
+        if expected_sha256 is not None:
+            if (not isinstance(expected_sha256, str) or len(expected_sha256) != 64
+                    or any(character not in "0123456789abcdef" for character in expected_sha256)):
+                raise ValueError(f"Corpus SHA-256 must be 64 lowercase hexadecimal characters: {canonical_path}")
+            actual_sha256 = hashlib.sha256(raw_content.encode("utf-8")).hexdigest()
+            if actual_sha256 != expected_sha256:
+                raise ValueError(f"Corpus SHA-256 mismatch: {canonical_path}")
         documents.append(content)
 
     actual_files: set[str] = set()
@@ -635,7 +644,8 @@ def generate_text(
     prompt_ids = encode_generation_prompt(prompt, tokenizer)
     input_ids = torch.tensor([prompt_ids], dtype=torch.long, device=device)
     generated = model.generate(
-        input_ids, max_new_tokens=max_new_tokens, temperature=temperature, top_k=top_k
+        input_ids, max_new_tokens=max_new_tokens, temperature=temperature, top_k=top_k,
+        eos_token_id=tokenizer.eos_id,
     )[0].tolist()
     completion_ids = generated[len(prompt_ids):]
     if tokenizer.eos_id in completion_ids:
