@@ -1,5 +1,6 @@
 import torch,pytest
-from frieren_neural.scratch_model import FrierenNeuralConfig,FrierenNeuralModel
+from torch import nn
+from frieren_neural.scratch_model import Block,FrierenNeuralConfig,FrierenNeuralModel
 def test_native_transformer_forward_and_assistant_loss():
  c=FrierenNeuralConfig(vocab_size=280,d_model=32,n_layers=2,n_heads=4,n_kv_heads=2,max_seq_len=16,dropout=0)
  m=FrierenNeuralModel(c);x=torch.randint(0,280,(2,7));y=x.clone();y[:,:2]=-100
@@ -11,3 +12,17 @@ def test_native_transformer_rejects_invalid_supervision():
  m=FrierenNeuralModel(FrierenNeuralConfig(vocab_size=280,d_model=32,n_layers=1,n_heads=4,n_kv_heads=2,max_seq_len=16))
  x=torch.ones((1,4),dtype=torch.long)
  with pytest.raises(ValueError):m(x,torch.full_like(x,-100))
+
+def test_feed_forward_uses_attention_updated_hidden_state():
+ c=FrierenNeuralConfig(vocab_size=280,d_model=32,n_layers=1,n_heads=4,n_kv_heads=2,max_seq_len=16,dropout=0)
+ class Capture(nn.Module):
+  def __init__(self): super().__init__();self.seen=None
+  def forward(self,x): self.seen=x.detach().clone();return x
+ class Ones(nn.Module):
+  def forward(self,x): return torch.ones_like(x)
+ block=Block(c);capture=Capture()
+ block.n1=nn.Identity();block.attn=Ones();block.n2=capture
+ block.gate=nn.Identity();block.up=nn.Identity();block.down=nn.Identity()
+ output=block(torch.zeros((1,2,c.d_model)))
+ assert torch.equal(capture.seen,torch.ones_like(capture.seen))
+ assert torch.all(output>1.0)
