@@ -170,7 +170,21 @@ test('Frieren chat requires every reply to follow the language of the latest use
     { language: 'English', message: 'Where are you from and why do you not speak English?' },
     { language: 'Türkçe', message: 'Nerelisin ve neden Türkçe konuşmuyorsun?' },
     { language: 'Deutsch', message: 'Woher kommst du und warum sprichst du kein Deutsch?' },
-    { language: '日本語', message: 'どこから来たの？' }
+    { language: '日本語', message: 'どこから来たの？' },
+    { language: 'Français', message: "D'où viens-tu ?" },
+    { language: 'Español', message: '¿De dónde vienes?' },
+    { language: 'العربية', message: 'من أين أنت؟' },
+    { language: 'Русский', message: 'Откуда ты?' },
+    { language: '中文', message: '你来自哪里？' },
+    { language: '한국어', message: '어디에서 왔어요?' },
+    { language: 'Português', message: 'De onde você vem?' },
+    { language: 'Italiano', message: 'Da dove vieni?' },
+    { language: 'Nederlands', message: 'Waar kom je vandaan?' },
+    { language: 'हिन्दी', message: 'तुम कहाँ से हो?' },
+    { language: 'فارسی', message: 'اهل کجا هستی؟' },
+    { language: 'Polski', message: 'Skąd pochodzisz?' },
+    { language: 'Українська', message: 'Звідки ти?' },
+    { language: 'ไทย', message: 'คุณมาจากไหน?' }
   ];
 
   for (const item of cases) {
