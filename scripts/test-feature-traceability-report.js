@@ -69,9 +69,31 @@ test('serialized traceability report is valid JSON with a real trailing newline'
   assert.doesNotThrow(() => JSON.parse(serialized));
 });
 
-test('planned roadmap records are rejected from the active inventory', () => {
-  assert.throws(() => buildFeatureTraceabilityReport({
-    inventory: { features: [{ id: 'ROADMAP-0001', name: 'Future', category: 'RPG', status: 'planned' }] },
+test('planned roadmap records remain preserved and are excluded from implemented traceability', () => {
+  const report = buildFeatureTraceabilityReport({
+    inventory: {
+      targetFeatures: 3,
+      features: [
+        ...inventory.features,
+        { id: 'ROADMAP-0001', name: 'Preview a future capability', category: 'RPG', status: 'planned', planningNote: 'Candidate only; not implemented or tested.' }
+      ]
+    },
     commandReport: { results: [] }
-  }), /PLANNED_FEATURES_NOT_ALLOWED/);
+  });
+  assert.equal(report.summary.totalFeatures, 3);
+  assert.equal(report.summary.implementedFeatures, 2);
+  assert.equal(report.summary.plannedFeatures, 1);
+  assert.equal(report.features.some(feature => feature.id === 'ROADMAP-0001'), false);
+});
+
+test('planned roadmap records cannot be verified by command evidence', () => {
+  assert.throws(() => buildFeatureTraceabilityReport({
+    inventory: {
+      targetFeatures: 1,
+      features: [{ id: 'ROADMAP-0001', name: 'Preview a future capability', category: 'RPG', status: 'planned' }]
+    },
+    commandReport: {
+      results: [{ command: 'future', status: 'PASS', behavioralChecks: [{ name: 'future', passed: true, featureIds: ['ROADMAP-0001'] }] }]
+    }
+  }), /UNKNOWN_FEATURE_ID_IN_COMMAND_EVIDENCE/);
 });
