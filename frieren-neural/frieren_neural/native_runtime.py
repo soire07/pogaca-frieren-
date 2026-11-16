@@ -88,6 +88,11 @@ def generate_native_text(
             [generated[-model.config.max_seq_len:]], dtype=torch.long, device=device
         )
         logits = model(context)[0, -1].float() / temperature
+        logits[tokenizer.pad_id] = float("-inf")
+        logits[tokenizer.bos_id] = float("-inf")
+        logits[tokenizer.unk_id] = float("-inf")
+        if len(generated) == len(token_ids):
+            logits[tokenizer.eos_id] = float("-inf")
         count = min(top_k, logits.numel())
         threshold = torch.topk(logits, count).values[-1]
         logits = logits.masked_fill(logits < threshold, float("-inf"))
