@@ -115,7 +115,7 @@ def generate_native_text(
         completion = ""
     else:
         boundaries = [
-            position for marker in ("\\nKullanıcı:", "\\nAsistan:")
+            position for marker in ("\nKullanıcı:", "\nAsistan:")
             if (position := completion.find(marker)) >= 0
         ]
         if boundaries:
