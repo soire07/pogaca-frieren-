@@ -61,9 +61,9 @@ jobs:
           PY
       - name: Evaluate independent heldout splits and fixed Turkish benchmark
         run: |
-          frieren-neural-evaluate-native --checkpoint ./checkpoints/frieren-neural-v2.pt \\
-            --heldout ./corpus/turkish-chat-max-25k/heldout \\
-            --heldout ./corpus/turkish-reasoning-v1/heldout \\
+          frieren-neural-evaluate-native --checkpoint ./checkpoints/frieren-neural-v2.pt \
+            --heldout ./corpus/turkish-chat-max-25k/heldout \
+            --heldout ./corpus/turkish-reasoning-v1/heldout \
             --output-dir ./quality-reports/native-v2 --device cpu
       - name: Assert evaluation evidence remains blocked pending human review
         run: |
