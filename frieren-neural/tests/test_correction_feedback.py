@@ -52,7 +52,7 @@ def test_correction_rejects_secret_like_content():
 
 def test_approval_requires_two_distinct_reviewers_and_evidence():
     candidate = _candidate()
-    with pytest.raises(ValueError, match="two distinct"):
+    with pytest.raises(ValueError, match="(?i)two distinct"):
         approve_correction(
             candidate,
             reviewer_identity_hashes=["a" * 64, "a" * 64],
