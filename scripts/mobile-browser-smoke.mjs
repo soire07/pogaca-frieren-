@@ -527,6 +527,9 @@ for (const scenario of scenarios) {
     await page.waitForFunction(() => document.getElementById('site-sidebar')?.hidden === true);
     if (await menuToggle.getAttribute('aria-expanded') !== 'false' || await sidebar.isVisible()) throw new Error(scenario.name + ' outside click did not close navigation');
     await menuToggle.click();
+    const adventureGroup = sidebar.locator('[data-nav-group="macera"]');
+    await adventureGroup.locator('summary').click();
+    await playerShortcut.waitFor({ state: 'visible', timeout: 5000 });
     await playerShortcut.click();
     await page.waitForURL(url => url.pathname === '/maceraci');
     if (page.url().split('?')[0] !== baseUrl + '/maceraci') throw new Error(scenario.name + ' user panel shortcut did not navigate to the account dashboard');

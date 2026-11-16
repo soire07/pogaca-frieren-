@@ -181,6 +181,58 @@ test('guild workshop embed saves require the linked Discord guild owner',async()
  assert.equal(saved,true);
 });
 
+
+test('shared navigation is grouped, deduplicated, and labels account-required destinations for guests', async () => {
+  const response = res();
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/kesfet', headers: {} }, response), true);
+  assert.equal(response.status, 200);
+  for (const group of ['kesfet', 'macera', 'rehber', 'neural', 'hesap']) assert.match(response.body, new RegExp('data-nav-group="' + group + '"'));
+  assert.match(response.body, /<details class="site-nav-group"/);
+  assert.match(response.body, /Discord ile giriş yap/);
+  assert.match(response.body, /data-auth-required="true"/);
+  assert.match(response.body, /Frieren Neural/);
+  assert.doesNotMatch(response.body, /href="\/lonca"/);
+  assert.equal((response.body.match(/data-nav-path="\/hesap-merkezi#account-settings"/g) || []).length, 1);
+  assert.doesNotMatch(response.body, /DİĞER BÖLÜMLER/);
+});
+
+test('Poğaça, command catalog, and Neural introduction remain public without Discord login', async () => {
+  const client = { commands: { size: 1, values: () => [{ data: { toJSON: () => ({ name: 'yardim', description: 'Yardım komutu' }) } }] }, isReady: () => true };
+  for (const path of ['/pogaca', '/komutlar', '/frieren-ai']) {
+    const response = res();
+    assert.equal(await handlePublicSiteRequest({ method: 'GET', url: path, headers: {} }, response, { client }), true, path);
+    assert.equal(response.status, 200, path);
+    assert.doesNotMatch(response.body, /Discord ile giriş · Frieren/, path);
+    assert.match(response.body, /<main/, path);
+  }
+  const neural = res();
+  await handlePublicSiteRequest(request('/frieren-ai'), neural, { client });
+  assert.match(neural.body, /Frieren <em>Neural<\/em>/);
+  assert.match(neural.body, /merkezî zekâ katmanıdır/);
+  assert.doesNotMatch(neural.body, /ayrı bir AI servisi/);
+});
+
+test('legacy guild navigation redirects to the current adventurer dashboard', async () => {
+  const response = res();
+  const accountId = 'site_123e4567-e89b-12d3-a456-426614174000';
+  assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/lonca', headers: {} }, response), true);
+  assert.equal(response.status, 302);
+  assert.equal(response.headers.Location, '/maceraci');
+});
+
+
+test('navigation controller defers focus until visible and closes semantically after its transition', async () => {
+  const source = await readFile(new URL('../public-assets/site-navigation.js', import.meta.url), 'utf8');
+  assert.match(source, /menu\.inert = true/);
+  assert.match(source, /menu\.inert = false/);
+  assert.match(source, /requestAnimationFrame\(\(\) => \{/);
+  assert.match(source, /transitionend/);
+  assert.match(source, /setTimeout\(finishClose, 220\)/);
+  assert.match(source, /summary, a\[href\]/);
+  assert.match(source, /element\.matches\('summary'\) \|\| !element\.closest\('details:not\(\[open\]\)'\)/);
+  assert.match(source, /menu\.querySelector\('\.site-sidebar-nav summary'\)/);
+  assert.match(source, /target\.hash === currentHash/);
+});
 test('custom navigation script is served as a public static asset', async () => {
   const response = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-navigation.js', headers: {} }, response), true);
@@ -199,7 +251,7 @@ test('public SEO landing page includes the exact Google site-verification meta t
   const description = response.body.match(/<meta name="description" content="([^"]*)">/);
   assert.ok(description && description[1].length <= 160, 'SEO description must stay within 160 characters');
   assert.match(response.body, /SIK SORULAN SORULAR/);
-  assert.match(response.body, /Frieren AI yetenekleri Poğaça Frieren deneyiminin parçası/);
+  assert.match(response.body, /Frieren Neural yetenekleri Poğaça Frieren deneyiminin parçasıdır/);
 });
 
 test('public homepage introduces Poğaça Frieren, offers the bot invite and shows command discovery without login', async () => {
@@ -217,7 +269,7 @@ test('public homepage introduces Poğaça Frieren, offers the bot invite and sho
     assert.match(response.body, /data-platform-metric="guilds"/);
     assert.match(response.body, /class="[^"]*\blanding-feature-card\b[^"]*"/);
     assert.match(response.body, /class="landing-command-list"/);
-    assert.match(response.body, /href="\/assets\/site\.css\?v=cosmetics-401-1&site-polish=20261116-1"/);
+    assert.match(response.body, /href="\/assets\/site\.css\?v=cosmetics-401-1&site-polish=20261116-2"/);
     assert.match(response.body, /Discord sunucuna ekle/);
     assert.match(response.body, /discord.com\/oauth2\/authorize/);
     assert.match(response.body, /Komutları incele/);
@@ -229,7 +281,7 @@ test('public homepage introduces Poğaça Frieren, offers the bot invite and sho
   }
 });
 
-test('authenticated homepage includes the member identity, profile and GIF gallery', async () => {
+test('authenticated homepage keeps the account identity and grouped navigation with the GIF gallery', async () => {
   const response = res();
   const client = { guilds: { cache: { size: 3 } }, commands: { size: 68 }, isReady: () => true };
   assert.equal(await handlePublicSiteRequest(request('/kesfet', visitor), response, { client }), true);
@@ -245,34 +297,25 @@ test('authenticated homepage includes the member identity, profile and GIF galle
   assert.match(response.body, /<svg class="site-menu-dots"[^>]*><circle[^>]*><\/circle><circle[^>]*><\/circle><circle[^>]*><\/circle><\/svg>/);
   assert.match(response.body, /<main id="main-content"/);
   assert.match(response.body, /aria-label="Frieren ana menüsü"/);
-  assert.match(response.body, /site-menu-toggle/);
   assert.match(response.body, /aria-controls="site-sidebar"/);
-  assert.match(response.body, /data-nav-group="oyuncu"/);
-  assert.match(response.body, /data-nav-group="kullanici"/);
-  assert.match(response.body, /KULLANICI MERKEZİ/);
-  assert.match(response.body, /Başarım Vitrini/);
-  assert.match(response.body, /Kişisel Yaşam Alanım/);
-  assert.ok(response.body.includes('href="/maceraci/profil#leaderboards"'));
-  assert.ok(response.body.includes('href="/maceraci/profil#privacy"'));
-  assert.match(response.body, /data-nav-group="dunya"/);
-  assert.ok(response.body.includes('data-nav-path="/maceraci" href="/maceraci"'));
+  for (const group of ['kesfet', 'macera', 'rehber', 'neural', 'hesap', 'oturum']) assert.match(response.body, new RegExp('data-nav-group="' + group + '"'));
+  assert.match(response.body, /MACERA & RPG/);
+  assert.match(response.body, /HESAP & TOPLULUK/);
+  assert.match(response.body, /Frieren Neural/);
+  assert.doesNotMatch(response.body, /Başarım Vitrini/);
+  assert.match(response.body, /Yaşam Alanım/);
+  assert.ok(response.body.includes('href="/maceraci/profil"'));
+  assert.ok(!response.body.includes('href="/maceraci/profil#leaderboards"'));
+  assert.ok(!response.body.includes('href="/maceraci/profil#privacy"'));
+  assert.match(response.body, /data-nav-path="\/maceraci" data-auth-required="true" href="\/maceraci"/);
   assert.ok(response.body.includes('<strong>Maceracı Panelim</strong>'));
-  assert.ok(response.body.includes('data-nav-path="/maceraci" href="/maceraci"'));
-  assert.match(response.body, /site-navigation.js/);
-  assert.match(response.body, /data-nav-group="oyuncu"/);
-  assert.match(response.body, /data-nav-group="kullanici"/);
-  assert.match(response.body, /KULLANICI MERKEZİ/);
-  assert.match(response.body, /Başarım Vitrini/);
-  assert.match(response.body, /Kişisel Yaşam Alanım/);
-  assert.ok(response.body.includes('href="/maceraci/profil#leaderboards"'));
-  assert.ok(response.body.includes('href="/maceraci/profil#privacy"'));
+  assert.match(response.body, /site-navigation\.js/);
   assert.match(response.body, /gif-gallery/);
   assert.match(response.body, /profile-avatar/);
   assert.equal((response.body.match(/loading="lazy"/g) || []).length, 18);
   assert.equal((response.body.match(/class="gif-item"/g) || []).length, 16);
   assert.match(response.body, /68/);
 });
-
 
 test('authenticated adventurer panel remains account-scoped at /maceraci', async () => {
   const profile = { guild_id:'1539562273197260860', user_id:'123456789012345678', character_name:'Fern', class_name:'Büyücü', level:12, xp:1440, coins:900, hp:80, max_hp:100, mana:65, max_mana:100, season_name:'Sezon 2026', rating:1180, wins:4, losses:2, matches:6 };
@@ -348,15 +391,17 @@ test('adventurer panel fails closed when its database is unavailable for a valid
   assert.match(response.body, /veritabanına/);
 });
 
-test('all public pages require a valid Discord session', async () => {
-  for (const path of ['/pogaca', '/frieren-ai', '/assets/frieren.gif']) {
+test('product information and reference pages are public while player operations remain account-gated', async () => {
+  for (const path of ['/pogaca', '/komutlar', '/frieren-ai']) {
+    const anonymous = res();
+    assert.equal(await handlePublicSiteRequest({ method: 'GET', url: path, headers: {} }, anonymous), true, path);
+    assert.equal(anonymous.status, 200, path);
+  }
+  for (const path of ['/maceraci', '/pazar', '/hesap-merkezi']) {
     const anonymous = res();
     await handlePublicSiteRequest({ method: 'GET', url: path, headers: {} }, anonymous);
     assert.equal(anonymous.status, 302, path);
-    const authenticated = res();
-    const handled = await handlePublicSiteRequest(request(path), authenticated);
-    assert.equal(handled, true, path);
-    if (!path.startsWith('/assets/')) assert.equal(authenticated.status, 200, path);
+    assert.equal(anonymous.headers.Location, '/login', path);
   }
 });
 
@@ -469,7 +514,9 @@ test('homepage renders the signed-in user profile with the completed starry bann
   await handlePublicSiteRequest({ method: 'GET', url: '/assets/site.css', headers: {} }, stylesheet);
   assert.ok(String(stylesheet.body).includes('.profile-banner-art img{display:block'));
   assert.ok(String(stylesheet.body).includes('.profile-label{display:block'));
-  assert.match(String(stylesheet.body), /\.site-menu-toggle\{[^}]*transform:translateY\(-50%\)/);
+  assert.match(String(stylesheet.body), /\.site-menu-toggle\{[^}]*position:fixed/);
+  assert.match(String(stylesheet.body), /\.site-menu-toggle:hover\{[^}]*translateY\(-2px\)/);
+  assert.ok(String(stylesheet.body).includes('width:min(310px,calc(100vw - 18px))'));
   assert.ok(String(stylesheet.body).includes('.hero{position:relative;isolation:isolate'));
 });
 test('shared stylesheet is publicly cacheable for authenticated and auth pages', async () => {
@@ -601,7 +648,7 @@ test('homepage declares the existing Frieren brand favicon and serves the SVG as
   const homepage = res();
   await handlePublicSiteRequest(request('/kesfet'), homepage);
   assert.match(homepage.body, /<link rel="icon" type="image\/svg\+xml" href="\/assets\/site-avatar\.svg">/);
-  assert.match(homepage.body, /href="\/lonca">Maceracı Loncası/);
+  assert.match(homepage.body, /href="\/maceraci">Maceracı Panelim/);
   assert.match(homepage.body, /Frieren modüllerini düzenle/);
   const favicon = res();
   assert.equal(await handlePublicSiteRequest({ method: 'GET', url: '/assets/site-avatar.svg', headers: {} }, favicon), true);
@@ -1505,21 +1552,29 @@ test('all site and panel button markup declares an explicit action type', async 
   }
 });
 
-test('account navigation is global while RPG character features stay inside the adventurer panel', async () => {
-  const source=await readFile(new URL('../public-site.js',import.meta.url),'utf8');
-  const userCenter=source.slice(source.indexOf("navGroup('kullanici'"),source.indexOf("navGroup('maceraci'"));
-  const adventurer=source.slice(source.indexOf("navGroup('maceraci'"),source.indexOf("navGroup('oyuncu'"));
-  assert.match(userCenter,/navLink\('\/profil',[\s\S]*?'Hesap Profilim'/);
-  assert.match(userCenter,/navLink\('\/hesap-merkezi',[\s\S]*?'Hesap ve Destek Merkezi'/);
-  assert.doesNotMatch(userCenter,/\/maceraci\//);
-  for(const path of ['/maceraci/profil','/maceraci/merkez','/maceraci/envanter','/maceraci/koleksiyon','/maceraci/yasam']) assert.ok(adventurer.includes(path),path);
-  assert.match(adventurer,/MACERACI PANELİ/);
-  assert.match(source,/navLink\('\/destek#account-settings',[\s\S]*?'Hesap Ayarları'/);
-  assert.match(source,/navLink\('\/logout',[\s\S]*?'Çıkış Yap'/);
-  assert.match(source,/id="badges"/);
-  assert.match(source,/id="account-settings"/);
+test('account navigation stays global while RPG features remain grouped inside the adventurer panel', async () => {
+  const source = await readFile(new URL('../public-site.js', import.meta.url), 'utf8');
+  const navigation = source.slice(source.indexOf('const navGroup ='), source.indexOf("  return '<!doctype", source.indexOf('const navGroup =')));
+  const account = navigation.slice(navigation.indexOf("navGroup('hesap'"), navigation.indexOf("navGroup('oturum'"));
+  const adventurer = navigation.slice(navigation.indexOf("navGroup('macera'"), navigation.indexOf("navGroup('rehber'"));
+  assert.match(account, /navLink\('\/profil',[\s\S]*?'Hesap Profilim'/);
+  assert.match(account, /navLink\('\/hesap-merkezi#account-settings',[\s\S]*?'Hesap ve Destek Merkezi'/);
+  assert.doesNotMatch(account, /\/maceraci\//);
+  for (const path of ['/maceraci/profil', '/maceraci/merkez', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/yasam']) assert.ok(adventurer.includes(path), path);
+  assert.match(adventurer, /MACERA & RPG/);
+  assert.equal((adventurer.match(/navLink\('\/maceraci\/profil/g) || []).length, 1);
+  assert.doesNotMatch(adventurer, /\/maceraci\/profil#(?:progress|achievements|badges|battle-stats|leaderboards|privacy)/);
+  const quickNavStart = source.indexOf('const quickNav=');
+  const quickNavEnd = source.indexOf('const content =', quickNavStart);
+  const profileQuickNav = source.slice(quickNavStart, quickNavEnd);
+  for (const anchor of ['#progress', '#badges', '#achievements', '#battle-stats', '#leaderboards', '#privacy']) {
+    assert.ok(profileQuickNav.includes(anchor), 'profile quick navigation must retain ' + anchor);
+  }
+  assert.match(source, /id="badges"/);
+  assert.match(source, /id="account-settings"/);
+  assert.match(navigation, /navGroup\('oturum',[\s\S]*?navLink\('\/logout'/);
+  assert.match(navigation, /navGroup\('yonetim',[\s\S]*?navLink\('\/owner'/);
 });
-
 test('global account profile renders without a guild picker and keeps profile media account-scoped', async () => {
   const accountId='site_123e4567-e89b-12d3-a456-426614174000';
   const db={async query(sql){
