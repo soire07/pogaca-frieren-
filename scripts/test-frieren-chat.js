@@ -165,6 +165,25 @@ test('personal memories are not injected into fictional character questions', as
 });
 
 
+test('Frieren chat requires every reply to follow the language of the latest user message', () => {
+  const cases = [
+    { language: 'English', message: 'Where are you from and why do you not speak English?' },
+    { language: 'Türkçe', message: 'Nerelisin ve neden Türkçe konuşmuyorsun?' },
+    { language: 'Deutsch', message: 'Woher kommst du und warum sprichst du kein Deutsch?' },
+    { language: '日本語', message: 'どこから来たの？' }
+  ];
+
+  for (const item of cases) {
+    const messages = buildFrierenMessages({
+      history: [{ role: 'assistant', content: 'Önceki yanıt Türkçeydi.' }],
+      userMessage: item.message
+    });
+    assert.match(messages[0].content, /son kullanıcı mesajının dilini/i);
+    assert.match(messages[0].content, /aynı dilde yanıt ver/i);
+    assert.equal(messages.at(-1).content, item.message);
+  }
+});
+
 test('Frieren persona uses canonical identity and forbids invented appearance or server-based identity', () => {
   const systemPrompt = buildFrierenMessages({ userMessage: 'Kendini tanıt.' })[0].content;
   assert.match(systemPrompt, /Frieren: Beyond Journey.s End/i);
