@@ -1,12 +1,13 @@
 # Frieren Neural
 
-Frieren Neural is the experimental, from-scratch language-model research track for Frieren AI.
+Frieren Neural is the single central AI for Poğaça Frieren. This package contains experimental model training and the authenticated inference API; Poğaça Frieren remains the only Discord bot and the only Discord interaction layer.
 
-This directory is isolated from the existing Discord bot and its runtime. It does not replace the current Frieren AI agent, call a hosted LLM, or require a paid API.
+This branch is not connected to production. It does not create or log in as a Discord bot. The scratch model is the default backend; alternative backends are research comparisons only and must not become the production model.
 
 ## Current scope
 
-- A compact decoder-only Transformer (GPT-style) implemented with PyTorch.
+- A compact decoder-only Transformer (GPT-style) implemented with PyTorch, retained as a research baseline.
+- An optional Turkish-first pretrained chat backend (`ufakai/ufakzeka-1`, Apache-2.0) served through its published Q8 GGUF weights and native chat template.
 - A deterministic byte-level BPE tokenizer with lossless multilingual UTF-8 round-trips; the earlier character tokenizer remains for compatibility.
 - Next-token training with AdamW, gradient clipping, and train/validation loss measurement.
 - Tokenizer training uses only the training text; validation text is held out before BPE merges are learned.
@@ -121,6 +122,21 @@ Training automatically uses CUDA when available and otherwise CPU. CPU is suitab
 
 Checkpoints are written atomically and ignored by Git. Keep datasets and model weights in private storage, not Git.
 
+## Native scratch architecture v2 and serving integration
+
+The `frieren-neural-train-native` command trains Frieren Neural's own v2 decoder-only Transformer in `scratch_model.py` (256-dimensional hidden state, 6 layers, grouped-query attention, RoPE, and SwiGLU). Its training split preserves complete source documents or conversation separators, and checkpoints are written atomically with architecture identity, tokenizer, corpus digest, manifest digest, license metadata, and training step.
+
+```bash
+frieren-neural-train-native \
+  --data ./corpus \
+  --checkpoint checkpoints/frieren-neural-v2-candidate.pt \
+  --steps 6000
+```
+
+**Serving integration:** the authenticated API now detects `architecture_id=frieren-neural-transformer-v2`, validates the native checkpoint metadata, loads its own `FrierenNeuralModel` and BPE tokenizer with PyTorch's restricted `weights_only` loader, and generates through both `/generate` and `/web/generate`. Legacy scratch checkpoints remain supported for compatibility. The native model is not a pretrained-provider fallback.
+
+The regression test performs one CPU optimizer step using a synthetic CC0 test corpus, writes a native checkpoint, then loads that exact checkpoint through `/health`, `/generate`, and `/web/generate`. This proves the training-to-checkpoint-to-inference path works; it does **not** prove useful Turkish responses, factual reliability, safety, or production performance. The small test checkpoint is not a release candidate. A full licensed corpus run, held-out Turkish quality gate, safety review, and two independent human reviews remain required before production traffic.
+
 ## Evaluate on held-out data
 
 Use a separate corpus directory with its own `corpus_manifest.json`; the evaluator rejects the exact training corpus fingerprint.
@@ -168,26 +184,38 @@ print(generate_text(model, tokenizer, "Frieren ", max_new_tokens=80))
 
 ## Shared inference API
 
-The optional FastAPI service exposes health, authenticated server-to-server generation, and a same-origin browser chat. The Discord adapter calls the same inference core; neither client loads a separate model copy.
+The optional FastAPI service exposes health, authenticated server-to-server generation, and a same-origin browser chat. Poğaça Frieren is the only Discord client and will call this authenticated API through its existing backend integration.
+
+### Optional pretrained comparison backend (research only)
+
+The serving API includes `ufakzeka` only as an opt-in comparison backend. The native scratch model remains the production target; `ufakzeka` is rejected unless `FRIEREN_ALLOW_PRETRAINED_BACKEND=1` is explicitly set for a research run. This selects `ufakai/ufakzeka-1`, a Turkish-first 151M-parameter chat model published under Apache-2.0. Its recommended Q8 GGUF is approximately 196 MB. The runtime downloads it on first model load, verifies the published SHA-256 before accepting it, uses memory mapping, and keeps one model instance per process. It uses the model's native user/assistant chat template; do not inject a system-role message because the released chat model was trained without system messages.
+
+The model is not perfect: its published evaluation documents limits in factual recall, arithmetic over multiple turns, and some safety edge cases. It may be useful for offline quality comparisons, but it is not the target model and must not receive private production conversations. The final Neural runtime must use its own trained weights. No hosted model API is required.
+
 
 Install the serving extra and start the service:
 
 ```bash
 pip install -e ".[serve]"
+export FRIEREN_MODEL_BACKEND=scratch
 export FRIEREN_CHECKPOINT=checkpoints/frieren-neural.pt
+# Optional comparison only; never enable for production user traffic:
+# export FRIEREN_MODEL_BACKEND=ufakzeka
+# export FRIEREN_ALLOW_PRETRAINED_BACKEND=1
+# export FRIEREN_GGUF_MODEL_PATH=models/ufakzeka-1-q8_0.gguf
 export FRIEREN_API_TOKEN="use-a-random-secret-at-least-32-characters-long"
 export FRIEREN_DATABASE_URL="postgresql://.../neondb?sslmode=require"
 export FRIEREN_ALLOWED_ORIGINS="https://your-web-app.example"
 uvicorn frieren_neural.api:app --host 0.0.0.0 --port 8000
 ```
 
-- `GET /health` loads and checks the configured checkpoint without exposing its path or credentials.
+- `GET /health` loads and checks the selected model; the native scratch checkpoint is the default. The optional comparison backend downloads the pinned-size, SHA-256-verified Q8 model only after explicit research opt-in.
 - `POST /generate` requires `Authorization: Bearer <token>` and has strict prompt/output limits.
 - CORS is disabled unless explicit origins are listed in `FRIEREN_ALLOWED_ORIGINS`; wildcard origins are rejected.
-- If no strong API token or valid checkpoint is configured, generation fails closed.
+- If no strong API token or valid model is configured, generation fails closed.
 - Keep the API token in the host's secret/environment settings. Never commit it or place it in the browser bundle.
 
-This API is a single shared service, not a collection of serverless functions. It is not deployed by this change; hosting and the web/Discord clients remain separate milestones.
+This API is a single shared Neural service, not a collection of serverless functions. It is not deployed by this change; hosting and Poğaça's server-to-server integration remain separate milestones.
 
 
 ## Browser chat
@@ -211,23 +239,6 @@ Configure these additional host secrets:
 
 Login and generation POST requests must be same-origin. The service rejects cross-origin browser requests, limits login attempts, and requires HTTPS outside localhost. The web interface displays generated text with `textContent`, not HTML.
 
-## Discord adapter
-
-The optional Discord client exposes one `/ask` slash command and forwards requests to the same authenticated inference API. It does not load a second model or request privileged Discord intents.
-
-```bash
-pip install -e ".[discord]"
-export FRIEREN_DISCORD_TOKEN="your-discord-bot-token"
-export FRIEREN_API_TOKEN="the-same-strong-server-to-server-token"
-export FRIEREN_API_URL="https://your-inference-host.example"
-# Optional: sync the slash command to one test server immediately
-export FRIEREN_DISCORD_GUILD_ID="your-test-server-id"
-python -m frieren_neural.discord_adapter
-```
-
-The bot token and API token must be stored as host secrets, never in Git or client-side code. The adapter sends only the prompt to the model API, limits output to Discord-safe chunks, and disables mention parsing on generated replies. Conversation memory is not implemented yet.
-
-
 ## Engineering constraints
 
 1. Never put credentials, Discord tokens, database URLs, or private user data in this directory.
@@ -242,7 +253,7 @@ The bot token and API token must be stored as host secrets, never in Git or clie
 2. **Training:** BPE, provenance checks, leakage-free split, training, evaluation, and deterministic resume are implemented.
 3. **Evaluation:** held-out perplexity, Turkish/English quality sets, and regression benchmarks.
 4. **Memory and tools:** separate retrieval/memory and tool execution from model weights.
-5. **Serving:** authenticated FastAPI inference API and Discord `/ask` adapter are implemented; a browser chat UI, hosting, and deployment remain.
+5. **Serving:** authenticated FastAPI inference API and browser chat are implemented; production hosting/integration remains separate. No Discord adapter is shipped here; Discord traffic stays in Poğaça Frieren.
 6. **Scaling:** improve data, tokenizer, model size, and training only when suitable compute is available.
 
 A genuinely capable model requires substantial clean data and compute. This is a small research model, not a ChatGPT-equivalent system.
@@ -288,3 +299,19 @@ The trainer keeps user turns and role markers in the context window but excludes
 ## Additional dataset candidate: TFLai Turkish-Alpaca
 
 The [TFLai Turkish-Alpaca dataset card](https://huggingface.co/datasets/TFLai/Turkish-Alpaca) declares Apache-2.0 and reports 51,914 rows / 24.2 MB. Its public examples show mixed response quality, including incorrect arithmetic reasoning and weak/unsafe password-generation examples. **It is not imported or used for training.** The current public file listing exposes a mutable main path and an LFS digest, but the exact immutable revision, complete license notice, file digest, and row-level safety/quality filtering have not been verified together. Before use, pin a full immutable revision, verify all consumed bytes, inspect license notices, and add deterministic allowlist-based task filtering plus independent human spot checks. A larger dataset must not be assumed to be a better dataset.
+
+
+## Send quality reports to Neural Guardian
+
+The evaluator can optionally submit its generated report to the Poğaça Owner Panel's authenticated Guardian endpoint. This does not make a report ready: missing human scores, training provenance, held-out metrics, or independent CI evidence remain blockers.
+
+Configure these environment variables on the **Frieren Neural Render service**:
+
+- `FRIEREN_NEURAL_GUARDIAN_URL=https://pogaca-frieren.onrender.com/internal/neural-quality-report`
+- `FRIEREN_NEURAL_GUARDIAN_SECRET`: a newly generated random secret with at least 32 characters.
+
+Set the exact same secret as `FRIEREN_NEURAL_GUARDIAN_SECRET` on the **Poğaça Frieren Render service**. Do not reuse Discord, database, or Frieren AI bridge credentials. Keep the secret in Render environment settings only; never commit it.
+
+When both variables are configured, running `frieren-neural-evaluate-quality` submits the report over HTTPS with bearer authentication. The Guardian endpoint rejects scratch-backend reports, mismatched artifact fingerprints, malformed benchmark IDs, and payloads over 1 MiB. It stores at most the 50 most recent reports. A successful upload means only that the report was stored; it is not CI, security, memory-isolation, merge, or deployment approval.
+
+If either variable is absent, the evaluator writes local JSON/Markdown reports without uploading. If only one is present, evaluation fails clearly instead of silently skipping the configured integration.
