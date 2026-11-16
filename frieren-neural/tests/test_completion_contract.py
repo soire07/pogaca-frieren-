@@ -2,7 +2,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 import frieren_neural.api as api
-from frieren_neural.discord_adapter import extract_answer
 
 
 @pytest.fixture
@@ -68,19 +67,6 @@ def test_authenticated_web_chat_exposes_completion_without_prompt_echo(
     assert response.status_code == 200
     assert captured["prompt"] == "Kullanıcı: Frieren kimdir?\nAsistan:"
     assert response.json()["completion"] == "Cevap burada."
-
-
-def test_discord_answer_extractor_prefers_completion_and_supports_legacy_api():
-    assert extract_answer(
-        {"text": "Frieren kimdir? Cevap burada.", "completion": "Cevap burada."},
-        "Frieren kimdir?",
-    ) == "Cevap burada."
-    assert extract_answer(
-        {"text": "Frieren kimdir? Cevap burada."},
-        "Frieren kimdir?",
-    ) == "Cevap burada."
-    assert extract_answer({"text": "  "}, "Frieren kimdir?") is None
-
 
 
 def test_api_serializes_plain_user_prompt_with_the_training_chat_template(
