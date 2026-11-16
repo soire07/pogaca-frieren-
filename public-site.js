@@ -1413,7 +1413,8 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     }
     return true;
   }
-  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/hizmet-kosullari', '/gizlilik-politikasi', '/destek', '/maceraci/oyuncu', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/profil', '/profil/media', '/profil/media/public', '/hesap-merkezi', '/bildirimler', '/pazar', '/ansiklopedi', '/ara', '/lonca']);
+  if (req.method === 'GET' && url.pathname === '/lonca') { res.writeHead(302, { Location: '/maceraci', 'Cache-Control': 'no-store' }); res.end(); return true; }
+  const publicPaths = new Set(['/', '/kesfet', '/pogaca', '/komutlar', '/frieren-ai', '/hizmet-kosullari', '/gizlilik-politikasi', '/destek', '/maceraci/oyuncu', '/maceraci/merkez', '/maceraci', '/maceraci/profil', '/maceraci/yasam', '/maceraci/ev', '/maceraci/envanter', '/maceraci/koleksiyon', '/maceraci/sosyal', '/maceraci/bildirimler', '/maceraci/atolye', '/maceraci/profil/media', '/profil', '/profil/media', '/profil/media/public', '/hesap-merkezi', '/bildirimler', '/pazar', '/ansiklopedi', '/ara']);
   const isPublicProfilePath=url.pathname.startsWith('/u/');
   if (!publicPaths.has(url.pathname) && !assets.has(url.pathname) && !isPublicProfilePath) return false;
   const sessionUser = readPublicSiteSession(cookie[SITE_COOKIE], process.env.ADMIN_SESSION_SECRET);
@@ -1491,7 +1492,6 @@ export async function handlePublicSiteRequest(req, res, { client, db } = {}) {
     const csrf=esc(createSiteCsrfToken(process.env.ADMIN_SESSION_SECRET));const html='<main class="wrap user-center-page notification-center-page"><header class="user-center-hero"><div class="eyebrow">✧ FRIEREN HESAP MERKEZİ</div><h1>Bildirimlerim</h1><p class="lead" aria-live="polite">Okunmamış: '+unread+'</p>'+(unread?'<form method="post" action="/api/account-notifications/read"><input type="hidden" name="csrf" value="'+csrf+'"><button class="btn" type="submit">Tümünü okundu işaretle</button></form>':'<p class="notification-all-read">Tüm bildirimlerin okundu.</p>')+'</header><nav class="user-center-tabs"><a href="/profil">Hesap Profilim</a><a href="/bildirimler" aria-current="page">Bildirimler</a><a href="/kesfet#topluluk-sohbeti">Topluluk sohbeti</a></nav><section class="portal-grid">'+rows+'</section></main>';
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});res.end(page('Bildirimlerim',html,user));return true;
   }
-  if (url.pathname === '/lonca') { res.writeHead(302, { Location: '/maceraci', 'Cache-Control': 'no-store' }); res.end(); return true; }
   if (url.pathname === '/destek' || url.pathname === '/hesap-merkezi') {
     if (!requireSiteAccount(res, user?.id)) return true;
     if (!db) { res.writeHead(503,{'Cache-Control':'no-store'});res.end('Destek veritabanı kullanılamıyor.');return true; }
