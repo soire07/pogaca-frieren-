@@ -2091,5 +2091,5 @@ footer{border-top-color:rgba(220,199,255,.15);background:rgba(9,10,19,.20)}foote
 .site-nav-arrow{margin-left:auto;color:#8f81a6;font-size:11px}
 .site-sidebar-foot{padding:10px 5px 2px;border-top:1px solid rgba(255,255,255,.10);color:#a99dbb;font-size:8px;text-align:center}
 @media(max-width:850px){.topbar{padding-left:68px}.site-menu-toggle{top:10px;left:12px}}
-@media(max-width:560px){.topbar{padding-left:62px}.site-menu-toggle{top:9px;left:9px;width:42px;height:42px}.site-sidebar{inset:57px auto auto 9px;width:min(360px,calc(100vw - 18px));max-height:calc(100dvh - 70px);padding:11px}.site-nav-group>summary{min-height:44px}.site-nav-link{min-height:44px}}
+@media(max-width:560px){.topbar{padding-left:62px}.site-menu-toggle{top:9px;left:9px;width:42px;height:42px}.site-sidebar{inset:57px auto auto 9px;width:min(310px,calc(100vw - 18px));max-height:calc(100dvh - 70px);padding:11px}.site-nav-group>summary{min-height:44px}.site-nav-link{min-height:44px}}
 @media(prefers-reduced-motion:reduce){.site-sidebar,.site-menu-toggle,.site-nav-group-chevron{transition:none!important}.site-sidebar{transform:none}.site-menu-toggle:hover{transform:none}}

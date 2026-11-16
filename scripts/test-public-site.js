@@ -515,6 +515,7 @@ test('homepage renders the signed-in user profile with the completed starry bann
   assert.ok(String(stylesheet.body).includes('.profile-label{display:block'));
   assert.match(String(stylesheet.body), /\.site-menu-toggle\{[^}]*position:fixed/);
   assert.match(String(stylesheet.body), /\.site-menu-toggle:hover\{[^}]*translateY\(-2px\)/);
+  assert.ok(String(stylesheet.body).includes('width:min(310px,calc(100vw - 18px))'));
   assert.ok(String(stylesheet.body).includes('.hero{position:relative;isolation:isolate'));
 });
 test('shared stylesheet is publicly cacheable for authenticated and auth pages', async () => {
