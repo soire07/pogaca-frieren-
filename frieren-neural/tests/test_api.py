@@ -559,3 +559,21 @@ def test_native_v2_checkpoint_loads_and_generates_through_api(api_client, monkey
     assert isinstance(response.json()["completion"], str)
     assert response.json()["completion"].strip()
     assert response.json()["text"].startswith("Merhaba")
+
+    monkeypatch.setenv("FRIEREN_WEB_PASSWORD", "p" * 24)
+    monkeypatch.setenv("FRIEREN_SESSION_SECRET", "s" * 48)
+    login = api_client.post(
+        "/web/login",
+        json={"password": "p" * 24},
+        headers={"Origin": "https://testserver"},
+    )
+    assert login.status_code == 200
+    web_response = api_client.post(
+        "/web/generate",
+        json={"prompt": "Merhaba", "max_new_tokens": 3, "top_k": 1},
+        headers={"Origin": "https://testserver"},
+    )
+    assert web_response.status_code == 200
+    assert web_response.json()["model"] == "frieren-neural-transformer-v2"
+    assert web_response.json()["step"] == 7
+    assert web_response.json()["completion"].strip()
