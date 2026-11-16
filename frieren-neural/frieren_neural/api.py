@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 
 from .model import GPTLanguageModel
 from .chat_format import format_benchmark_prompt
+from .native_runtime import ARCHITECTURE_ID, generate_native_text, load_native_checkpoint
 from .tokenizer import BPETokenizer
 from .training import generate_text, load_checkpoint
 
@@ -75,7 +76,10 @@ class GenerateRequest(BaseModel):
 @lru_cache(maxsize=1)
 def _load_runtime(
     checkpoint_path: str, device: str
-) -> tuple[GPTLanguageModel, BPETokenizer, dict[str, float | int | str]]:
+):
+    native_runtime = load_native_checkpoint(checkpoint_path, device=device)
+    if native_runtime is not None:
+        return native_runtime
     return load_checkpoint(checkpoint_path, device=device)
 
 
@@ -155,6 +159,12 @@ def _generate_reply(prompt: str, *, max_new_tokens: int, temperature: float, top
 
     model, tokenizer, metadata = _load_active_runtime()
     generation_prompt = format_benchmark_prompt(prompt)
+    if metadata.get("architecture_id") == ARCHITECTURE_ID:
+        completion = generate_native_text(
+            model, tokenizer, generation_prompt, max_new_tokens=max_new_tokens,
+            temperature=temperature, top_k=top_k,
+        )
+        return completion, int(metadata["step"]), ARCHITECTURE_ID
     result = generate_text(
         model, tokenizer, generation_prompt, max_new_tokens=max_new_tokens,
         temperature=temperature, top_k=top_k,
@@ -191,7 +201,11 @@ def health() -> dict[str, str]:
         raise
     except (OSError, RuntimeError, ValueError, KeyError, EOFError, ImportError, pickle.UnpicklingError):
         return {"status": "model_unavailable"}
-    model_name = "ufakai/ufakzeka-1" if _model_backend() == "ufakzeka" else "frieren-neural-scratch"
+    if _model_backend() == "ufakzeka":
+        model_name = "ufakai/ufakzeka-1"
+    else:
+        _model, _tokenizer, metadata = _load_active_runtime()
+        model_name = str(metadata.get("architecture_id") or "frieren-neural-scratch")
     return {"status": "ready", "model": model_name}
 
 
