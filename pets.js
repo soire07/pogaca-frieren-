@@ -37,7 +37,7 @@ export async function listPets(db,{guildId,userId}) {
 export async function adoptPet(dbPool,{guildId,userId,petKey}) {
   const pet=PET_CATALOG.find(item=>item.key===petKey);
   if(!guildId||!userId||!pet)return {status:'invalid_pet'};
-  await ensureUser(guildId,userId);await initPetSchema(dbPool);
+  await ensureUser(guildId,userId,dbPool);await initPetSchema(dbPool);
   const db=await dbPool.connect();
   try {
     await db.query('BEGIN');
