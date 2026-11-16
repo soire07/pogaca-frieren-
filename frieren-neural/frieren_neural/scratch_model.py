@@ -55,7 +55,10 @@ class Block(nn.Module):
         super().__init__();m=c.intermediate_size
         self.n1=RMSNorm(c.d_model);self.attn=Attention(c);self.n2=RMSNorm(c.d_model)
         self.gate=nn.Linear(c.d_model,m,bias=False);self.up=nn.Linear(c.d_model,m,bias=False);self.down=nn.Linear(m,c.d_model,bias=False)
-    def forward(self,x): return x+self.attn(self.n1(x))+self.down(F.silu(self.gate(self.n2(x)))*self.up(self.n2(x)))
+    def forward(self,x):
+        hidden=x+self.attn(self.n1(x))
+        normalized=self.n2(hidden)
+        return hidden+self.down(F.silu(self.gate(normalized))*self.up(normalized))
 
 class FrierenNeuralModel(nn.Module):
     architecture_id="frieren-neural-transformer-v2"
