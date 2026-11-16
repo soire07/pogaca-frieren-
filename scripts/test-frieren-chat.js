@@ -152,15 +152,13 @@ test('mention handler starts typing, loads independent context concurrently, and
 
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(typingCalls, 1);
-  assert.equal(pendingReads.length, 3, 'settings, memories and conversation history should load concurrently');
+  assert.equal(pendingReads.length, 1, 'chat settings must be checked before reading personal context');
+  assert.match(pendingReads[0].sql, /owner_settings/);
+  pendingReads[0].resolve({ rows: [{ setting_value: DEFAULT_FRIEREN_CHAT_SETTINGS }] });
 
-  for (const read of pendingReads) {
-    if (read.sql.includes('owner_settings')) {
-      read.resolve({ rows: [{ setting_value: DEFAULT_FRIEREN_CHAT_SETTINGS }] });
-    } else {
-      read.resolve({ rows: [] });
-    }
-  }
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(pendingReads.length, 3, 'memories and conversation history should load concurrently after chat is enabled');
+  for (const read of pendingReads.slice(1)) read.resolve({ rows: [] });
 
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(replies[0]?.content, 'İyiyim.', 'the user should receive the answer before history persistence finishes');
