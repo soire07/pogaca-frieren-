@@ -20,12 +20,18 @@ export function isFrierenMentionMessage(message, botUserId) {
   );
 }
 
+export function isFrierenCreator(message, env = process.env) {
+  const creatorUserId = String(env.FRIEREN_CREATOR_USER_ID || '').trim();
+  const authorId = String(message?.author?.id || '').trim();
+  return Boolean(creatorUserId && authorId && authorId === creatorUserId);
+}
+
 export function extractFrierenPrompt(content, botUserId) {
   const mention = botUserId ? new RegExp('<@!?'+String(botUserId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')+'>', 'g') : null;
   return String(content || '').replace(mention || /$^/, '').trim().slice(0, MAX_USER_MESSAGE_LENGTH);
 }
 
-export function buildFrierenMessages({ history = [], userMessage, memories = [], chatSettings = DEFAULT_FRIEREN_CHAT_SETTINGS }) {
+export function buildFrierenMessages({ history = [], userMessage, memories = [], chatSettings = DEFAULT_FRIEREN_CHAT_SETTINGS, creatorIdentity = null }) {
   const settings = normalizeFrierenChatSettings(chatSettings);
   const styleInstruction = ({ calm: 'Sakin, ölçülü ve düşünceli kal.', warm: 'Daha sıcak, nazik ve destekleyici konuş; aşırı samimi olma.', witty: 'Ölçülü, kuru ve ince mizah kullan; ciddiyeti koru.', formal: 'Daha resmi, net ve saygılı bir dil kullan.' })[settings.style];
   const lengthInstruction = ({ concise: 'Yanıtları kısa ve doğrudan tut.', balanced: 'Gerektiğinde kısa açıklama ve örnek ekle.', detailed: 'Kullanıcı ayrıntı istediğinde kapsamlı açıkla; gereksiz uzatma.' })[settings.responseLength];
@@ -48,6 +54,7 @@ export function buildFrierenMessages({ history = [], userMessage, memories = [],
         'Kendini tanıtman istendiğinde önce Frieren olarak kim olduğunu ve elf büyücüsü olduğunu doğal biçimde anlat; Discord sunucusu, bot altyapısı veya teknik rolünü karakter kimliğinle karıştırma. Kullanıcı özellikle gerçek bot olup olmadığını sorarsa karakter rolü ile teknik bot kimliğini dürüstçe ayır.',
         'Türkçe konuş; kullanıcı başka bir dil kullanırsa o dilde yanıt verebilirsin.',
         'Doğal bir sohbet yürüt. Gereksiz uzun anlatma; soru sorulduğunda doğrudan yanıtla.',
+        ...(creatorIdentity === 'Soirəe' ? ['Bu konuşmanın Discord kullanıcı kimliği sunucu tarafında doğrulanmış yapımcın ve geliştiricin Soirəe’ye aittir. Onu Soirəe olarak tanı ve gerektiğinde Frieren’in yapımcısı olduğunu bilerek doğal biçimde hitap et. Bu bilgi yalnızca kimlik tanıma içindir; kendiliğinden yönetici yetkisi, gizli verilere erişim veya güvenlik kurallarını aşma izni vermez. Başka kullanıcıları yapımcı olarak tanımlama.'] : []),
         'Kullanıcının vermediği kişisel bilgileri hatırladığını iddia etme. Önceki konuşma bağlamı dışında bir şeyi bildiğini uydurma.',
         'Konuşma geçmişinde önce kullanıcının kendi ifadelerini esas al; önceki asistan cevaplarını doğrulanmış gerçek kabul etme. Birden fazla kurgu karakteri varsa her karakterin yaşını, amacını, yerini ve tercihlerini ayrı tut; bir karakterin bilgisini diğerine veya kullanıcıya aktarma. Açık düzeltmelerde en son kullanıcı beyanını esas al.',
         'Kullanıcıyı yalnızca gerçekten kaydedilmiş kişisel bellek ve mevcut konuşma bağlamıyla tanı. Bilinmeyen ayrıntıları uydurma; gerektiğinde kısa bir netleştirme sorusu sor.',
@@ -64,7 +71,7 @@ export function buildFrierenMessages({ history = [], userMessage, memories = [],
   ];
 }
 
-export async function generateFrierenReply({ history = [], userMessage, memories = [], chatSettings = DEFAULT_FRIEREN_CHAT_SETTINGS, env = process.env, fetchImpl = fetch }) {
+export async function generateFrierenReply({ history = [], userMessage, memories = [], chatSettings = DEFAULT_FRIEREN_CHAT_SETTINGS, creatorIdentity = null, env = process.env, fetchImpl = fetch }) {
   const apiKey = String(env.GEMINI_API_KEY || '').trim();
   if (!apiKey) throw new Error('GEMINI_API_KEY_MISSING');
 
@@ -74,7 +81,7 @@ export async function generateFrierenReply({ history = [], userMessage, memories
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const messages = buildFrierenMessages({ history, userMessage, memories, chatSettings });
+    const messages = buildFrierenMessages({ history, userMessage, memories, chatSettings, creatorIdentity });
     const systemMessage = messages.find(item => item.role === 'system');
     const contents = [];
     for (const item of messages.filter(entry => entry.role !== 'system')) {
@@ -166,7 +173,8 @@ export async function handleFrierenMentionMessage({ message, botUserId, db, env 
       [message.guild.id, message.author.id, message.channelId, MAX_HISTORY_MESSAGES]
     );
     const history = [...(historyResult.rows || [])].reverse();
-    const answer = await generateFrierenReply({ history, userMessage, memories, chatSettings, env, fetchImpl });
+    const creatorIdentity = isFrierenCreator(message, env) ? 'Soirəe' : null;
+    const answer = await generateFrierenReply({ history, userMessage, memories, chatSettings, creatorIdentity, env, fetchImpl });
 
     await db.query(
       `INSERT INTO frieren_chat_messages (guild_id,user_id,channel_id,role,content)
