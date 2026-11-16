@@ -489,7 +489,15 @@ client.on(Events.InteractionCreate, async interaction => {
 client.on(Events.MessageCreate, async message => {
   if (!message.guild || message.author.bot) return;
   try {
-    if (await getMaintenanceState(pool)) return;
+    const [maintenanceEnabled, aiChatEnabled] = await Promise.all([
+      getMaintenanceState(pool),
+      getGuildFeatureEnabled(pool, message.guild.id, 'aiChat')
+    ]);
+    if (maintenanceEnabled) return;
+    // Handle a direct Frieren mention before unrelated creature and XP work.
+    if (aiChatEnabled && message.mentions?.users?.has?.(client.user?.id)) {
+      await handleFrierenMentionMessage({ message, botUserId: client.user?.id, db: pool });
+    }
     if (Math.random() < CREATURE_SPAWN_CHANCE && await getGuildFeatureEnabled(pool, message.guild.id, 'creatures')) {
       try {
         await ensureCreatureSchema();
@@ -511,11 +519,7 @@ client.on(Events.MessageCreate, async message => {
         }
       } catch (error) { console.error('Yaratık spawn hatası:', error?.message || error); }
     }
-    const [aiChatEnabled, messageXpEnabled] = await Promise.all([
-      getGuildFeatureEnabled(pool, message.guild.id, 'aiChat'),
-      getGuildFeatureEnabled(pool, message.guild.id, 'messageXp'),
-    ]);
-    if (aiChatEnabled) await handleFrierenMentionMessage({ message, botUserId: client.user?.id, db: pool });
+    const messageXpEnabled = await getGuildFeatureEnabled(pool, message.guild.id, 'messageXp');
     if (!messageXpEnabled) return;
     const gained = 10 + Math.floor(Math.random() * 11);
     const result = await pool.query(`INSERT INTO users (guild_id,user_id,xp,level,last_xp_at)
