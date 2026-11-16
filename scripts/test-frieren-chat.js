@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildFrierenMessages,
+  generateFrierenReply,
   extractFrierenPrompt,
   isCodeOrSourceRequest,
   isFrierenCreator,
@@ -285,6 +286,37 @@ test('Frieren multilingual policy does not force Turkish for ambiguous or mixed-
   assert.match(systemPrompt, /birden fazla dil/i);
   assert.match(systemPrompt, /dil netleştirme sorusu/i);
   assert.match(systemPrompt, /önceki konuşma dilini otomatik olarak dayatma/i);
+});
+
+test('Frieren explicitly answers Kurmanji and Sorani Kurdish in the same language', () => {
+  const userMessage = 'Çi heye?';
+  const messages = buildFrierenMessages({
+    history: [{ role: 'assistant', content: 'Önceki yanıt Türkçeydi.' }],
+    userMessage
+  });
+  assert.match(messages[0].content, /Kürtçe.*Kurmancî ve Soranî/i);
+  assert.match(messages[0].content, /Çi heye\?/);
+  assert.match(messages[0].content, /Türkçe sanma/i);
+  assert.equal(messages.at(-1).content, userMessage);
+});
+
+test('Kurdish language guidance is sent to the model for a real inference request', async () => {
+  let requestBody;
+  const answer = await generateFrierenReply({
+    userMessage: 'Çi heye?',
+    env: { GEMINI_API_KEY: 'test-key', GEMINI_CHAT_MODEL: 'test-model' },
+    fetchImpl: async (_url, options) => {
+      requestBody = JSON.parse(options.body);
+      return {
+        ok: true,
+        json: async () => ({ candidates: [{ content: { parts: [{ text: 'Ez baş im, spas. Tu çawa yî?' }] } }] })
+      };
+    }
+  });
+
+  assert.match(requestBody.systemInstruction.parts[0].text, /Kurmancî ve Soranî/i);
+  assert.equal(requestBody.contents.at(-1).parts[0].text, 'Çi heye?');
+  assert.equal(answer, 'Ez baş im, spas. Tu çawa yî?');
 });
 
 test('Frieren persona uses canonical identity and forbids invented appearance or server-based identity', () => {
