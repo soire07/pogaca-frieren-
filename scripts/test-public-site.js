@@ -217,6 +217,7 @@ test('public homepage introduces Poğaça Frieren, offers the bot invite and sho
     assert.match(response.body, /data-platform-metric="guilds"/);
     assert.match(response.body, /class="landing-feature-card"/);
     assert.match(response.body, /class="landing-command-list"/);
+    assert.match(response.body, /href="\/assets\/site\.css\?v=site-polish-20261116-1"/);
     assert.match(response.body, /Discord sunucuna ekle/);
     assert.match(response.body, /discord.com\/oauth2\/authorize/);
     assert.match(response.body, /Komutları incele/);
@@ -482,7 +483,6 @@ test('shared stylesheet is publicly cacheable for authenticated and auth pages',
   assert.match(String(response.body), /\.landing-hero\{/);
   assert.match(String(response.body), /\.landing-metrics\{/);
   assert.match(String(response.body), /\.site-menu-toggle\{/);
-  assert.match(String(response.body), /site-polish-20261116-1/);
 });
 
 test('Owner Panel stylesheet is served as a cacheable static asset', async () => {
