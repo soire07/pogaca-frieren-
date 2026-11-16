@@ -51,6 +51,8 @@ jobs:
           import torch
           p=torch.load("./checkpoints/frieren-neural-v2.pt",map_location="cpu",weights_only=True)
           assert p["pretrained_weights"] is False
+          assert p["dialogue_encoding_version"] == 2
+          assert p["loss_objective_version"] == 2
           assert p["architecture_id"] == "frieren-neural-transformer-v2"
           assert p["step"] == 6000
           assert set(p["licenses"]) == {"Apache-2.0","CC0-1.0"}
