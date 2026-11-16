@@ -20,7 +20,13 @@ from .quality_evaluation import (
     load_prompt_set,
     render_markdown,
 )
-from .training import DIALOGUE_SEPARATOR, encode_dialogue_stream_with_loss_mask, load_licensed_corpus
+from .training import (
+    DIALOGUE_ENCODING_VERSION,
+    DIALOGUE_SEPARATOR,
+    LOSS_OBJECTIVE_VERSION,
+    encode_dialogue_stream_with_loss_mask,
+    load_licensed_corpus,
+)
 
 EVALUATION_VERSION = "native-heldout-v1"
 
@@ -105,7 +111,7 @@ def evaluate_native_heldout(
         "perplexity": math.exp(min(average_loss, 80.0)),
         "sample_count": total_targets,
         "dataset_sha256": hashlib.sha256(heldout_text.encode("utf-8")).hexdigest(),
-        "loss_objective_version": 2,
+        "loss_objective_version": LOSS_OBJECTIVE_VERSION,
     }
 
 
@@ -126,7 +132,7 @@ def evaluate_native_checkpoint(
     heldout_text, manifests, provenance_values = _load_split(heldout_dirs)
     heldout = evaluate_native_heldout(model, tokenizer, heldout_text, device=device)
     heldout["manifest_sha256"] = provenance_values[0]
-    heldout["checkpoint_training_loss_objective_version"] = 2
+    heldout["checkpoint_training_loss_objective_version"] = metadata["loss_objective_version"]
 
     outputs = []
     for item in load_prompt_set():
@@ -161,8 +167,8 @@ def evaluate_native_checkpoint(
         **metadata,
         "tokenizer_type": "byte_pair_encoding",
         "tokenizer_vocab_size": tokenizer.vocab_size,
-        "dialogue_encoding_version": 2,
-        "loss_objective_version": 2,
+        "dialogue_encoding_version": metadata["dialogue_encoding_version"],
+        "loss_objective_version": metadata["loss_objective_version"],
         "training_objective": "assistant_response_only",
     }
     report = build_report(
