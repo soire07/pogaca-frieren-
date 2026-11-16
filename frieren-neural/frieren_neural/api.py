@@ -128,6 +128,11 @@ def _model_backend() -> str:
     backend = os.environ.get("FRIEREN_MODEL_BACKEND", "scratch").strip().lower()
     if backend not in {"scratch", "ufakzeka"}:
         raise RuntimeError("FRIEREN_MODEL_BACKEND must be 'scratch' or 'ufakzeka'.")
+    if backend == "ufakzeka" and os.environ.get("FRIEREN_ALLOW_PRETRAINED_BACKEND") != "1":
+        raise RuntimeError(
+            "ufakzeka is a comparison-only backend; set FRIEREN_ALLOW_PRETRAINED_BACKEND=1 "
+            "for an explicit research run. The default production target is the native scratch model."
+        )
     return backend
 
 
