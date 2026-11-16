@@ -79,12 +79,12 @@ def evaluate_native_heldout(
     try:
         context_size = int(model.config.max_seq_len)
         stride = max(1, context_size // 2)
-        for target_start in range(1, len(ids), stride):
-            target_stop = min(target_start + stride, len(ids))
+        for target_start in range(0, len(ids) - 1, stride):
+            target_stop = min(target_start + stride, len(ids) - 1)
             input_start = max(0, target_start - stride)
-            x = ids[input_start:target_stop - 1].unsqueeze(0).to(target_device)
-            target_ids = ids[input_start + 1:target_stop]
-            target_mask = mask[input_start + 1:target_stop].clone()
+            x = ids[input_start:target_stop].unsqueeze(0).to(target_device)
+            target_ids = ids[input_start + 1:target_stop + 1]
+            target_mask = mask[input_start + 1:target_stop + 1].clone()
             target_mask[:target_start - input_start] = False
             count = int(target_mask.sum().item())
             if count == 0:
