@@ -5,7 +5,7 @@
   if (!toggle || !menu || !closeButton) return;
 
   const focusable = () => [...menu.querySelectorAll('summary, a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')]
-    .filter(element => !element.hasAttribute('hidden') && element.getAttribute('aria-hidden') !== 'true' && !element.closest('details:not([open])'));
+    .filter(element => !element.hasAttribute('hidden') && element.getAttribute('aria-hidden') !== 'true' && (element.matches('summary') || !element.closest('details:not([open])')));
 
   const finishClose = () => {
     if (toggle.getAttribute('aria-expanded') !== 'true') menu.hidden = true;
@@ -31,7 +31,7 @@
     window.requestAnimationFrame(() => {
       if (toggle.getAttribute('aria-expanded') !== 'true') return;
       menu.classList.add('is-open');
-      const firstItem = focusable()[0];
+      const firstItem = menu.querySelector('.site-sidebar-nav summary') || focusable()[0];
       if (firstItem) firstItem.focus();
     });
   };

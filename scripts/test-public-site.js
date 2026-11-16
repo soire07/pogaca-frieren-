@@ -229,6 +229,8 @@ test('navigation controller defers focus until visible and closes semantically a
   assert.match(source, /transitionend/);
   assert.match(source, /setTimeout\(finishClose, 220\)/);
   assert.match(source, /summary, a\[href\]/);
+  assert.match(source, /element\.matches\('summary'\) \|\| !element\.closest\('details:not\(\[open\]\)'\)/);
+  assert.match(source, /menu\.querySelector\('\.site-sidebar-nav summary'\)/);
   assert.match(source, /target\.hash === currentHash/);
 });
 test('custom navigation script is served as a public static asset', async () => {
