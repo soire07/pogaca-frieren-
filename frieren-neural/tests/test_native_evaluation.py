@@ -104,7 +104,7 @@ def test_native_quality_evaluator_loads_v2_generates_all_24_prompts_and_stays_bl
 
 
 def test_native_checkpoint_rejects_missing_or_mismatched_objective_metadata(tmp_path):
-    text = "Kullanıcı: Merhaba.\\nAsistan: Merhaba."
+    text = "Kullanıcı: Merhaba.\nAsistan: Merhaba."
     checkpoint = tmp_path / "native-v2.pt"
     _write_checkpoint(checkpoint, text)
     payload = torch.load(checkpoint, map_location="cpu", weights_only=True)
