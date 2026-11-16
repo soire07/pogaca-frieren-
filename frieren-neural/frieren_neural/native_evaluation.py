@@ -141,8 +141,8 @@ def evaluate_native_checkpoint(
         })
 
     checkpoint_sha = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
-    manifest_sha = provenance_values[0]
-    licenses = sorted(set(metadata["licenses"]) | set(provenance_values[1:]))
+    manifest_sha = metadata["manifest_sha256"]
+    licenses = sorted(set(metadata["licenses"]))
     sources = sorted({
         entry["source"]
         for manifest in manifests
@@ -181,9 +181,17 @@ def evaluate_native_checkpoint(
     (destination / "quality-report.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    (destination / "quality-report.md").write_text(
-        render_markdown(report), encoding="utf-8"
+    markdown = render_markdown(report)
+    markdown += (
+        "\\n\\n## Independent held-out evaluation\\n\\n"
+        f"- Split: {heldout['split']}\\n"
+        f"- Evaluation: {heldout['evaluation_version']}\\n"
+        f"- Dataset SHA-256: {heldout['dataset_sha256']}\\n"
+        f"- Supervised assistant tokens: {heldout['sample_count']}\\n"
+        f"- Loss: {heldout['loss']:.6f}\\n"
+        f"- Perplexity: {heldout['perplexity']:.6f}\\n"
     )
+    (destination / "quality-report.md").write_text(markdown, encoding="utf-8")
     (destination / "human-scores.template.json").write_text(
         json.dumps(empty_score_template(), ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
