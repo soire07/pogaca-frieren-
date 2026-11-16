@@ -242,6 +242,21 @@ test('personal memories are not injected into fictional character questions', as
 });
 
 
+test('Frieren locks the reply language to a short latest Russian message despite Turkish history', () => {
+  const messages = buildFrierenMessages({
+    history: [
+      { role: 'user', content: 'Merhaba, nasılsın?' },
+      { role: 'assistant', content: 'İyiyim, teşekkür ederim.' }
+    ],
+    userMessage: 'Как вы?'
+  });
+  const systemPrompt = messages[0].content;
+  assert.match(systemPrompt, /ZORUNLU SON-MESAJ DİL KİLİDİ/);
+  assert.match(systemPrompt, /“Как вы\?” gibi kısa ama açıkça Rusça olan bir mesajı Türkçe cevaplama/);
+  assert.match(systemPrompt, /Cevabın her cümlesi/);
+  assert.equal(messages.at(-1).content, 'Как вы?');
+});
+
 test('Frieren multilingual policy covers a broad ISO 639 language sample and latest-message precedence', () => {
   const cases = [
     ['en', 'English', 'Where are you from?'],
