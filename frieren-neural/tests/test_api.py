@@ -557,4 +557,5 @@ def test_native_v2_checkpoint_loads_and_generates_through_api(api_client, monkey
     assert response.json()["model"] == "frieren-neural-transformer-v2"
     assert response.json()["step"] == 7
     assert isinstance(response.json()["completion"], str)
+    assert response.json()["completion"].strip()
     assert response.json()["text"].startswith("Merhaba")
