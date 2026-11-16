@@ -175,12 +175,16 @@ export async function handleFrierenMentionMessage({ message, botUserId, db, env 
   let persistenceMs = null;
   try {
     const contextStartedAt = Date.now();
+    const chatSettings = await getFrierenChatSettings(db).catch(settingsError => {
+      console.warn('Frieren sohbet tercihleri okunamadı; varsayılan ayarlar kullanılacak.', settingsError?.message || 'unknown error');
+      return DEFAULT_FRIEREN_CHAT_SETTINGS;
+    });
+    if (!chatSettings.enabled) {
+      await message.reply({ content: 'Şu anda sohbet özelliğim kapalı. Daha sonra tekrar deneyebilirsin.', allowedMentions: { parse: [] } });
+      return true;
+    }
     await saveExplicitMemories(db, { guildId: message.guild.id, userId: message.author.id, message: userMessage });
-    const [chatSettings, memories, historyResult] = await Promise.all([
-      getFrierenChatSettings(db).catch(settingsError => {
-        console.warn('Frieren sohbet tercihleri okunamadı; varsayılan ayarlar kullanılacak.', settingsError?.message || 'unknown error');
-        return DEFAULT_FRIEREN_CHAT_SETTINGS;
-      }),
+    const [memories, historyResult] = await Promise.all([
       getRelevantMemories(db, { guildId: message.guild.id, userId: message.author.id, question: userMessage }),
       db.query(
         'SELECT role, content FROM frieren_chat_messages WHERE guild_id=$1 AND user_id=$2 AND channel_id=$3 ORDER BY id DESC LIMIT $4',
