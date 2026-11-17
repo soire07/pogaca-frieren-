@@ -299,8 +299,10 @@ client.once(Events.ClientReady, async readyClient => {
   void processDueGuildEventReminders(readyClient);
   void processDuePlayerMarketPriceAlerts(readyClient);
   void processNewsBirdDigests(readyClient);
-  setInterval(() => void processDueGuildEventReminders(readyClient), 60_000);
-  setInterval(() => void processDuePlayerMarketPriceAlerts(readyClient), 5 * 60_000);
+  // Keep background PostgreSQL sweeps farther apart than Neon's 5-minute Free scale-to-zero window.
+  // Initial sweeps above preserve prompt startup handling; periodic sweeps share a 10-minute cadence.
+  setInterval(() => void processDueGuildEventReminders(readyClient), 10 * 60_000);
+  setInterval(() => void processDuePlayerMarketPriceAlerts(readyClient), 10 * 60_000);
   setInterval(() => void processNewsBirdDigests(readyClient), 60 * 60_000);
   readyClient.user.setActivity(FRIEREN_WATCHING_ACTIVITY.name, { type: FRIEREN_WATCHING_ACTIVITY.type });
 });
