@@ -180,9 +180,12 @@ test('Neon backup counts public base tables consistently on source and restore',
   const source = await workflow('neon-production-backup.yml');
   const dump = source.split('Create custom-format Neon dump and source inventory')[1]?.split('Restore into an isolated temporary PostgreSQL instance')[0] || '';
   const restore = source.split('Restore into an isolated temporary PostgreSQL instance')[1] || '';
+  const sourceInventoryQuery = dump.match(/psql "\$DATABASE_URL"[\s\S]*?source-public-table-count\.txt/)?.[0] || '';
+  const escapedSourcePredicate = 'table_schema = \\$q\\$public\\$q\\$ AND table_type = \\$q\\$BASE TABLE\\$q\\$';
   const publicBaseTablePredicate = /table_schema = 'public' AND table_type = 'BASE TABLE'/;
 
-  assert.match(dump, publicBaseTablePredicate, 'source inventory must explicitly count public base tables');
+  assert.ok(sourceInventoryQuery.includes(escapedSourcePredicate), 'source SQL literals must be escaped for the enclosing single-quoted shell script');
+  assert.doesNotMatch(sourceInventoryQuery, publicBaseTablePredicate, 'raw SQL single quotes must not terminate the docker sh -c script');
   assert.doesNotMatch(dump, /current_schema\s*\(/, 'source inventory must not depend on connection search_path');
   assert.match(restore, publicBaseTablePredicate, 'restore inventory must use the same public base-table scope');
 
