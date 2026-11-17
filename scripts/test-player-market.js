@@ -119,10 +119,12 @@ test('main runtime delivers price alerts by Discord DM, finalizes only after suc
 });
 
 
-test('market price alert worker uses a bounded five-minute sweep rather than frequent database polling',async()=>{
+test('background database polling leaves enough idle time for Neon Free scale-to-zero',async()=>{
  const source=await readFile(new URL('../index.js',import.meta.url),'utf8');
- assert.match(source,/setInterval\(\(\) => void processDuePlayerMarketPriceAlerts\(readyClient\), 5 \* 60_000\)/);
- assert.doesNotMatch(source,/processDuePlayerMarketPriceAlerts\(readyClient\)\s*;\s*\}, 30_000/);
+ assert.match(source,/setInterval\(\(\) => void processDueGuildEventReminders\(readyClient\), 10 \* 60_000\)/);
+ assert.match(source,/setInterval\(\(\) => void processDuePlayerMarketPriceAlerts\(readyClient\), 10 \* 60_000\)/);
+ assert.doesNotMatch(source,/processDueGuildEventReminders\(readyClient\), 60_000/);
+ assert.doesNotMatch(source,/processDuePlayerMarketPriceAlerts\(readyClient\), 5 \* 60_000/);
 });
 
 test('web market category filters are parameterized and use canonical RPG catalog keys', async () => {
