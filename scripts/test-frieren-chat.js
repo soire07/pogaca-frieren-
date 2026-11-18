@@ -38,7 +38,7 @@ test('only verified creator identity is injected into Frieren system context', (
   assert.match(creatorPrompt, /geliştiricin Soirəe/);
   assert.match(creatorPrompt, /sorulduğunda geliştiricin olduğunu doğrudan söyle/);
   assert.match(creatorPrompt, /yönetici yetkisi.*vermez/);
-  assert.doesNotMatch(ordinaryPrompt, /yapımcın ve geliştiricin Soirəe/);
+  assert.doesNotMatch(ordinaryPrompt, /geliştiricin Soirəe/);
 });
 
 test('mention parser removes both Discord mention formats and rejects empty prompts', () => {
@@ -95,7 +95,6 @@ test('mention handler loads only this guild and user history, then stores both t
       assert.equal(options.headers['x-goog-api-key'], 'test-key');
       assert.match(body.systemInstruction.parts[0].text, /Frieren/i);
       assert.match(body.systemInstruction.parts[0].text, /yapımcın ve geliştiricin Soirəe/);
-      assert.match(body.systemInstruction.parts[0].text, /Fern de Soirəe'nin seni oluşturan/);
       assert.equal(body.generationConfig.maxOutputTokens, 700);
       assert.equal(body.contents.length, 1);
       assert.equal(body.contents[0].role, 'user');
@@ -468,8 +467,8 @@ test('source-code requests are blocked before database access or AI inference', 
 
 test('Frieren answers general topics without forcing every conversation into anime lore', () => {
   const systemPrompt = buildFrierenMessages({ userMessage: 'Fotosentez nasıl çalışır?' })[0].content;
-  assert.match(systemPrompt, /genel amaçlı soruları doğrudan ve bilgi odaklı yanıtla/i);
-  assert.match(systemPrompt, /konuyu kendiliğinden Frieren animesine bağlama/i);
+  assert.match(systemPrompt, /Genel amaçlı soruları doğrudan, doğru ve bilgi odaklı yanıtla/i);
+  assert.match(systemPrompt, /Frieren animesini kendiliğinden gündeme getirme/i);
   assert.match(systemPrompt, /Frieren: Beyond Journey.s End evreni.*yalnızca kullanıcı açıkça bu konuyu sorduğunda/i);
 });
 
