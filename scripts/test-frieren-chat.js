@@ -35,8 +35,8 @@ test('only verified creator identity is injected into Frieren system context', (
   const creatorPrompt = buildFrierenMessages({ userMessage: 'Merhaba', creatorIdentity: 'Soirəe' })[0].content;
   const ordinaryPrompt = buildFrierenMessages({ userMessage: 'Merhaba' })[0].content;
   assert.match(creatorPrompt, /yapımcın ve geliştiricin Soirəe/);
-  assert.match(creatorPrompt, /Fern de Soirəe'nin seni oluşturan.*bildiğini/);
-  assert.match(creatorPrompt, /Soirəe'nin kim olduğunu tekrar tekrar sormaz/);
+  assert.match(creatorPrompt, /geliştiricin Soirəe/);
+  assert.match(creatorPrompt, /sorulduğunda geliştiricin olduğunu doğrudan söyle/);
   assert.match(creatorPrompt, /yönetici yetkisi.*vermez/);
   assert.doesNotMatch(ordinaryPrompt, /yapımcın ve geliştiricin Soirəe/);
 });
@@ -48,7 +48,7 @@ test('mention parser removes both Discord mention formats and rejects empty prom
   assert.equal(extractFrierenPrompt('Merhaba', 'bot-1'), 'Merhaba');
 });
 
-test('conversation builder keeps the Frieren persona and separates prior turns from the new prompt', () => {
+test('conversation builder keeps a light Frieren-inspired voice and separates prior turns from the new prompt', () => {
   const messages = buildFrierenMessages({
     history: [
       { role: 'user', content: 'Merhaba' },
@@ -57,7 +57,8 @@ test('conversation builder keeps the Frieren persona and separates prior turns f
     userMessage: 'Beni hatırlıyor musun?'
   });
   assert.equal(messages[0].role, 'system');
-  assert.match(messages[0].content, /Frieren/i);
+  assert.match(messages[0].content, /Frieren karakterinden hafifçe esinlenir/i);
+  assert.match(messages[0].content, /genel amaçlı bir yapay zekâ yardımcısısın/i);
   assert.deepEqual(messages.slice(1), [
     { role: 'user', content: 'Merhaba' },
     { role: 'assistant', content: 'Merhaba. Uzun zaman oldu.' },
@@ -390,13 +391,12 @@ test('Kurdish language guidance is sent to the model for a real inference reques
   assert.equal(answer, 'Ez baş im, spas. Tu çawa yî?');
 });
 
-test('Frieren persona uses canonical identity and forbids invented appearance or server-based identity', () => {
+test('Frieren-inspired persona does not force anime roleplay or identity on ordinary questions', () => {
   const systemPrompt = buildFrierenMessages({ userMessage: 'Kendini tanıt.' })[0].content;
-  assert.match(systemPrompt, /Frieren: Beyond Journey.s End/i);
-  assert.match(systemPrompt, /elf büyücüsü/i);
-  assert.doesNotMatch(systemPrompt, /Poğaça Discord sunucusunda yaşayan/i);
-  assert.match(systemPrompt, /görünüş.*uydurma|uydurma.*görünüş/i);
-  assert.match(systemPrompt, /Himmel/i);
+  assert.match(systemPrompt, /genel amaçlı bir yapay zekâ yardımcısısın/i);
+  assert.match(systemPrompt, /kullanıcı açıkça rol yapmanı istemedikçe Frieren rolüne girme/i);
+  assert.match(systemPrompt, /Frieren animesini kendiliğinden gündeme getirme/i);
+  assert.doesNotMatch(systemPrompt, /bin yılı aşkın ömre sahip bir elf büyücüsü/i);
 });
 
 
