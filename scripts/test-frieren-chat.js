@@ -464,3 +464,32 @@ test('source-code requests are blocked before database access or AI inference', 
   assert.match(replies[0].content, /kaynak kod paylaşamam/i);
   assert.deepEqual(replies[0].allowedMentions, { parse: [] });
 });
+
+
+test('Frieren answers general topics without forcing every conversation into anime lore', () => {
+  const systemPrompt = buildFrierenMessages({ userMessage: 'Fotosentez nasıl çalışır?' })[0].content;
+  assert.match(systemPrompt, /genel amaçlı soruları doğrudan ve bilgi odaklı yanıtla/i);
+  assert.match(systemPrompt, /konuyu kendiliğinden Frieren animesine bağlama/i);
+  assert.match(systemPrompt, /anime.*yalnızca kullanıcı açıkça sorarsa veya konu gerçekten gerektirirse/i);
+});
+
+test('Frieren roleplay is optional and not imposed on ordinary questions', () => {
+  const systemPrompt = buildFrierenMessages({ userMessage: 'JavaScript promise nedir?' })[0].content;
+  assert.match(systemPrompt, /rol yapmayı açıkça istemedikçe/i);
+  assert.match(systemPrompt, /genel amaçlı yardımcı/i);
+});
+
+test('lore focus only protects canon accuracy when the user asks about the anime', () => {
+  const enabledPrompt = buildFrierenMessages({
+    userMessage: 'Frieren animesinde Himmel kimdir?',
+    chatSettings: { enabled: true, style: 'calm', responseLength: 'concise', loreFocus: true }
+  })[0].content;
+  const disabledPrompt = buildFrierenMessages({
+    userMessage: 'Fotosentez nedir?',
+    chatSettings: { enabled: true, style: 'calm', responseLength: 'concise', loreFocus: false }
+  })[0].content;
+  assert.match(enabledPrompt, /kanona sadık kal/i);
+  assert.match(enabledPrompt, /yalnızca kullanıcı açıkça sorarsa veya konu gerçekten gerektirirse/i);
+  assert.match(disabledPrompt, /konuyu kendiliğinden Frieren animesine bağlama/i);
+  assert.match(disabledPrompt, /gündelik yaşam, bilim, teknoloji, tarih ve oyunlar/i);
+});
