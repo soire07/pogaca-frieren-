@@ -4,7 +4,7 @@ export const DEFAULT_FRIEREN_CHAT_SETTINGS = Object.freeze({
   enabled: true,
   style: 'calm',
   responseLength: 'concise',
-  loreFocus: true
+  loreFocus: false
 });
 
 const STYLES = new Set(['calm', 'warm', 'witty', 'formal']);
