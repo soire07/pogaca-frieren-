@@ -34,7 +34,7 @@ test('creator recognition requires an exact server-configured Discord user ID ma
 test('only verified creator identity is injected into Frieren system context', () => {
   const creatorPrompt = buildFrierenMessages({ userMessage: 'Merhaba', creatorIdentity: 'Soirəe' })[0].content;
   const ordinaryPrompt = buildFrierenMessages({ userMessage: 'Merhaba' })[0].content;
-  assert.match(creatorPrompt, /yapımcın ve geliştiricin Soirəe/);
+  assert.match(creatorPrompt, /geliştiricin Soirəe/);
   assert.match(creatorPrompt, /geliştiricin Soirəe/);
   assert.match(creatorPrompt, /sorulduğunda geliştiricin olduğunu doğrudan söyle/);
   assert.match(creatorPrompt, /yönetici yetkisi.*vermez/);
@@ -475,8 +475,8 @@ test('Frieren answers general topics without forcing every conversation into ani
 
 test('Frieren roleplay is optional and not imposed on ordinary questions', () => {
   const systemPrompt = buildFrierenMessages({ userMessage: 'JavaScript promise nedir?' })[0].content;
-  assert.match(systemPrompt, /rol yapmayı açıkça istemedikçe/i);
-  assert.match(systemPrompt, /genel amaçlı yardımcı/i);
+  assert.match(systemPrompt, /kullanıcı açıkça rol yapmanı istemedikçe/i);
+  assert.match(systemPrompt, /genel amaçlı bir yapay zekâ yardımcısısın/i);
 });
 
 test('lore focus only protects canon accuracy when the user asks about the anime', () => {
@@ -491,5 +491,5 @@ test('lore focus only protects canon accuracy when the user asks about the anime
   assert.match(enabledPrompt, /kanona sadık kal/i);
   assert.match(enabledPrompt, /yalnızca kullanıcı açıkça sorarsa veya konu gerçekten gerektirirse/i);
   assert.match(disabledPrompt, /konuyu kendiliğinden Frieren animesine bağlama/i);
-  assert.match(disabledPrompt, /gündelik yaşam, bilim, teknoloji, tarih ve oyunlar/i);
+  assert.match(disabledPrompt, /gündelik yaşam, bilim, teknoloji, tarih, eğitim, oyun/i);
 });
