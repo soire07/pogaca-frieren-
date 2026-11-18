@@ -94,7 +94,7 @@ test('mention handler loads only this guild and user history, then stores both t
       assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent');
       assert.equal(options.headers['x-goog-api-key'], 'test-key');
       assert.match(body.systemInstruction.parts[0].text, /Frieren/i);
-      assert.match(body.systemInstruction.parts[0].text, /yapımcın ve geliştiricin Soirəe/);
+      assert.match(body.systemInstruction.parts[0].text, /geliştiricin Soirəe/);
       assert.equal(body.generationConfig.maxOutputTokens, 700);
       assert.equal(body.contents.length, 1);
       assert.equal(body.contents[0].role, 'user');
@@ -489,6 +489,6 @@ test('lore focus only protects canon accuracy when the user asks about the anime
   })[0].content;
   assert.match(enabledPrompt, /kanona sadık kal/i);
   assert.match(enabledPrompt, /yalnızca kullanıcı açıkça bu konuyu sorduğunda/i);
-  assert.match(disabledPrompt, /konuyu kendiliğinden Frieren animesine bağlama/i);
+  assert.match(disabledPrompt, /gereksiz anime göndermeleri yapma/i);
   assert.match(disabledPrompt, /gündelik yaşam, bilim, teknoloji, tarih, eğitim, oyun/i);
 });
