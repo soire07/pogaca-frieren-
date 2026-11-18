@@ -470,7 +470,7 @@ test('Frieren answers general topics without forcing every conversation into ani
   const systemPrompt = buildFrierenMessages({ userMessage: 'Fotosentez nasıl çalışır?' })[0].content;
   assert.match(systemPrompt, /genel amaçlı soruları doğrudan ve bilgi odaklı yanıtla/i);
   assert.match(systemPrompt, /konuyu kendiliğinden Frieren animesine bağlama/i);
-  assert.match(systemPrompt, /anime.*yalnızca kullanıcı açıkça sorarsa veya konu gerçekten gerektirirse/i);
+  assert.match(systemPrompt, /Frieren: Beyond Journey.s End evreni.*yalnızca kullanıcı açıkça bu konuyu sorduğunda/i);
 });
 
 test('Frieren roleplay is optional and not imposed on ordinary questions', () => {
@@ -489,7 +489,7 @@ test('lore focus only protects canon accuracy when the user asks about the anime
     chatSettings: { enabled: true, style: 'calm', responseLength: 'concise', loreFocus: false }
   })[0].content;
   assert.match(enabledPrompt, /kanona sadık kal/i);
-  assert.match(enabledPrompt, /yalnızca kullanıcı açıkça sorarsa veya konu gerçekten gerektirirse/i);
+  assert.match(enabledPrompt, /yalnızca kullanıcı açıkça bu konuyu sorduğunda/i);
   assert.match(disabledPrompt, /konuyu kendiliğinden Frieren animesine bağlama/i);
   assert.match(disabledPrompt, /gündelik yaşam, bilim, teknoloji, tarih, eğitim, oyun/i);
 });
