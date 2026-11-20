@@ -50,10 +50,10 @@ test('welcome handler bounds the configured message to 300 characters', async ()
   assert.equal(sent[0].content.length, 300);
 });
 
-test('welcome handler records errors without throwing into Discord event dispatch', async () => {
+test('welcome handler records database errors without throwing into Discord event dispatch', async () => {
   const { member, db } = createMember();
   const errors = [];
-  member.guild.channels.fetch = async () => { throw new Error('fetch failed'); };
+  db.query = async () => { throw new Error('database unavailable'); };
   const handler = createGuildMemberWelcomeHandler({
     db,
     logger: { error() {} },
