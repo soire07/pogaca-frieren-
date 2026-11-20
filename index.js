@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import { createGuildMemberWelcomeHandler } from './integrations/welcome/member-welcome.js';
+import { createAnimeNewsDigestWorker } from './integrations/notify/anime-news-worker.js';
 import { ActivityType, ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, Collection, EmbedBuilder, Events, GatewayIntentBits, MessageFlags, PermissionFlagsBits, REST } from 'discord.js';
 import { readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
@@ -156,65 +158,17 @@ async function processDuePlayerMarketPriceAlerts(readyClient = client) {
   }
 }
 
-let newsBirdSweepRunning = false;
-async function processNewsBirdDigests(readyClient = client) {
-  if (newsBirdSweepRunning || !readyClient?.isReady?.()) return;
-  newsBirdSweepRunning = true;
-  try {
-    try {
-      const feedResult = await pollAnimeNewsFeed(pool);
-      for (const failure of feedResult.failures || []) {
-        console.warn('Haberci kuş kaynağı güncellenemedi:', failure.source, failure.error);
-      }
-    } catch (error) {
-      console.warn('Haberci kuş RSS güncellemesi başarısız:', error?.message || error);
-    }
-
-    // RSS is polled once globally; each configured guild receives one independent digest.
-    const due = await claimDueAnimeNewsGuildDigests(pool, 100);
-    for (const digest of due) {
-      try {
-        const channel = await readyClient.channels.fetch(digest.channel_id);
-        if (String(channel?.guildId || '') !== String(digest.guild_id)) {
-          throw new Error('NEWS_BIRD_TARGET_CHANNEL_GUILD_MISMATCH');
-        }
-        if (!channel?.isTextBased?.() || typeof channel.send !== 'function') {
-          throw new Error('NEWS_BIRD_TARGET_CHANNEL_NOT_SENDABLE');
-        }
-        const permissions = channel.permissionsFor(readyClient.user);
-        if (!permissions?.has([
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.EmbedLinks
-        ])) {
-          throw new Error('NEWS_BIRD_TARGET_CHANNEL_PERMISSIONS_MISSING');
-        }
-        const items = Array.isArray(digest.items) ? digest.items : [];
-        const translatedItems = await translateAnimeNewsItems(pool, items);
-        const embeds = buildAnimeNewsDigestEmbeds(translatedItems);
-        if (embeds.length) {
-          await channel.send({ embeds, allowedMentions: { parse: [] } });
-        }
-        await markAnimeNewsGuildDigestSent(pool, digest.guild_id);
-      } catch (error) {
-        if ([10003, 10008].includes(Number(error?.code))) {
-          await disableNewsGuildChannel(pool, digest.guild_id).catch(() => {});
-        }
-        await releaseAnimeNewsGuildDigestClaim(pool, digest.guild_id).catch(() => false);
-        console.error(
-          'Haberci kuş sunucu kanalına teslim edilemedi:',
-          'guild=' + digest.guild_id,
-          'channel=' + digest.channel_id,
-          error?.message || error
-        );
-      }
-    }
-  } catch (error) {
-    console.error('Haberci kuş taraması başarısız:', error?.message || error);
-  } finally {
-    newsBirdSweepRunning = false;
-  }
-}
+const processNewsBirdDigests = createAnimeNewsDigestWorker({
+  db: pool,
+  permissionFlags: PermissionFlagsBits,
+  pollFeed: pollAnimeNewsFeed,
+  claimDigests: claimDueAnimeNewsGuildDigests,
+  translateItems: translateAnimeNewsItems,
+  buildEmbeds: buildAnimeNewsDigestEmbeds,
+  markSent: markAnimeNewsGuildDigestSent,
+  releaseClaim: releaseAnimeNewsGuildDigestClaim,
+  disableChannel: disableNewsGuildChannel
+});
 
 let eventReminderSweepRunning = false;
 async function processDueGuildEventReminders(readyClient = client) {
@@ -305,33 +259,11 @@ client.once(Events.ClientReady, async readyClient => {
   readyClient.user.setActivity(FRIEREN_WATCHING_ACTIVITY.name, { type: FRIEREN_WATCHING_ACTIVITY.type });
 });
 
-client.on(Events.GuildMemberAdd, async member => {
-  try {
-    const result = await pool.query(
-      'SELECT welcome_channel_id,welcome_message FROM guild_settings WHERE guild_id=$1',
-      [member.guild.id]
-    );
-    const settings = result.rows?.[0];
-    if (!settings) return;
-    const sendToConfiguredChannel = async (channelId, content) => {
-      if (!channelId) return;
-      const channel = await member.guild.channels.fetch(String(channelId)).catch(() => null);
-      if (!channel?.isTextBased?.() || !channel.send) return;
-      const me = member.guild.members.me;
-      if (!me || !channel.permissionsFor(me)?.has('SendMessages')) return;
-      await channel.send({ content, allowedMentions: { parse: [], users: [member.id] } });
-    };
-    if (settings.welcome_channel_id) {
-      const message = String(settings.welcome_message || 'Hoş geldin {user}! {server} sunucusuna katıldın.')
-        .replaceAll('{user}', '<@' + member.id + '>')
-        .replaceAll('{server}', member.guild.name);
-      await sendToConfiguredChannel(settings.welcome_channel_id, message.slice(0, 300));
-    }
-  } catch (error) {
-    console.error('Guild member welcome handler failed:', error?.message || error);
-    await recordOwnerError(pool, 'guild-member-join', error?.name || 'Error', error?.message || '').catch(() => {});
-  }
+const handleGuildMemberWelcome = createGuildMemberWelcomeHandler({
+  db: pool,
+  recordError: (category, errorName, message) => recordOwnerError(pool, category, errorName, message)
 });
+client.on(Events.GuildMemberAdd, handleGuildMemberWelcome);
 
 client.on(Events.InteractionCreate, async interaction => {
   try {
