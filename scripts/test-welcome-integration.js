@@ -62,5 +62,5 @@ test('welcome handler records database errors without throwing into Discord even
   await assert.doesNotReject(handler(member));
   assert.equal(errors[0][0], 'guild-member-join');
   assert.equal(errors[0][1], 'Error');
-  assert.equal(errors[0][2], 'Error');
+  assert.equal(errors[0][2], 'database unavailable');
 });
