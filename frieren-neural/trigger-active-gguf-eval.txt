@@ -1,0 +1,1 @@
+One-time validation trigger 2026-11-06. Evaluate the pinned active GGUF on the exact validation branch commit, upload the complete 24-prompt report to Frieren Guard using the existing restricted GitHub OIDC identity, and keep the decision NOT READY until all independent evidence gates pass.
