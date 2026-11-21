@@ -58,12 +58,14 @@ test('mobile browser smoke runs once per PR update and cancels superseded runs',
 });
 
 
-test('only the two approved news setup commands are globally registered', async () => {
+test('Poğaça removes legacy global news commands and keeps them out of guild command sync', async () => {
   const source = await readFile(new URL('../deploy-commands.js', import.meta.url), 'utf8');
-  assert.ok(source.includes("const globalCommandNames = ['haberleri-ayarla', 'haberleri-kapat']"));
-  assert.ok(source.includes('const guildCommands = commands.filter(command => !globalCommandNames.includes(command.name))'));
+  assert.ok(source.includes('const globalCommands = [];'), 'Poğaça must publish no global commands');
+  assert.ok(source.includes('const globalCommandNames = new Set([\'haberleri-ayarla\', \'haberleri-kapat\'])'));
+  assert.ok(source.includes('const guildCommands = commands.filter(command => !globalCommandNames.has(command.name))'));
   assert.ok(source.includes('putWithDiagnostics(globalRoute, globalCommands'));
-  assert.ok(!source.includes("putWithDiagnostics(globalRoute, [], 'clear legacy global commands')"));
+  assert.ok(source.includes('existingGlobalCommands.length === globalCommands.length'));
+  assert.ok(source.includes('No global commands remain; skipped write to preserve daily quota.'));
 });
 
 
