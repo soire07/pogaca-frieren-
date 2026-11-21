@@ -464,3 +464,15 @@ test('source-code requests are blocked before database access or AI inference', 
   assert.match(replies[0].content, /kaynak kod paylaşamam/i);
   assert.deepEqual(replies[0].allowedMentions, { parse: [] });
 });
+
+test('Frieren accepts affectionate casual address without scolding or over-philosophizing', () => {
+  const systemPrompt = buildFrierenMessages({
+    history: [{ role: 'user', content: 'Nasılsın?' }, { role: 'assistant', content: 'İyiyim.' }],
+    userMessage: 'Naber bitanem, özledin mi beni?'
+  })[0].content;
+  assert.match(systemPrompt, /Samimi hitap ve sevgi ifadelerini/);
+  assert.match(systemPrompt, /otomatik olarak reddetme/);
+  assert.match(systemPrompt, /kullanıcıyı düzeltme veya azarlama/);
+  assert.match(systemPrompt, /uzun felsefi açıklama yapma/);
+  assert.match(systemPrompt, /aşırı romantik/);
+});
