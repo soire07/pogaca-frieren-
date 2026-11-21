@@ -108,7 +108,7 @@ test('price-alert delivery claims are concurrent-safe and only match active list
 test('main runtime delivers price alerts by Discord DM, finalizes only after success and releases retryable failures',async()=>{
  const source=await readFile(new URL('../index.js',import.meta.url),'utf8');
  const start=source.indexOf('async function processDuePlayerMarketPriceAlerts');
- const end=source.indexOf('let newsBirdSweepRunning',start);
+ const end=source.indexOf('let eventReminderSweepRunning',start);
  assert.ok(start>=0&&end>start,'price alert worker must exist');
  const worker=source.slice(start,end);
  assert.match(worker,/readyClient\.users\.fetch\(alert\.user_id\)/);
