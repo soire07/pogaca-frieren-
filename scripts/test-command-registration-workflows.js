@@ -43,7 +43,7 @@ test('Frieren AI health checks use a six-hour cadence and bounded retries', asyn
 test('Discord command sync skips unchanged definitions and unnecessary global writes', async () => {
   const source = await readFile(new URL('../deploy-commands.js', import.meta.url), 'utf8');
   assert.ok(source.includes('skipped command write to preserve daily quota'));
-  assert.ok(source.includes('Global news command allowlist unchanged; skipped write to preserve daily quota.'));
+  assert.ok(source.includes('No global commands remain; skipped write to preserve daily quota.'));
 });
 
 
