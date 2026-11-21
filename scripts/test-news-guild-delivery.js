@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { setNewsGuildChannel, disableNewsGuildChannel, claimDueAnimeNewsGuildDigests, markAnimeNewsGuildDigestSent, releaseAnimeNewsGuildDigestClaim } from '../news-birds.js';
 
@@ -49,4 +50,9 @@ test('guild digest sent and retry states are isolated by guild',async()=>{
  assert.match(calls[0].sql,/last_sent_at=NOW\(\),claimed_until=NULL/);
  assert.match(calls[1].sql,/claimed_until=NULL/);
  assert.deepEqual(calls.map(call=>call.params),[[guildId],[guildId]]);
+});
+
+test('Poğaça runtime does not poll or deliver anime news; delivery belongs to Frieren Notify',async()=>{
+ const runtime=await readFile(new URL('../index.js',import.meta.url),'utf8');
+ assert.doesNotMatch(runtime,/news-birds\.js|ensureNewsBirdSchema|processNewsBirdDigests|pollAnimeNewsFeed|claimDueAnimeNewsGuildDigests/);
 });
