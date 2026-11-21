@@ -113,13 +113,9 @@ if (duplicates.length) {
 }
 console.log(`Kaydedilmeye hazır ${commands.length} komut doğrulandı.`);
 
-const globalCommandNames = ['haberleri-ayarla', 'haberleri-kapat'];
-const globalCommands = globalCommandNames.map(name => {
-  const command = commands.find(candidate => candidate.name === name);
-  if (!command) throw new Error('Global allowlist command missing: /' + name);
-  return command;
-});
-const guildCommands = commands.filter(command => !globalCommandNames.includes(command.name));
+const globalCommandNames = new Set(['haberleri-ayarla', 'haberleri-kapat']);
+const globalCommands = [];
+const guildCommands = commands.filter(command => !globalCommandNames.has(command.name));
 
 
 // Keep discord.js's route tracking, but reject 429s so this script controls the
@@ -366,8 +362,8 @@ try {
   if (process.env.SKIP_GLOBAL_COMMAND_SYNC === 'true') {
     console.log('Global command sync explicitly skipped; existing global commands were not changed.');
   } else {
-    // Only the two approved news controls are globally available.
-    // Every other slash command remains guild-scoped.
+    // News delivery belongs to Frieren Notify. Clear legacy Poğaça global
+    // news commands once, then skip all future writes while the global list is empty.
     const globalRoute = Routes.applicationCommands(clientId);
     const existingGlobalCommands = await discordRequest(globalRoute);
     const existingGlobalByName = new Map(existingGlobalCommands.map(command => [command.name, command]));
@@ -376,10 +372,10 @@ try {
     const sameGlobalDefinitions = sameGlobalNames
       && globalCommands.every(command => matchesDesiredCommand(existingGlobalByName.get(command.name), command));
     if (sameGlobalDefinitions) {
-      console.log('Global news command allowlist unchanged; skipped write to preserve daily quota.');
+      console.log('No global commands remain; skipped write to preserve daily quota.');
     } else {
-      await putWithDiagnostics(globalRoute, globalCommands, 'global news command allowlist');
-      console.log('Registered only /haberleri-ayarla and /haberleri-kapat globally.');
+      await putWithDiagnostics(globalRoute, globalCommands, 'remove legacy global news commands');
+      console.log('Removed all legacy Poğaça global news commands; news delivery remains in Frieren Notify.');
     }
   
   
