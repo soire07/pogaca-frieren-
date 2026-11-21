@@ -19,7 +19,6 @@ import { ensurePlayerMarketTables, claimDuePlayerMarketPriceAlerts, markPlayerMa
 import { ensureSocialPlatformTables } from './social-platform.js';
 import { ensureAccountCenterSchema } from './account-center.js';
 import { ensureProfileMediaSchema } from './profile-media.js';
-import { ensureNewsBirdSchema, pollAnimeNewsFeed, claimDueAnimeNewsGuildDigests, markAnimeNewsGuildDigestSent, releaseAnimeNewsGuildDigestClaim, disableNewsGuildChannel, getEventReminderRecipients, buildAnimeNewsDigestEmbeds, translateAnimeNewsItems } from './news-birds.js';
 import { ensureCardVariantSchema } from './card-variants.js';
 import { ensureGuildWorkshopSchema, runGuildSpellAutomations } from './guild-workshop.js';
 import { ensureGuildTeamLeagueSchema } from './guild-team-leagues.js';
@@ -156,66 +155,6 @@ async function processDuePlayerMarketPriceAlerts(readyClient = client) {
   }
 }
 
-let newsBirdSweepRunning = false;
-async function processNewsBirdDigests(readyClient = client) {
-  if (newsBirdSweepRunning || !readyClient?.isReady?.()) return;
-  newsBirdSweepRunning = true;
-  try {
-    try {
-      const feedResult = await pollAnimeNewsFeed(pool);
-      for (const failure of feedResult.failures || []) {
-        console.warn('Haberci kuş kaynağı güncellenemedi:', failure.source, failure.error);
-      }
-    } catch (error) {
-      console.warn('Haberci kuş RSS güncellemesi başarısız:', error?.message || error);
-    }
-
-    // RSS is polled once globally; each configured guild receives one independent digest.
-    const due = await claimDueAnimeNewsGuildDigests(pool, 100);
-    for (const digest of due) {
-      try {
-        const channel = await readyClient.channels.fetch(digest.channel_id);
-        if (String(channel?.guildId || '') !== String(digest.guild_id)) {
-          throw new Error('NEWS_BIRD_TARGET_CHANNEL_GUILD_MISMATCH');
-        }
-        if (!channel?.isTextBased?.() || typeof channel.send !== 'function') {
-          throw new Error('NEWS_BIRD_TARGET_CHANNEL_NOT_SENDABLE');
-        }
-        const permissions = channel.permissionsFor(readyClient.user);
-        if (!permissions?.has([
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.EmbedLinks
-        ])) {
-          throw new Error('NEWS_BIRD_TARGET_CHANNEL_PERMISSIONS_MISSING');
-        }
-        const items = Array.isArray(digest.items) ? digest.items : [];
-        const translatedItems = await translateAnimeNewsItems(pool, items);
-        const embeds = buildAnimeNewsDigestEmbeds(translatedItems);
-        if (embeds.length) {
-          await channel.send({ embeds, allowedMentions: { parse: [] } });
-        }
-        await markAnimeNewsGuildDigestSent(pool, digest.guild_id);
-      } catch (error) {
-        if ([10003, 10008].includes(Number(error?.code))) {
-          await disableNewsGuildChannel(pool, digest.guild_id).catch(() => {});
-        }
-        await releaseAnimeNewsGuildDigestClaim(pool, digest.guild_id).catch(() => false);
-        console.error(
-          'Haberci kuş sunucu kanalına teslim edilemedi:',
-          'guild=' + digest.guild_id,
-          'channel=' + digest.channel_id,
-          error?.message || error
-        );
-      }
-    }
-  } catch (error) {
-    console.error('Haberci kuş taraması başarısız:', error?.message || error);
-  } finally {
-    newsBirdSweepRunning = false;
-  }
-}
-
 let eventReminderSweepRunning = false;
 async function processDueGuildEventReminders(readyClient = client) {
   if (eventReminderSweepRunning || !readyClient?.isReady?.()) return;
@@ -298,10 +237,8 @@ client.once(Events.ClientReady, async readyClient => {
   console.log('Bağlı Discord sunucuları (ad/ID):', JSON.stringify(connectedGuilds));
   void processDueGuildEventReminders(readyClient);
   void processDuePlayerMarketPriceAlerts(readyClient);
-  void processNewsBirdDigests(readyClient);
   setInterval(() => void processDueGuildEventReminders(readyClient), 60_000);
   setInterval(() => void processDuePlayerMarketPriceAlerts(readyClient), 5 * 60_000);
-  setInterval(() => void processNewsBirdDigests(readyClient), 60 * 60_000);
   readyClient.user.setActivity(FRIEREN_WATCHING_ACTIVITY.name, { type: FRIEREN_WATCHING_ACTIVITY.type });
 });
 
@@ -548,7 +485,6 @@ await ensurePlayerMarketTables(pool);
 await ensureSocialPlatformTables(pool);
 await ensureAccountCenterSchema(pool);
 await ensureProfileMediaSchema(pool);
-await ensureNewsBirdSchema(pool);
 await ensureCardVariantSchema(pool);
 await ensureGuildWorkshopSchema(pool);
 await ensureGuildGameTables(pool);
